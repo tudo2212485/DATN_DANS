@@ -90,11 +90,11 @@ export const RegionalPriceTable: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="overflow-x-auto pb-2 custom-scrollbar">
+        <table className="w-full text-left text-xs whitespace-nowrap">
           <thead>
             <tr className="border-b border-border-subtle text-secondary-text font-bold uppercase tracking-wider pb-2">
-              <th className="py-3 px-3">Nông sản</th>
+              <th className="py-3 px-3 sticky left-0 bg-card z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Nông sản</th>
               <th className="py-3 px-3">Khu vực / Vùng trọng điểm</th>
               <th className="py-3 px-3">Giá bình quân</th>
               <th className="py-3 px-3">Biên độ ngày (Min - Max)</th>
@@ -108,8 +108,8 @@ export const RegionalPriceTable: React.FC = () => {
             {REGIONAL_PRICES.map((item) => {
               const isPos = item.changePct >= 0;
               return (
-                <tr key={item.id} className="hover:bg-canvas/50 transition-colors">
-                  <td className="py-3.5 px-3">
+                <tr key={item.id} className="hover:bg-canvas/50 transition-colors group">
+                  <td className="py-3.5 px-3 sticky left-0 bg-card group-hover:bg-canvas/90 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] transition-colors">
                     <div className="font-bold text-primary-text">{item.commodityName}</div>
                     <span className="text-[10px] font-semibold text-secondary-text uppercase tracking-wider">
                       {item.code}

@@ -5,6 +5,7 @@ import {
   ForecastPoint,
   ModelMetrics,
   AlertRuleItem,
+  ModelComparisonMetrics,
 } from '@/types';
 import {
   COMMODITIES_DATA,
@@ -106,6 +107,26 @@ export async function fetchForecastDashboard(
       metrics: MODEL_METRICS_LIST[modelName] || MODEL_METRICS_LIST.LSTM,
       forecastData: FORECAST_PREDICTIONS_SAMPLE.slice(0, 4 + days),
     };
+  }
+}
+
+/**
+ * Fetch model comparison metrics for a commodity
+ */
+export async function fetchModelComparison(commodityId: number = 2): Promise<ModelComparisonMetrics[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/forecast/compare/${commodityId}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('API Error');
+    return await res.json();
+  } catch {
+    // Return some mock comparison data if backend is down
+    return [
+      { model_name: 'LSTM', mae: 105.2, rmse: 140.5, mape: 3.2, r2: 0.89, is_best: true },
+      { model_name: 'XGBoost', mae: 110.1, rmse: 145.2, mape: 3.5, r2: 0.87 },
+      { model_name: 'Random Forest', mae: 115.3, rmse: 152.4, mape: 3.8, r2: 0.85 },
+      { model_name: 'Prophet', mae: 125.4, rmse: 165.7, mape: 4.5, r2: 0.82 },
+      { model_name: 'ARIMA', mae: 145.6, rmse: 185.3, mape: 5.2, r2: 0.75 },
+    ];
   }
 }
 

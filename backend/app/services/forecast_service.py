@@ -8,6 +8,41 @@ from app.schemas.schemas import (
     CommodityResponse,
 )
 from fastapi import HTTPException
+from typing import List
+
+def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetricsResponse]:
+    commodity = db.query(Commodity).filter(Commodity.id == commodity_id).first()
+    if not commodity:
+        raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
+        
+    # Get distinct models and their latest metrics for this commodity
+    # We query the forecast table, order by training_date/forecast_date descending to get the newest
+    # For simplicity, we can get the first row for each model_name since training metrics (mae, rmse) 
+    # are duplicated across the horizon rows of the same training session.
+    
+    models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id).distinct().all()
+    
+    result = []
+    for (m_name,) in models:
+        f = (
+            db.query(Forecast)
+            .filter(Forecast.commodity_id == commodity_id, Forecast.model_name == m_name)
+            .order_by(desc(Forecast.training_date), desc(Forecast.forecast_date))
+            .first()
+        )
+        if f and f.mae is not None:
+            result.append(
+                ModelMetricsResponse(
+                    modelName=m_name,
+                    mae=float(f.mae),
+                    rmse=float(f.rmse) if f.rmse else 0.0,
+                    mape=float(f.mape) if f.mape else 0.0,
+                    r2=float(f.r2) if f.r2 else 0.0,
+                    trainDate=f.training_date.strftime("%d/%m/%Y") if f.training_date else "N/A"
+                )
+            )
+            
+    return result
 
 def get_forecast_dashboard(
     db: Session, commodity_id: int = 2, model_name: str = "LSTM", days: int = 10
@@ -48,18 +83,19 @@ def get_forecast_dashboard(
                 actualPrice=float(p.price),
                 predictedPrice=float(p.price),
                 lowerCI=float(p.price),
-                upperCI=float(p.price)
+                upperCI=float(p.price),
+                isForecast=False
             )
         )
 
     # Add future predicted points with 95% CI
     latest_metrics = ModelMetricsResponse(
         modelName=model_name,
-        mae=420.5,
-        rmse=612.3,
-        mape=0.68,
-        r2=0.965,
-        trainDate="28/08/2026"
+        mae=0.0,
+        rmse=0.0,
+        mape=0.0,
+        r2=0.0,
+        trainDate="N/A"
     )
 
     if forecast_rows:
@@ -80,7 +116,8 @@ def get_forecast_dashboard(
                     date=f.forecast_date.strftime(f"%d/%m (T+{i+1})"),
                     predictedPrice=float(f.predicted_price),
                     lowerCI=float(f.lower_ci),
-                    upperCI=float(f.upper_ci)
+                    upperCI=float(f.upper_ci),
+                    isForecast=True
                 )
             )
 

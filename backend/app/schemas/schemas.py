@@ -111,6 +111,7 @@ class ForecastPointResponse(BaseModel):
     predictedPrice: float
     lowerCI: float
     upperCI: float
+    isForecast: bool = False
 
 class ModelMetricsResponse(BaseModel):
     modelName: str

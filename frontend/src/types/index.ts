@@ -41,15 +41,25 @@ export interface ForecastPoint {
   predictedPrice: number;
   lowerCI: number;
   upperCI: number;
+  isForecast?: boolean;
 }
 
 export interface ModelMetrics {
-  modelName: 'LSTM' | 'Prophet' | 'ARIMA';
+  modelName: 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'RandomForest' | string;
   mae: number;
   rmse: number;
   mape: number;
   r2: number;
   trainDate: string;
+}
+
+export interface ModelComparisonMetrics {
+  model_name: string;
+  mae: number;
+  rmse: number;
+  mape: number;
+  r2: number;
+  is_best?: boolean;
 }
 
 export interface AlertRuleItem {

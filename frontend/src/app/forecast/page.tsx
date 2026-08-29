@@ -17,8 +17,9 @@ import {
   MODEL_METRICS_LIST,
   FORECAST_PREDICTIONS_SAMPLE,
 } from '@/lib/mockData';
-import { ModelMetrics, ForecastPoint } from '@/types';
-import { fetchForecastDashboard } from '@/lib/api';
+import { ModelMetrics, ForecastPoint, ModelComparisonMetrics } from '@/types';
+import { fetchForecastDashboard, fetchModelComparison } from '@/lib/api';
+import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
 import { BrainCircuit, Activity, BarChart3, ShieldCheck } from 'lucide-react';
 
 export default function ForecastPage() {
@@ -28,6 +29,8 @@ export default function ForecastPage() {
 
   const [metrics, setMetrics] = useState<ModelMetrics>(MODEL_METRICS_LIST.LSTM);
   const [forecastData, setForecastData] = useState<ForecastPoint[]>(FORECAST_PREDICTIONS_SAMPLE);
+  const [comparisonData, setComparisonData] = useState<ModelComparisonMetrics[]>([]);
+  const [metricToDisplay, setMetricToDisplay] = useState<'mae' | 'rmse' | 'mape' | 'r2'>('mae');
   const [loading, setLoading] = useState<boolean>(false);
 
   const currentCommodity =
@@ -39,12 +42,16 @@ export default function ForecastPage() {
     async function loadForecast() {
       setLoading(true);
       try {
-        const res = await fetchForecastDashboard(selectedCommodityId, selectedModel, forecastDays);
-        if (isMounted && res) {
-          if (res.metrics) setMetrics(res.metrics);
-          if (res.forecastData && res.forecastData.length > 0) {
+        const [res, compRes] = await Promise.all([
+          fetchForecastDashboard(selectedCommodityId, selectedModel, forecastDays),
+          fetchModelComparison(selectedCommodityId)
+        ]);
+        if (isMounted) {
+          if (res?.metrics) setMetrics(res.metrics);
+          if (res?.forecastData && res.forecastData.length > 0) {
             setForecastData(res.forecastData);
           }
+          if (compRes) setComparisonData(compRes);
         }
       } catch (err) {
         console.error('Error fetching forecast:', err);
@@ -63,6 +70,10 @@ export default function ForecastPage() {
     ...item,
     ciRange: [item.lowerCI, item.upperCI],
   }));
+
+  const forecastOnlyData = displayForecastData.filter(item => item.isForecast);
+  const lastHistoryPoint = [...displayForecastData].reverse().find(item => !item.isForecast);
+  const basePrice = lastHistoryPoint ? lastHistoryPoint.actualPrice || lastHistoryPoint.predictedPrice : 0;
 
   return (
     <div className="space-y-6">
@@ -99,8 +110,8 @@ export default function ForecastPage() {
             <label className="text-[11px] font-bold text-secondary-text uppercase tracking-wider mb-1.5">
               Thuật toán mô hình
             </label>
-            <div className="flex items-center gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
-              {(['LSTM', 'Prophet', 'ARIMA'] as const).map((model) => (
+            <div className="flex flex-wrap items-center gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
+              {(['LSTM', 'Prophet', 'ARIMA', 'XGBoost', 'Random Forest'] as const).map((model) => (
                 <button
                   key={model}
                   onClick={() => setSelectedModel(model)}
@@ -197,7 +208,33 @@ export default function ForecastPage() {
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">R-Squared Score (Max 1.0)</span>
         </div>
+        </div>
       </div>
+
+      {/* Model Comparison Section */}
+      {comparisonData.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1 bg-card rounded-2xl border border-border-subtle p-5 shadow-card flex flex-col gap-3 justify-center">
+            <h3 className="text-sm font-bold text-primary-text mb-2">Chỉ số so sánh</h3>
+            {(['mae', 'rmse', 'mape', 'r2'] as const).map((metric) => (
+              <button
+                key={metric}
+                onClick={() => setMetricToDisplay(metric)}
+                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+                  metricToDisplay === metric
+                    ? 'bg-brand text-white border-brand shadow-sm'
+                    : 'bg-canvas text-secondary-text border-border-subtle hover:text-primary-text hover:border-brand/30'
+                }`}
+              >
+                {metric.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="lg:col-span-3">
+            <ModelComparisonChart data={comparisonData} metricToDisplay={metricToDisplay} />
+          </div>
+        </div>
+      )}
 
       {/* Main Forecast Chart with 95% Confidence Interval */}
       <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card">
@@ -336,30 +373,42 @@ export default function ForecastPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {displayForecastData.slice(3).map((item, idx) => (
-                <tr key={idx} className="hover:bg-canvas/60 transition-colors">
-                  <td className="py-3 px-3 font-bold text-primary-text">{item.date}</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-badge text-brand">
-                      {selectedModel} Dự báo
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-extrabold text-brand text-sm">
-                    {item.predictedPrice.toLocaleString('vi-VN')}
-                  </td>
-                  <td className="py-3 px-3 text-secondary-text">
-                    {item.lowerCI.toLocaleString('vi-VN')}
-                  </td>
-                  <td className="py-3 px-3 text-secondary-text">
-                    {item.upperCI.toLocaleString('vi-VN')}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="text-brand font-bold">
-                      +{displayForecastData[3] && displayForecastData[3].predictedPrice ? (((item.predictedPrice - displayForecastData[3].predictedPrice) / displayForecastData[3].predictedPrice) * 100).toFixed(2) : '0.00'}%
-                    </span>
+              {forecastOnlyData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-secondary-text font-medium">
+                    Chưa có dữ liệu dự báo {selectedModel} cho nông sản này.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                forecastOnlyData.map((item, idx) => {
+                  const changeValue = basePrice ? ((item.predictedPrice - basePrice) / basePrice * 100) : 0;
+                  const isPositive = changeValue >= 0;
+                  return (
+                    <tr key={idx} className="hover:bg-canvas/60 transition-colors">
+                      <td className="py-3 px-3 font-bold text-primary-text">{item.date}</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-badge text-brand">
+                          {selectedModel} Dự báo
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-extrabold text-brand text-sm">
+                        {item.predictedPrice.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="py-3 px-3 text-secondary-text">
+                        {item.lowerCI.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="py-3 px-3 text-secondary-text">
+                        {item.upperCI.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`font-bold ${isPositive ? 'text-brand' : 'text-red-500'}`}>
+                          {isPositive ? '+' : ''}{changeValue.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

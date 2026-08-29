@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.schemas import ForecastDashboardResponse
-from app.services.forecast_service import get_forecast_dashboard
+from app.schemas.schemas import ForecastDashboardResponse, ModelMetricsResponse
+from app.services.forecast_service import get_forecast_dashboard, get_forecast_comparison
+from typing import List
 
 router = APIRouter()
 
@@ -15,3 +16,11 @@ def read_forecast(
 ):
     """Lấy dữ liệu dự báo giá, dải khoảng tin cậy 95% và các chỉ số sai số (MAE, RMSE, MAPE, R2)"""
     return get_forecast_dashboard(db, commodity_id=commodity_id, model_name=model_name, days=days)
+
+@router.get("/compare/{commodity_id}", response_model=List[ModelMetricsResponse])
+def compare_models(
+    commodity_id: int,
+    db: Session = Depends(get_db)
+):
+    """Lấy số liệu so sánh hiệu năng giữa tất cả các mô hình cho một nông sản cụ thể"""
+    return get_forecast_comparison(db, commodity_id=commodity_id)

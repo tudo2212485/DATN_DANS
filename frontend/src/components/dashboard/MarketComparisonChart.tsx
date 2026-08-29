@@ -2,8 +2,8 @@
 
 import React from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -51,10 +51,28 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
         </div>
       </div>
 
-      {/* Main Multi-Line Chart */}
+      {/* Main Multi-Line Chart with Gradients */}
       <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorRice" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4E7152" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#4E7152" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorCoffee" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#D97757" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#D97757" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorPepper" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#9C6644" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#9C6644" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorSugar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4A69BD" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#4A69BD" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE4" vertical={false} />
             <XAxis
               dataKey="date"
@@ -103,39 +121,39 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
                 return null;
               }}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="rice"
               stroke="#4E7152"
+              fill="url(#colorRice)"
               strokeWidth={2.2}
-              dot={false}
               activeDot={{ r: 4, strokeWidth: 0, fill: '#4E7152' }}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="coffee"
               stroke="#D97757"
+              fill="url(#colorCoffee)"
               strokeWidth={2.2}
-              dot={false}
               activeDot={{ r: 4, strokeWidth: 0, fill: '#D97757' }}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="pepper"
               stroke="#9C6644"
+              fill="url(#colorPepper)"
               strokeWidth={2.2}
-              dot={false}
               activeDot={{ r: 4, strokeWidth: 0, fill: '#9C6644' }}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="sugar"
               stroke="#4A69BD"
+              fill="url(#colorSugar)"
               strokeWidth={2.2}
-              dot={false}
               activeDot={{ r: 4, strokeWidth: 0, fill: '#4A69BD' }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

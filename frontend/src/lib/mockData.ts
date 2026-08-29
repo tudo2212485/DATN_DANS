@@ -146,10 +146,10 @@ export const MODEL_METRICS_LIST: Record<string, ModelMetrics> = {
 
 // Generate 30 days of mock sample forecast points
 const sampleHistory: ForecastPoint[] = [
-  { date: '22/08', actualPrice: 62800, predictedPrice: 62800, lowerCI: 62800, upperCI: 62800 },
-  { date: '24/08', actualPrice: 62500, predictedPrice: 62500, lowerCI: 62500, upperCI: 62500 },
-  { date: '26/08', actualPrice: 62400, predictedPrice: 62400, lowerCI: 62400, upperCI: 62400 },
-  { date: '28/08 (Hôm nay)', actualPrice: 62300, predictedPrice: 62300, lowerCI: 62300, upperCI: 62300 },
+  { date: '22/08', actualPrice: 62800, predictedPrice: 62800, lowerCI: 62800, upperCI: 62800, isForecast: false },
+  { date: '24/08', actualPrice: 62500, predictedPrice: 62500, lowerCI: 62500, upperCI: 62500, isForecast: false },
+  { date: '26/08', actualPrice: 62400, predictedPrice: 62400, lowerCI: 62400, upperCI: 62400, isForecast: false },
+  { date: '28/08 (Hôm nay)', actualPrice: 62300, predictedPrice: 62300, lowerCI: 62300, upperCI: 62300, isForecast: false },
 ];
 
 const sampleFuture: ForecastPoint[] = Array.from({ length: 30 }, (_, i) => {
@@ -169,6 +169,7 @@ const sampleFuture: ForecastPoint[] = Array.from({ length: 30 }, (_, i) => {
     predictedPrice: pred,
     lowerCI: lower,
     upperCI: upper,
+    isForecast: true,
   };
 });
 

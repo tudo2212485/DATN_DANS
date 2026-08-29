@@ -234,6 +234,26 @@ BEGIN
             65.5000, 88.3000, 0.7800, 0.9540
         );
 
+        -- LÚA GẠO IR504 - Model Prophet
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            1, 'Prophet', f_date,
+            ROUND((base_rice * (1 + 0.0015 * j))::numeric, 2),
+            ROUND((base_rice * (1 + 0.0015 * j) * (1 - ci_spread * 1.15))::numeric, 2),
+            ROUND((base_rice * (1 + 0.0015 * j) * (1 + ci_spread * 1.15))::numeric, 2),
+            75.5000, 95.3000, 0.8500, 0.9320
+        );
+
+        -- LÚA GẠO IR504 - Model ARIMA
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            1, 'ARIMA', f_date,
+            ROUND((base_rice * (1 + 0.001 * j))::numeric, 2),
+            ROUND((base_rice * (1 + 0.001 * j) * (1 - ci_spread * 1.3))::numeric, 2),
+            ROUND((base_rice * (1 + 0.001 * j) * (1 + ci_spread * 1.3))::numeric, 2),
+            80.5000, 105.3000, 0.9500, 0.9120
+        );
+
         -- HỒ TIÊU ĐEN - Model LSTM
         INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
         VALUES (
@@ -244,6 +264,26 @@ BEGIN
             1150.0000, 1490.0000, 0.8100, 0.9480
         );
 
+        -- HỒ TIÊU ĐEN - Model Prophet
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            3, 'Prophet', f_date,
+            ROUND((base_pepper * (1 + 0.0025 * j))::numeric, 2),
+            ROUND((base_pepper * (1 + 0.0025 * j) * (1 - ci_spread * 1.15))::numeric, 2),
+            ROUND((base_pepper * (1 + 0.0025 * j) * (1 + ci_spread * 1.15))::numeric, 2),
+            1250.0000, 1590.0000, 0.8800, 0.9280
+        );
+
+        -- HỒ TIÊU ĐEN - Model ARIMA
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            3, 'ARIMA', f_date,
+            ROUND((base_pepper * (1 + 0.002 * j))::numeric, 2),
+            ROUND((base_pepper * (1 + 0.002 * j) * (1 - ci_spread * 1.3))::numeric, 2),
+            ROUND((base_pepper * (1 + 0.002 * j) * (1 + ci_spread * 1.3))::numeric, 2),
+            1350.0000, 1690.0000, 0.9800, 0.9080
+        );
+
         -- MÍA ĐƯỜNG - Model LSTM
         INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
         VALUES (
@@ -252,6 +292,26 @@ BEGIN
             ROUND((base_sugar * (1 + 0.0015 * j) * (1 - ci_spread))::numeric, 2),
             ROUND((base_sugar * (1 + 0.0015 * j) * (1 + ci_spread))::numeric, 2),
             8200.0000, 10500.0000, 0.7100, 0.9610
+        );
+        
+        -- MÍA ĐƯỜNG - Model Prophet
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            4, 'Prophet', f_date,
+            ROUND((base_sugar * (1 + 0.0012 * j))::numeric, 2),
+            ROUND((base_sugar * (1 + 0.0012 * j) * (1 - ci_spread * 1.15))::numeric, 2),
+            ROUND((base_sugar * (1 + 0.0012 * j) * (1 + ci_spread * 1.15))::numeric, 2),
+            9200.0000, 11500.0000, 0.7800, 0.9410
+        );
+
+        -- MÍA ĐƯỜNG - Model ARIMA
+        INSERT INTO forecasts (commodity_id, model_name, forecast_date, predicted_price, lower_ci, upper_ci, mae, rmse, mape, r2)
+        VALUES (
+            4, 'ARIMA', f_date,
+            ROUND((base_sugar * (1 + 0.001 * j))::numeric, 2),
+            ROUND((base_sugar * (1 + 0.001 * j) * (1 - ci_spread * 1.3))::numeric, 2),
+            ROUND((base_sugar * (1 + 0.001 * j) * (1 + ci_spread * 1.3))::numeric, 2),
+            10200.0000, 12500.0000, 0.8800, 0.9210
         );
     END LOOP;
 END $$;
