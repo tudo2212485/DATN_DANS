@@ -54,12 +54,12 @@ export interface ModelMetrics {
 }
 
 export interface ModelComparisonMetrics {
-  model_name: string;
+  modelName: string;
   mae: number;
   rmse: number;
   mape: number;
   r2: number;
-  is_best?: boolean;
+  isBest?: boolean;
 }
 
 export interface AlertRuleItem {

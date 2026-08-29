@@ -37,6 +37,29 @@ body {
   background: #A89A8B;
 }
 
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D4CEBE transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #D8D2C4;
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9C6644;
+}
+
 @keyframes pulse-live {
   0%, 100% {
     opacity: 1;

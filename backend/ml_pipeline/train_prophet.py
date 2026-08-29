@@ -65,7 +65,7 @@ def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_ses
     print(f"Prophet Metrics -> MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%, R2: {r2:.3f}")
     
     # Full Model Training
-    full_model = Prophet(daily_seasonality=False, yearly_seasonality=True)
+    full_model = Prophet(daily_seasonality=False, yearly_seasonality=True, interval_width=0.95)
     if 'usd_vnd' in df_p.columns: full_model.add_regressor('usd_vnd')
     if 'crude_oil' in df_p.columns: full_model.add_regressor('crude_oil')
     

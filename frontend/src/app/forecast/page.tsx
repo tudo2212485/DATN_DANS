@@ -20,12 +20,14 @@ import {
 import { ModelMetrics, ForecastPoint, ModelComparisonMetrics } from '@/types';
 import { fetchForecastDashboard, fetchModelComparison } from '@/lib/api';
 import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
-import { BrainCircuit, Activity, BarChart3, ShieldCheck } from 'lucide-react';
+import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown } from 'lucide-react';
+
+type SupportedModel = 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'Random Forest';
 
 export default function ForecastPage() {
   const [selectedCommodityId, setSelectedCommodityId] = useState<number>(2); // Coffee
-  const [selectedModel, setSelectedModel] = useState<'LSTM' | 'Prophet' | 'ARIMA'>('LSTM');
-  const [forecastDays, setForecastDays] = useState<number>(14);
+  const [selectedModel, setSelectedModel] = useState<SupportedModel>('LSTM');
+  const [forecastDays, setForecastDays] = useState<number>(10);
 
   const [metrics, setMetrics] = useState<ModelMetrics>(MODEL_METRICS_LIST.LSTM);
   const [forecastData, setForecastData] = useState<ForecastPoint[]>(FORECAST_PREDICTIONS_SAMPLE);
@@ -85,7 +87,7 @@ export default function ForecastPage() {
       />
 
       {/* Control Bar: Filters */}
-      <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-card rounded-2xl border border-border-subtle p-4 sm:p-5 shadow-card flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
           {/* Commodity Select */}
           <div className="flex flex-col">
@@ -95,7 +97,7 @@ export default function ForecastPage() {
             <select
               value={selectedCommodityId}
               onChange={(e) => setSelectedCommodityId(Number(e.target.value))}
-              className="bg-canvas border border-border-subtle text-primary-text text-sm font-semibold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-all cursor-pointer"
+              className="bg-canvas border border-border-subtle text-primary-text text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-all cursor-pointer"
             >
               {COMMODITIES_DATA.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -115,10 +117,10 @@ export default function ForecastPage() {
                 <button
                   key={model}
                   onClick={() => setSelectedModel(model)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     selectedModel === model
-                      ? 'bg-brand text-white shadow-sm'
-                      : 'text-secondary-text hover:text-primary-text'
+                      ? 'bg-brand text-white shadow-xs'
+                      : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.02]'
                   }`}
                 >
                   {model}
@@ -133,14 +135,14 @@ export default function ForecastPage() {
               Thời hạn dự báo
             </label>
             <div className="flex items-center gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
-              {[7, 14, 30].map((days) => (
+              {[7, 10, 14, 30].map((days) => (
                 <button
                   key={days}
                   onClick={() => setForecastDays(days)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     forecastDays === days
-                      ? 'bg-[#EAE5DF] text-primary-text font-extrabold shadow-sm'
-                      : 'text-secondary-text hover:text-primary-text'
+                      ? 'bg-brand text-white shadow-xs font-extrabold'
+                      : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.02]'
                   }`}
                 >
                   {days} ngày
@@ -151,7 +153,7 @@ export default function ForecastPage() {
         </div>
 
         {/* Model Meta Badge */}
-        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-badge border border-brand/20 text-brand text-xs font-semibold">
+        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-badge border border-brand/20 text-brand text-xs font-bold">
           <BrainCircuit className="w-4 h-4" />
           <span>{loading ? 'Đang tải dữ liệu...' : `Trạng thái: ${metrics.modelName} đã hội tụ`}</span>
         </div>
@@ -160,35 +162,35 @@ export default function ForecastPage() {
       {/* Metric Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* MAE */}
-        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card">
+        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">MAE (Sai số tuyệt đối)</span>
             <Activity className="w-4 h-4 text-brand" />
           </div>
           <div className="text-2xl font-extrabold text-primary-text">
-            {metrics.mae ? metrics.mae.toLocaleString('vi-VN') : '0'} {currentCommodity.unit}
+            {metrics.mae ? metrics.mae.toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Error</span>
         </div>
 
         {/* RMSE */}
-        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card">
+        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">RMSE (Căn bậc sai số)</span>
             <BarChart3 className="w-4 h-4 text-accent-coral" />
           </div>
           <div className="text-2xl font-extrabold text-primary-text">
-            {metrics.rmse ? metrics.rmse.toLocaleString('vi-VN') : '0'} {currentCommodity.unit}
+            {metrics.rmse ? metrics.rmse.toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">Root Mean Squared Error</span>
         </div>
 
         {/* MAPE */}
-        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card">
+        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">MAPE (% Sai số)</span>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-badge text-brand">
-              Độ chính xác cao (&lt; 2%)
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-badge text-brand border border-brand/20">
+              Độ chính xác cao
             </span>
           </div>
           <div className="text-2xl font-extrabold text-brand">
@@ -198,7 +200,7 @@ export default function ForecastPage() {
         </div>
 
         {/* R-Squared */}
-        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card">
+        <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">R² (Độ phù hợp)</span>
             <ShieldCheck className="w-4 h-4 text-brand" />
@@ -206,8 +208,7 @@ export default function ForecastPage() {
           <div className="text-2xl font-extrabold text-primary-text">
             {metrics.r2}
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">R-Squared Score (Max 1.0)</span>
-        </div>
+          <span className="text-[11px] text-secondary-text mt-1 block">R-Squared Score (Tối đa 1.0)</span>
         </div>
       </div>
 
@@ -215,14 +216,14 @@ export default function ForecastPage() {
       {comparisonData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 bg-card rounded-2xl border border-border-subtle p-5 shadow-card flex flex-col gap-3 justify-center">
-            <h3 className="text-sm font-bold text-primary-text mb-2">Chỉ số so sánh</h3>
+            <h3 className="text-sm font-bold text-primary-text mb-2">Chỉ số so sánh mô hình</h3>
             {(['mae', 'rmse', 'mape', 'r2'] as const).map((metric) => (
               <button
                 key={metric}
                 onClick={() => setMetricToDisplay(metric)}
                 className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
                   metricToDisplay === metric
-                    ? 'bg-brand text-white border-brand shadow-sm'
+                    ? 'bg-brand text-white border-brand shadow-xs'
                     : 'bg-canvas text-secondary-text border-border-subtle hover:text-primary-text hover:border-brand/30'
                 }`}
               >
@@ -258,7 +259,7 @@ export default function ForecastPage() {
               <span className="text-brand font-bold">Dự báo điểm</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#4E7152]/20 border border-[#4E7152]/40" />
+              <span className="w-3 h-3 rounded bg-[#9C6644]/20 border border-[#9C6644]/40" />
               <span className="text-secondary-text">Dải tin cậy 95%</span>
             </div>
           </div>
@@ -270,8 +271,8 @@ export default function ForecastPage() {
             <ComposedChart data={displayForecastData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="forecastCIGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4E7152" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#4E7152" stopOpacity={0.05} />
+                  <stop offset="5%" stopColor="#9C6644" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#9C6644" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE4" vertical={false} />
@@ -326,7 +327,7 @@ export default function ForecastPage() {
               <Area
                 type="monotone"
                 dataKey="ciRange"
-                stroke="#4E7152"
+                stroke="#9C6644"
                 strokeDasharray="4 4"
                 strokeWidth={1}
                 fill="url(#forecastCIGradient)"
@@ -345,9 +346,9 @@ export default function ForecastPage() {
               <Line
                 type="monotone"
                 dataKey="predictedPrice"
-                stroke="#4E7152"
+                stroke="#9C6644"
                 strokeWidth={2.8}
-                dot={{ r: 4, fill: '#4E7152' }}
+                dot={{ r: 4, fill: '#9C6644' }}
                 name="Dự báo"
               />
             </ComposedChart>
@@ -355,24 +356,39 @@ export default function ForecastPage() {
         </div>
       </div>
 
-      {/* Forecast Details Table */}
-      <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card">
-        <h3 className="text-base font-bold text-primary-text mb-4">
-          Bảng chi tiết giá trị dự báo {forecastDays} ngày tới từ PostgreSQL
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-border-subtle text-secondary-text font-bold uppercase tracking-wider pb-2">
-                <th className="py-2.5 px-3">Ngày</th>
-                <th className="py-2.5 px-3">Loại dữ liệu</th>
-                <th className="py-2.5 px-3">Giá dự báo ({currentCommodity.unit})</th>
-                <th className="py-2.5 px-3">Ngưỡng dưới (95% CI)</th>
-                <th className="py-2.5 px-3">Ngưỡng trên (95% CI)</th>
-                <th className="py-2.5 px-3">Biến động</th>
+      {/* Forecast Details Table with Smooth Vertical Scrollbar & Compact 10-Day Height */}
+      <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
+          <div>
+            <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
+              <span>Bảng chi tiết giá trị dự báo {forecastDays} ngày tới từ PostgreSQL</span>
+            </h3>
+            <p className="text-xs text-secondary-text mt-0.5 flex items-center gap-1.5">
+              <ArrowDownUp className="w-3.5 h-3.5 text-brand" />
+              <span>Hiển thị tối ưu ~10 ngày · Thanh trượt lên / xuống giúp trang web luôn gọn gàng</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-canvas border border-border-subtle text-secondary-text w-fit">
+              {forecastOnlyData.length} mốc dự báo
+            </span>
+          </div>
+        </div>
+
+        {/* Scrollable Container with max height displaying ~10 rows neatly with custom scrollbar */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[410px] custom-scrollbar rounded-xl border border-border-subtle bg-card shadow-inner">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 bg-[#FAF8F5] border-b border-border-subtle z-10 shadow-2xs backdrop-blur-xs">
+              <tr className="text-secondary-text font-bold uppercase tracking-wider">
+                <th className="py-3 px-4">Ngày</th>
+                <th className="py-3 px-4">Loại dữ liệu</th>
+                <th className="py-3 px-4">Giá dự báo ({currentCommodity.unit})</th>
+                <th className="py-3 px-4">Ngưỡng dưới (95% CI)</th>
+                <th className="py-3 px-4">Ngưỡng trên (95% CI)</th>
+                <th className="py-3 px-4 text-right">Biến động</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-subtle">
+            <tbody className="divide-y divide-border-subtle/80">
               {forecastOnlyData.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-secondary-text font-medium">
@@ -384,24 +400,27 @@ export default function ForecastPage() {
                   const changeValue = basePrice ? ((item.predictedPrice - basePrice) / basePrice * 100) : 0;
                   const isPositive = changeValue >= 0;
                   return (
-                    <tr key={idx} className="hover:bg-canvas/60 transition-colors">
-                      <td className="py-3 px-3 font-bold text-primary-text">{item.date}</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-badge text-brand">
+                    <tr key={idx} className="hover:bg-canvas/70 transition-colors group">
+                      <td className="py-2.5 px-4 font-bold text-primary-text whitespace-nowrap">
+                        {item.date}
+                      </td>
+                      <td className="py-2.5 px-4 whitespace-nowrap">
+                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-brand-badge text-brand border border-brand/15">
                           {selectedModel} Dự báo
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-extrabold text-brand text-sm">
+                      <td className="py-2.5 px-4 font-extrabold text-primary-text text-sm whitespace-nowrap">
                         {item.predictedPrice.toLocaleString('vi-VN')}
                       </td>
-                      <td className="py-3 px-3 text-secondary-text">
+                      <td className="py-2.5 px-4 text-secondary-text font-medium whitespace-nowrap">
                         {item.lowerCI.toLocaleString('vi-VN')}
                       </td>
-                      <td className="py-3 px-3 text-secondary-text">
+                      <td className="py-2.5 px-4 text-secondary-text font-medium whitespace-nowrap">
                         {item.upperCI.toLocaleString('vi-VN')}
                       </td>
-                      <td className="py-3 px-3">
-                        <span className={`font-bold ${isPositive ? 'text-brand' : 'text-red-500'}`}>
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 font-bold text-xs ${isPositive ? 'text-brand' : 'text-accent-coral'}`}>
+                          {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                           {isPositive ? '+' : ''}{changeValue.toFixed(2)}%
                         </span>
                       </td>

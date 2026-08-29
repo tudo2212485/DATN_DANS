@@ -25,7 +25,7 @@ export const getUser = (): User | null => {
     if (user) {
       try {
         return JSON.parse(user) as User;
-      } catch (e) {
+      } catch {
         return null;
       }
     }

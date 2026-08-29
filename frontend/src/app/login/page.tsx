@@ -33,8 +33,12 @@ export default function LoginPage() {
       const data = await response.json();
       setToken(data.access_token, data.user);
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Đã có lỗi xảy ra khi đăng nhập');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Đã có lỗi xảy ra khi đăng nhập');
+      } else {
+        setError('Đã có lỗi xảy ra khi đăng nhập');
+      }
     } finally {
       setIsLoading(false);
     }

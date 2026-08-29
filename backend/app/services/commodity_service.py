@@ -44,11 +44,20 @@ def get_commodities_overview(db: Session) -> List[CommodityOverviewCard]:
         # Format price with dots (vi-VN standard)
         formatted_price = f"{int(current_p):,}".replace(",", ".")
 
+        # Map friendly Vietnamese short names
+        name_map = {
+            "RICE_IR504": "Lúa gạo",
+            "COFFEE_ROBUSTA": "Cà phê",
+            "PEPPER_BLACK": "Hồ tiêu",
+            "SUGARCANE": "Mía đường"
+        }
+        display_name = name_map.get(c.code, c.name.split(" ")[0] + (" " + c.name.split(" ")[1] if len(c.name.split(" ")) > 1 else ""))
+
         overview_cards.append(
             CommodityOverviewCard(
                 id=c.id,
                 code=c.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR"),
-                name=c.name.split(" ")[0] + (" " + c.name.split(" ")[1] if len(c.name.split(" ")) > 1 and "Cà" in c.name else ""),
+                name=display_name,
                 category=c.category,
                 unit=c.unit,
                 region=c.region,

@@ -140,8 +140,7 @@ def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessio
     final_preds = scaler.inverse_transform(dummy_preds)[:, 0]
     final_preds = np.maximum(final_preds, 0)
     
-    base_price = np.mean(df['price'])
-    std_err = base_price * 0.02
+    std_err = rmse
     lower_cis = [p - 1.96 * std_err * (1 + 0.05*i) for i, p in enumerate(final_preds)]
     upper_cis = [p + 1.96 * std_err * (1 + 0.05*i) for i, p in enumerate(final_preds)]
     

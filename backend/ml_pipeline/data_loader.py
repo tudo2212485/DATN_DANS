@@ -23,7 +23,7 @@ def get_exogenous_data(start_date: str, end_date: str) -> pd.DataFrame:
     print(f"Fetching Exogenous Variables (USD/VND, Crude Oil) from {start_date} to {end_date}...")
     try:
         # Fetch USD/VND
-        usdvnd = yf.download("VND=X", start=start_date, end=end_date, progress=False)
+        usdvnd = yf.download("USDVND=X", start=start_date, end=end_date, progress=False)
         usdvnd = usdvnd[['Close']].rename(columns={'Close': 'usd_vnd'})
         
         # Fetch Crude Oil WTI
