@@ -158,6 +158,7 @@ class AlertLogResponse(BaseModel):
     id: int
     rule_id: int
     rule_name: Optional[str] = None
+    commodity_name: Optional[str] = None
     email: Optional[str] = None
     triggered_price: float
     message: str
@@ -166,6 +167,42 @@ class AlertLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --- Admin Schemas ---
+class AdminStatsResponse(BaseModel):
+    total_commodities: int
+    total_price_records: int
+    total_forecast_records: int
+    total_alert_rules: int
+    latest_price_date: Optional[str] = None
+    system_status: str = "ONLINE"
+
+class PriceCreateManual(BaseModel):
+    commodity_id: int
+    record_date: date
+    price: float
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    volume: Optional[float] = 0.0
+    source: Optional[str] = "Nhập thủ công bởi Quản trị viên"
+
+class AdminPriceItem(BaseModel):
+    id: int
+    commodity_id: int
+    commodity_name: str
+    record_date: str
+    price: float
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    volume: Optional[float] = 0.0
+    source: Optional[str] = None
+
+class TaskRunResponse(BaseModel):
+    task_name: str
+    status: str
+    message: str
+    records_processed: Optional[int] = 0
+    timestamp: str
 
 # --- Retrain Admin Schema ---
 class RetrainResponse(BaseModel):

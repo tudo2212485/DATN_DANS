@@ -67,9 +67,58 @@ export interface AlertRuleItem {
   commodityId: number;
   commodityName: string;
   ruleName: string;
-  conditionType: 'PRICE_ABOVE' | 'PRICE_BELOW' | 'PCT_INC_7D' | 'PCT_DEC_7D';
+  conditionType: 'PRICE_ABOVE' | 'PRICE_BELOW' | 'PCT_INC_7D' | 'PCT_DEC_7D' | 'OUT_OF_CI_95';
   thresholdValue: number;
   email: string;
   isActive: boolean;
   createdAt: string;
+}
+
+export interface AlertLogItem {
+  id: number;
+  ruleId: number;
+  ruleName: string;
+  commodityName: string;
+  triggeredPrice: number;
+  message: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  triggeredAt: string;
+  email: string;
+}
+
+export interface AdminStats {
+  totalCommodities: number;
+  totalPriceRecords: number;
+  totalForecastRecords: number;
+  totalAlertRules: number;
+  latestPriceDate: string | null;
+  systemStatus: string;
+}
+
+export interface AdminPriceItem {
+  id: number;
+  commodityId: number;
+  commodityName: string;
+  recordDate: string;
+  price: number;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  volume?: number;
+  source?: string | null;
+}
+
+export interface AdminUserItem {
+  id: number;
+  email: string;
+  fullName: string;
+  role: 'admin' | 'analyst';
+  createdAt?: string;
+}
+
+export interface TaskRunResult {
+  taskName: string;
+  status: string;
+  message: string;
+  recordsProcessed?: number;
+  timestamp: string;
 }

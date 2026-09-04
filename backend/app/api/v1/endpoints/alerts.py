@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
-from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse, AlertRuleToggle
+from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse, AlertRuleToggle, AlertLogResponse
 from app.services.alert_service import (
     get_all_alert_rules,
     create_alert_rule,
     toggle_alert_rule,
     delete_alert_rule,
     send_test_alert,
+    get_all_alert_logs,
 )
 
 router = APIRouter()
@@ -17,6 +18,14 @@ router = APIRouter()
 def list_rules(db: Session = Depends(get_db)):
     """Lấy danh sách các quy tắc cảnh báo"""
     return get_all_alert_rules(db)
+
+@router.get("/logs", response_model=List[AlertLogResponse])
+def list_alert_logs(
+    limit: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Lấy lịch sử các cảnh báo đã kích hoạt (Audit Trail)"""
+    return get_all_alert_logs(db, limit=limit)
 
 @router.post("", response_model=AlertRuleResponse)
 def create_rule(rule_in: AlertRuleCreate, db: Session = Depends(get_db)):

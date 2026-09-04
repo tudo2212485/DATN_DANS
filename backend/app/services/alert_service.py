@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from app.models.models import AlertRule, AlertLog, Commodity
-from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse
 from fastapi import HTTPException
 from typing import List
+from app.models.models import AlertRule, AlertLog, Commodity
+from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse, AlertLogResponse
 
 def get_all_alert_rules(db: Session) -> List[AlertRuleResponse]:
     rules = db.query(AlertRule).order_by(AlertRule.id.desc()).all()
@@ -90,7 +90,7 @@ def send_test_alert(db: Session, rule_id: int):
     log = AlertLog(
         rule_id=rule.id,
         triggered_price=rule.threshold_value,
-        message=f"Thử nghiệm cảnh báo '{rule.rule_name}' tới {rule.email}",
+        message=f"Giá thị trường chạm mức {float(rule.threshold_value):,.0f} VNĐ - Kích hoạt cảnh báo '{rule.rule_name}'",
         status="SENT"
     )
     db.add(log)
@@ -101,3 +101,29 @@ def send_test_alert(db: Session, rule_id: int):
         "message": f"Đã gửi cảnh báo thử nghiệm tới {rule.email} thành công!",
         "rule_name": rule.rule_name,
     }
+
+def get_all_alert_logs(db: Session, limit: int = 30) -> List[AlertLogResponse]:
+    logs = (
+        db.query(AlertLog)
+        .order_by(AlertLog.triggered_at.desc())
+        .limit(limit)
+        .all()
+    )
+    results = []
+    for log in logs:
+        rule = log.rule
+        commodity_name = rule.commodity.name if rule and rule.commodity else "Nông sản"
+        rule_name = rule.rule_name if rule else f"Quy tắc #{log.rule_id}"
+        email = rule.email if rule else ""
+        results.append(AlertLogResponse(
+            id=log.id,
+            rule_id=log.rule_id,
+            rule_name=rule_name,
+            commodity_name=commodity_name,
+            email=email,
+            triggered_price=float(log.triggered_price),
+            message=log.message,
+            status=log.status,
+            triggered_at=log.triggered_at
+        ))
+    return results
