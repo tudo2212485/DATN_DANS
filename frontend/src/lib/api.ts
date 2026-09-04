@@ -53,38 +53,39 @@ function mapAlertRule(r: Record<string, unknown>): AlertRuleItem {
  * Fetch overview commodity cards
  */
 export async function fetchCommoditiesOverview(): Promise<CommoditySummary[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/commodities/overview`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
-    return await res.json();
-  } catch {
-    return COMMODITIES_DATA;
-  }
+  const res = await fetch(`${API_BASE_URL}/commodities/overview`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('API Error fetching overview');
+  return await res.json();
 }
 
 /**
  * Fetch market comparison series
  */
 export async function fetchMarketComparison(): Promise<ComparisonDataPoint[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/commodities/comparison`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
-    return await res.json();
-  } catch {
-    return COMPARISON_SERIES;
-  }
+  const res = await fetch(`${API_BASE_URL}/commodities/comparison`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('API Error fetching comparison');
+  return await res.json();
 }
 
 /**
  * Fetch spotlight summary
  */
-export async function fetchCommoditySpotlight(code: string = 'SUGAR'): Promise<SpotlightSummary> {
+export async function fetchCommoditySpotlight(code: string = 'COFFEE'): Promise<SpotlightSummary> {
+  const res = await fetch(`${API_BASE_URL}/commodities/spotlight?code=${code}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('API Error fetching spotlight');
+  return await res.json();
+}
+
+/**
+ * Fetch regional price table data from PostgreSQL
+ */
+export async function fetchRegionalPrices(): Promise<import('@/types').RegionalPriceItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/commodities/spotlight?code=${code}`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/commodities/regional-prices`, { cache: 'no-store' });
     if (!res.ok) throw new Error('API Error');
     return await res.json();
   } catch {
-    return SPOTLIGHT_SUGAR;
+    return [];
   }
 }
 
@@ -96,23 +97,16 @@ export async function fetchForecastDashboard(
   modelName: string = 'LSTM',
   days: number = 14
 ): Promise<{ metrics: ModelMetrics; forecastData: ForecastPoint[] }> {
-  try {
-    const res = await fetch(
-      `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) throw new Error('API Error');
-    const data = await res.json();
-    return {
-      metrics: data.metrics,
-      forecastData: data.forecastData,
-    };
-  } catch {
-    return {
-      metrics: MODEL_METRICS_LIST[modelName] || MODEL_METRICS_LIST.LSTM,
-      forecastData: FORECAST_PREDICTIONS_SAMPLE.slice(0, 4 + days),
-    };
-  }
+  const res = await fetch(
+    `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error('API Error fetching forecast');
+  const data = await res.json();
+  return {
+    metrics: data.metrics,
+    forecastData: data.forecastData,
+  };
 }
 
 /**

@@ -52,7 +52,7 @@ def create_sequences(data, seq_length):
         ys.append(data[i+seq_length, 0]) 
     return np.array(xs), np.array(ys)
 
-def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 14):
+def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 30):
     print(f"\n--- Training Deep Learning LSTM for {commodity_name} ---")
     
     # Use price and exogenous features if available
@@ -180,6 +180,6 @@ if __name__ == "__main__":
         for c in commodities:
             df = load_clean_data(c.id, db)
             if not df.empty:
-                run_lstm(c.id, c.name, df, db, horizon=14)
+                run_lstm(c.id, c.name, df, db, horizon=30)
     finally:
         db.close()

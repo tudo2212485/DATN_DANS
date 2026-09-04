@@ -233,6 +233,9 @@ def background_run_scraper(days: int = 30):
 def background_run_retrain(commodity_id: Optional[int] = None):
     try:
         from ml_pipeline.train_ml import run_ml_models
+        from ml_pipeline.train_prophet import run_prophet
+        from ml_pipeline.train_lstm import run_lstm
+        from ml_pipeline.baseline_arima import run_arima
         from ml_pipeline.data_loader import load_clean_data
         
         db = SessionLocal()
@@ -245,7 +248,23 @@ def background_run_retrain(commodity_id: Optional[int] = None):
             for c in commodities:
                 df = load_clean_data(c.id, db)
                 if not df.empty:
-                    run_ml_models(c.id, c.name, df, db, horizon=14)
+                    # 1. XGBoost & Random Forest
+                    run_ml_models(c.id, c.name, df, db, horizon=30)
+                    # 2. Prophet
+                    try:
+                        run_prophet(c.id, c.name, df, db, horizon=30)
+                    except Exception as e_p:
+                        print(f"Prophet error for {c.name}: {e_p}")
+                    # 3. ARIMA
+                    try:
+                        run_arima(c.id, c.name, df, db, horizon=30)
+                    except Exception as e_a:
+                        print(f"ARIMA error for {c.name}: {e_a}")
+                    # 4. LSTM
+                    try:
+                        run_lstm(c.id, c.name, df, db, horizon=30)
+                    except Exception as e_l:
+                        print(f"LSTM error for {c.name}: {e_l}")
         finally:
             db.close()
     except Exception as e:

@@ -54,7 +54,7 @@ def optimize_arima(series: pd.Series):
     print(f"Best ARIMA Order: {best_order} with AIC: {best_aic:.2f}")
     return best_order, best_model
 
-def run_arima(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 14):
+def run_arima(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 30):
     print(f"\n--- Training ARIMA for {commodity_name} ---")
     
     prices = df["price"].values
@@ -133,6 +133,6 @@ if __name__ == "__main__":
         for c in commodities:
             df = load_clean_data(c.id, db)
             if not df.empty:
-                run_arima(c.id, c.name, df, db, horizon=14)
+                run_arima(c.id, c.name, df, db, horizon=30)
     finally:
         db.close()

@@ -19,3 +19,4 @@ passlib[bcrypt]>=1.7.4
 yfinance>=0.2.37
 beautifulsoup4>=4.12.3
 xgboost>=2.0.0
+apscheduler>=3.10.4

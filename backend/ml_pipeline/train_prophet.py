@@ -26,7 +26,7 @@ def calculate_mape(y_true, y_pred):
     y_true = np.where(y_true == 0, 1e-8, y_true)
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
-def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 14):
+def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 30):
     print(f"\n--- Training Facebook Prophet for {commodity_name} ---")
     
     # Prepare dataframe for Prophet
@@ -53,6 +53,8 @@ def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_ses
     # Since we have them in the full df, we'll merge them.
     if 'usd_vnd' in df_p.columns: 
         test_future = pd.merge(test_future, df_p[['ds', 'usd_vnd', 'crude_oil']], on='ds', how='left')
+        test_future['usd_vnd'] = test_future['usd_vnd'].ffill().bfill()
+        test_future['crude_oil'] = test_future['crude_oil'].ffill().bfill()
         
     test_forecast = eval_model.predict(test_future)
     test_preds = test_forecast['yhat'].values[-len(test):]
@@ -79,8 +81,8 @@ def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_ses
         
         # Merge existing
         future = pd.merge(future, df_p[['ds', 'usd_vnd', 'crude_oil']], on='ds', how='left')
-        future['usd_vnd'].fillna(last_usd, inplace=True)
-        future['crude_oil'].fillna(last_oil, inplace=True)
+        future['usd_vnd'] = future['usd_vnd'].fillna(last_usd).ffill().bfill()
+        future['crude_oil'] = future['crude_oil'].fillna(last_oil).ffill().bfill()
         
     forecast = full_model.predict(future)
     
@@ -126,6 +128,6 @@ if __name__ == "__main__":
         for c in commodities:
             df = load_clean_data(c.id, db)
             if not df.empty:
-                run_prophet(c.id, c.name, df, db, horizon=14)
+                run_prophet(c.id, c.name, df, db, horizon=30)
     finally:
         db.close()

@@ -1,8 +1,10 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.api import api_router
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 # Khởi tạo các bảng nếu chưa có
 try:
@@ -10,12 +12,21 @@ try:
 except Exception as e:
     print(f"Warning: Unable to connect to DB at startup: {e}")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Khởi động Background Scheduler
+    start_scheduler()
+    yield
+    # Dừng Background Scheduler
+    stop_scheduler()
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
-    description="AgroForecast REST API - Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường."
+    description="AgroForecast REST API - Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường.",
+    lifespan=lifespan
 )
 
 # Cấu hình CORS cho phép Frontend Next.js gọi API

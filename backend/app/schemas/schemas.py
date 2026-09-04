@@ -88,6 +88,19 @@ class SpotlightSummaryResponse(BaseModel):
     peakPrice: str
     trendData: List[SparklinePoint]
 
+class RegionalPriceResponse(BaseModel):
+    id: int
+    commodityName: str
+    code: str
+    region: str
+    price: str
+    unit: str
+    minMax: str
+    volume: str
+    changePct: float
+    source: str
+    updatedAt: str
+
 # --- Price History Schemas ---
 class PriceHistoryBase(BaseModel):
     commodity_id: int

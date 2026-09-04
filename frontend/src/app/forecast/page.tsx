@@ -20,7 +20,7 @@ import {
 import { ModelMetrics, ForecastPoint, ModelComparisonMetrics } from '@/types';
 import { fetchForecastDashboard, fetchModelComparison } from '@/lib/api';
 import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
-import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown } from 'lucide-react';
+import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown, Download } from 'lucide-react';
 
 type SupportedModel = 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'Random Forest';
 
@@ -76,6 +76,28 @@ export default function ForecastPage() {
   const forecastOnlyData = displayForecastData.filter(item => item.isForecast);
   const lastHistoryPoint = [...displayForecastData].reverse().find(item => !item.isForecast);
   const basePrice = lastHistoryPoint ? lastHistoryPoint.actualPrice || lastHistoryPoint.predictedPrice : 0;
+
+  const handleExportCSV = () => {
+    if (!forecastOnlyData || forecastOnlyData.length === 0) return;
+    const headers = ['Ngày', 'Nông sản', 'Mô hình', `Giá dự báo (${currentCommodity.unit})`, '95% CI Lower', '95% CI Upper'];
+    const rows = forecastOnlyData.map(item => [
+      item.date,
+      currentCommodity.name,
+      selectedModel,
+      item.predictedPrice,
+      item.lowerCI,
+      item.upperCI
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Du_bao_${currentCommodity.code}_${selectedModel}_${forecastDays}ngay.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6">
@@ -168,9 +190,9 @@ export default function ForecastPage() {
             <Activity className="w-4 h-4 text-brand" />
           </div>
           <div className="text-2xl font-extrabold text-primary-text">
-            {metrics.mae ? metrics.mae.toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
+            {metrics.mae ? Math.round(metrics.mae).toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Error</span>
+          <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Error (Sai số trung bình)</span>
         </div>
 
         {/* RMSE */}
@@ -180,7 +202,7 @@ export default function ForecastPage() {
             <BarChart3 className="w-4 h-4 text-accent-coral" />
           </div>
           <div className="text-2xl font-extrabold text-primary-text">
-            {metrics.rmse ? metrics.rmse.toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
+            {metrics.rmse ? Math.round(metrics.rmse).toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text">{currentCommodity.unit}</span>
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">Root Mean Squared Error</span>
         </div>
@@ -194,7 +216,7 @@ export default function ForecastPage() {
             </span>
           </div>
           <div className="text-2xl font-extrabold text-brand">
-            {metrics.mape}%
+            {Number(metrics.mape).toFixed(2)}%
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Percentage Error</span>
         </div>
@@ -206,7 +228,7 @@ export default function ForecastPage() {
             <ShieldCheck className="w-4 h-4 text-brand" />
           </div>
           <div className="text-2xl font-extrabold text-primary-text">
-            {metrics.r2}
+            {metrics.r2 ? Number(metrics.r2).toFixed(3) : '0.000'}
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">R-Squared Score (Tối đa 1.0)</span>
         </div>
@@ -369,7 +391,16 @@ export default function ForecastPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-canvas border border-border-subtle text-secondary-text w-fit">
+            <button
+              onClick={handleExportCSV}
+              disabled={forecastOnlyData.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-canvas hover:bg-brand/10 text-brand border border-border-subtle hover:border-brand/30 text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              title="Xuất dữ liệu dự báo ra file CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Xuất CSV</span>
+            </button>
+            <span className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-canvas border border-border-subtle text-secondary-text w-fit">
               {forecastOnlyData.length} mốc dự báo
             </span>
           </div>

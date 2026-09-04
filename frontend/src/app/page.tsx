@@ -48,7 +48,7 @@ export default function OverviewPage() {
         subtitle={
           isLoading
             ? 'Đang đồng bộ dữ liệu từ PostgreSQL...'
-            : 'Cập nhật lần cuối: 28/08/2026 · 14:30'
+            : `Dữ liệu giao dịch thực tế đồng bộ từ CSDL PostgreSQL & giacaphe.com`
         }
         showLiveBadge={true}
       />

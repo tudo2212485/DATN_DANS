@@ -122,3 +122,18 @@ export interface TaskRunResult {
   recordsProcessed?: number;
   timestamp: string;
 }
+
+export interface RegionalPriceItem {
+  id: number;
+  commodityName: string;
+  code: string;
+  region: string;
+  price: string;
+  unit: string;
+  minMax: string;
+  volume: string;
+  changePct: number;
+  source: string;
+  updatedAt: string;
+}
+

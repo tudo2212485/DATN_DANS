@@ -63,7 +63,7 @@ def save_forecast(db_session, commodity_id, model_name, preds, std_err, metrics,
     db_session.commit()
     print(f"Saved forecasts for {model_name}.")
 
-def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 14):
+def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 30):
     print(f"\n--- Training Tabular ML Models for {commodity_name} ---")
     
     X, y, feature_names, df_feat = prepare_tabular_data(df)
@@ -171,6 +171,6 @@ if __name__ == "__main__":
         for c in commodities:
             df = load_clean_data(c.id, db)
             if not df.empty:
-                run_ml_models(c.id, c.name, df, db, horizon=14)
+                run_ml_models(c.id, c.name, df, db, horizon=30)
     finally:
         db.close()

@@ -82,6 +82,13 @@ def read_comparison(db: Session = Depends(get_db)):
     return get_market_comparison(db)
 
 @router.get("/spotlight", response_model=SpotlightSummaryResponse)
-def read_spotlight(code: str = "SUGARCANE", db: Session = Depends(get_db)):
+def read_spotlight(code: str = "COFFEE_ROBUSTA", db: Session = Depends(get_db)):
     """Lấy dữ liệu tiêu điểm nông sản (xu hướng 3 tháng)"""
     return get_spotlight_commodity(db, code)
+
+@router.get("/regional-prices")
+def read_regional_prices(db: Session = Depends(get_db)):
+    """Lấy bảng giá nông sản các vùng trọng điểm từ PostgreSQL"""
+    from app.services.commodity_service import get_regional_prices_list
+    return get_regional_prices_list(db)
+
