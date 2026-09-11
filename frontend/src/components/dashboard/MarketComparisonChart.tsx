@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -11,152 +11,210 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { ComparisonDataPoint } from '@/types';
+import { TrendingUp, Layers } from 'lucide-react';
 
 interface MarketComparisonChartProps {
   data: ComparisonDataPoint[];
 }
 
+interface CommodityToggle {
+  key: keyof Pick<ComparisonDataPoint, 'rice' | 'coffee' | 'pepper' | 'sugar'>;
+  label: string;
+  color: string;
+  fillGradient: string;
+}
+
+const COMMODITIES: CommodityToggle[] = [
+  { key: 'rice', label: 'Lúa gạo IR504', color: '#10B981', fillGradient: 'colorRice' },
+  { key: 'coffee', label: 'Cà phê Robusta', color: '#527853', fillGradient: 'colorCoffee' },
+  { key: 'pepper', label: 'Hồ tiêu đen', color: '#8B5CF6', fillGradient: 'colorPepper' },
+  { key: 'sugar', label: 'Mía đường', color: '#F59E0B', fillGradient: 'colorSugar' },
+];
+
 export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ data }) => {
+  const [activeSeries, setActiveSeries] = useState<Record<string, boolean>>({
+    rice: true,
+    coffee: true,
+    pepper: true,
+    sugar: true,
+  });
+
+  const toggleSeries = (key: string) => {
+    setActiveSeries((prev) => {
+      // Ensure at least 1 series remains active
+      const next = { ...prev, [key]: !prev[key] };
+      if (!Object.values(next).some(Boolean)) return prev;
+      return next;
+    });
+  };
+
   return (
-    <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card flex flex-col justify-between h-full">
-      {/* Header & Legends */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <div className="bg-card rounded-2xl border border-border-subtle p-5 sm:p-6 shadow-card flex flex-col justify-between h-full space-y-4">
+      {/* Header & Legends with toggle pills */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
         <div>
-          <h2 className="text-base font-bold text-primary-text tracking-tight">
-            Tỷ lệ tăng/giảm so với đầu kỳ
+          <h2 className="text-base font-bold text-primary-text tracking-tight flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-brand" />
+            <span>Biểu Đồ Tương Quan Tăng Trưởng Thị Trường (Normalized Growth)</span>
           </h2>
           <p className="text-xs text-secondary-text mt-0.5 font-medium">
-            Chuẩn hóa từ 01/06/2026 · đơn vị %
+            Tỷ lệ tăng/giảm so với mốc đầu kỳ chuẩn hóa (%) · Nhấp thẻ bên phải để bật/tắt từng mặt hàng
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center flex-wrap gap-4 text-xs font-semibold text-secondary-text">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-0.5 rounded-full bg-[#4E7152]" />
-            <span className="text-primary-text">Lúa gạo</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-0.5 rounded-full bg-[#D97757]" />
-            <span className="text-primary-text">Cà phê</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-0.5 rounded-full bg-[#9C6644]" />
-            <span className="text-primary-text">Hồ tiêu</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-0.5 rounded-full bg-[#4A69BD]" />
-            <span className="text-primary-text">Mía đường</span>
-          </div>
+        {/* Commodity Toggle Pills */}
+        <div className="flex items-center flex-wrap gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
+          {COMMODITIES.map((c) => {
+            const isActive = activeSeries[c.key];
+            return (
+              <button
+                key={c.key}
+                onClick={() => toggleSeries(c.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  isActive
+                    ? 'bg-white text-primary-text shadow-2xs border border-border-subtle'
+                    : 'text-secondary-text/60 hover:text-secondary-text opacity-50'
+                }`}
+                title={`Nhấp để ${isActive ? 'ẩn' : 'hiện'} ${c.label}`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: isActive ? c.color : '#C4BDB2' }}
+                />
+                <span className="text-[11px]">{c.label.split(' ')[0]}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Multi-Line Chart with Gradients */}
-      <div className="h-[280px] w-full">
+      {/* Main Multi-Line Area Chart with smooth Gradients */}
+      <div className="h-[300px] w-full pt-1">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 15, left: -10, bottom: 20 }}>
             <defs>
               <linearGradient id="colorRice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4E7152" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#4E7152" stopOpacity={0} />
+                <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="colorCoffee" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#D97757" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#D97757" stopOpacity={0} />
+                <stop offset="5%" stopColor="#527853" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#527853" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="colorPepper" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#9C6644" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#9C6644" stopOpacity={0} />
+                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="colorSugar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4A69BD" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#4A69BD" stopOpacity={0} />
+                <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.0} />
               </linearGradient>
             </defs>
+
             <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE4" vertical={false} />
+
             <XAxis
               dataKey="date"
               stroke="#A89A8B"
               fontSize={11}
               tickLine={false}
               axisLine={{ stroke: '#EFECE6' }}
-              dy={10}
+              dy={8}
             />
+
+            {/* Formatted Y-Axis with Percentage strictly */}
             <YAxis
               stroke="#A89A8B"
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `+${v}%`}
-              domain={[0, 12]}
-              ticks={[0, 3, 6, 9, 12]}
+              domain={['auto', 'auto']}
+              tickFormatter={(v: number) => `${v > 0 ? '+' : ''}${Number(v).toFixed(1)}%`}
             />
+
             <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-white/95 backdrop-blur-md p-3 rounded-xl border border-border-subtle shadow-xl text-xs space-y-1">
-                      <div className="font-bold text-primary-text mb-1 border-b border-border-subtle pb-1">
-                        Thời điểm: {label}
+                    <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-border-subtle shadow-xl text-xs space-y-1.5 min-w-[190px]">
+                      <div className="font-bold text-primary-text mb-1 border-b border-border-subtle pb-1 flex items-center justify-between">
+                        <span>Thời điểm: {label}</span>
+                        <Layers className="w-3.5 h-3.5 text-brand" />
                       </div>
-                      <div className="text-[#4E7152] font-semibold flex justify-between gap-4">
-                        <span>Lúa gạo:</span>
-                        <span>+{payload[0]?.value}%</span>
-                      </div>
-                      <div className="text-[#D97757] font-semibold flex justify-between gap-4">
-                        <span>Cà phê:</span>
-                        <span>+{payload[1]?.value}%</span>
-                      </div>
-                      <div className="text-[#9C6644] font-semibold flex justify-between gap-4">
-                        <span>Hồ tiêu:</span>
-                        <span>+{payload[2]?.value}%</span>
-                      </div>
-                      <div className="text-[#4A69BD] font-semibold flex justify-between gap-4">
-                        <span>Mía đường:</span>
-                        <span>+{payload[3]?.value}%</span>
-                      </div>
+                      {payload.map((entry) => {
+                        const val = Number(entry.value || 0);
+                        const match = COMMODITIES.find((c) => c.key === entry.dataKey);
+                        const labelName = match?.label || entry.name;
+                        return (
+                          <div
+                            key={entry.dataKey as string}
+                            className="font-semibold flex justify-between gap-3 text-xs"
+                            style={{ color: entry.color }}
+                          >
+                            <span>{labelName}:</span>
+                            <span className="font-mono font-extrabold">
+                              {val > 0 ? '+' : ''}
+                              {val.toFixed(2)}%
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 }
                 return null;
               }}
             />
-            <Area
-              type="monotone"
-              dataKey="rice"
-              stroke="#4E7152"
-              fill="url(#colorRice)"
-              strokeWidth={2.2}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#4E7152' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="coffee"
-              stroke="#D97757"
-              fill="url(#colorCoffee)"
-              strokeWidth={2.2}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#D97757' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="pepper"
-              stroke="#9C6644"
-              fill="url(#colorPepper)"
-              strokeWidth={2.2}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#9C6644' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="sugar"
-              stroke="#4A69BD"
-              fill="url(#colorSugar)"
-              strokeWidth={2.2}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#4A69BD' }}
-            />
+
+            {activeSeries.rice && (
+              <Area
+                type="monotone"
+                dataKey="rice"
+                name="Lúa gạo IR504"
+                stroke="#10B981"
+                fill="url(#colorRice)"
+                strokeWidth={2.4}
+                activeDot={{ r: 4, strokeWidth: 0, fill: '#10B981' }}
+              />
+            )}
+            {activeSeries.coffee && (
+              <Area
+                type="monotone"
+                dataKey="coffee"
+                name="Cà phê Robusta"
+                stroke="#527853"
+                fill="url(#colorCoffee)"
+                strokeWidth={2.4}
+                activeDot={{ r: 4, strokeWidth: 0, fill: '#527853' }}
+              />
+            )}
+            {activeSeries.pepper && (
+              <Area
+                type="monotone"
+                dataKey="pepper"
+                name="Hồ tiêu đen"
+                stroke="#8B5CF6"
+                fill="url(#colorPepper)"
+                strokeWidth={2.4}
+                activeDot={{ r: 4, strokeWidth: 0, fill: '#8B5CF6' }}
+              />
+            )}
+            {activeSeries.sugar && (
+              <Area
+                type="monotone"
+                dataKey="sugar"
+                name="Mía đường"
+                stroke="#F59E0B"
+                fill="url(#colorSugar)"
+                strokeWidth={2.4}
+                activeDot={{ r: 4, strokeWidth: 0, fill: '#F59E0B' }}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 };
+
 export default MarketComparisonChart;

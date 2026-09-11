@@ -137,3 +137,29 @@ export interface RegionalPriceItem {
   updatedAt: string;
 }
 
+export interface CrawlerLog {
+  id: number;
+  crawler_name: string;
+  target_source: string;
+  records_extracted: number;
+  status: 'SUCCESS' | 'FAILED' | 'RUNNING';
+  duration_sec: number;
+  timestamp: string;
+  details?: string;
+}
+
+export interface CSVImportResult {
+  message: string;
+  records_created: number;
+  records_updated: number;
+  errors: string[];
+}
+
+export interface ActiveModelSetting {
+  active_model: string;
+  description?: string;
+  updated_at?: string;
+}
+
+
+

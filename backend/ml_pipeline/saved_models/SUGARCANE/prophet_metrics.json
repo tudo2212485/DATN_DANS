@@ -1,0 +1,17 @@
+{
+  "model_name": "Prophet",
+  "metrics": {
+    "mae": 20733.4552,
+    "rmse": 23238.7392,
+    "mape": 1.69,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 2.05%)",
+  "trained_at": "2026-09-11 09:11:07",
+  "exogenous_features": [
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\SUGARCANE\\prophet_model.pkl"
+}

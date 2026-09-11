@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 8233.5577,
+    "rmse": 10884.4007,
+    "mape": 0.66,
+    "r2": 0.5446
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 0.96%)",
+  "trained_at": "2026-09-11 09:11:13",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\SUGARCANE\\lstm_model.pt"
+}

@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 922.345,
+    "rmse": 1023.6011,
+    "mape": 0.67,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 1.14%)",
+  "trained_at": "2026-09-11 09:11:04",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\PEPPER_BLACK\\lstm_model.pt"
+}

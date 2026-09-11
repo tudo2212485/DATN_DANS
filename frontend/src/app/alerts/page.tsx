@@ -244,19 +244,19 @@ export default function AlertsPage() {
 
         <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card relative overflow-hidden group hover:border-brand/40 transition-all">
           <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Độ tin cậy Gửi Mail</span>
+            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Cổng Gửi Mail (SMTP)</span>
             <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-primary-text">99.4%</span>
-            <span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-md">
-              SMTP TLS
+            <span className="text-2xl font-bold text-primary-text">Sẵn sàng</span>
+            <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+              Hoạt động
             </span>
           </div>
           <p className="text-[11px] text-secondary-text mt-2 flex items-center gap-1">
-            Giao thức SMTP Gmail & Email Server
+            Giao thức SMTP TLS & Webhook Trigger
           </p>
         </div>
       </div>

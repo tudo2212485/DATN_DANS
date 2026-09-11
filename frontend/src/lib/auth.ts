@@ -39,3 +39,6 @@ export const removeToken = () => {
     localStorage.removeItem('agro_user');
   }
 };
+
+export const logout = removeToken;
+

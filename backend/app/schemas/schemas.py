@@ -6,7 +6,8 @@ from datetime import date, datetime
 class UserBase(BaseModel):
     email: str
     full_name: str
-    role: str = "analyst"  # 'analyst' | 'admin'
+    role: str = "analyst"  # 'analyst' | 'admin' | 'user'
+    is_active: bool = True
 
 class UserCreate(UserBase):
     password: str
@@ -19,8 +20,14 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(..., min_length=2, max_length=150)
+    password: str = Field(..., min_length=6, max_length=100)
+    role: Optional[str] = "analyst"
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -222,3 +229,72 @@ class RetrainResponse(BaseModel):
     status: str
     message: str
     timestamp: str
+
+# --- Phase 4 Machine Learning & Prediction Schemas ---
+class PredictionPointItem(BaseModel):
+    date: str
+    display_date: Optional[str] = None
+    yhat: float
+    yhat_lower: float
+    yhat_upper: float
+    actual_price: Optional[float] = None
+    is_forecast: bool = True
+
+class PredictionMetricsItem(BaseModel):
+    mae: float
+    rmse: float
+    mape: float
+    r2: float
+
+class PredictionForecastResponse(BaseModel):
+    symbol: str
+    commodity: Optional[dict] = None
+    model_name: str
+    forecast_days: int
+    response_time_ms: float
+    cached: bool = False
+    metrics: dict
+    history: List[PredictionPointItem] = []
+    forecast: List[PredictionPointItem] = []
+    all_points: List[PredictionPointItem] = []
+
+class PredictionModelMetric(BaseModel):
+    model_name: str
+    metrics: dict
+    trained_at: Optional[str] = None
+    passed_threshold: bool = True
+    threshold_reason: Optional[str] = None
+
+class PredictionMetricsResponse(BaseModel):
+    symbol: Optional[str] = None
+    models: List[PredictionModelMetric]
+
+# --- Phase 5 Admin Dashboard & Control Panel Schemas ---
+class CrawlerLogItem(BaseModel):
+    id: int
+    crawler_name: str
+    target_source: str
+    records_extracted: int
+    status: str  # SUCCESS, FAILED, RUNNING
+    duration_sec: float
+    timestamp: str
+    details: Optional[str] = None
+
+class CSVImportResponse(BaseModel):
+    message: str
+    records_created: int
+    records_updated: int
+    errors: List[str] = []
+
+class UserRoleUpdate(BaseModel):
+    role: str  # admin, analyst, user
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+class ActiveModelSetting(BaseModel):
+    active_model: str  # LSTM, XGBoost, Prophet, ARIMA
+    description: Optional[str] = None
+    updated_at: Optional[str] = None
+
+

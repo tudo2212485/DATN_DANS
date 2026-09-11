@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 3655.3776,
+    "rmse": 4000.5143,
+    "mape": 3.82,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 6.77%)",
+  "trained_at": "2026-09-11 09:10:56",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\COFFEE_ROBUSTA\\lstm_model.pt"
+}

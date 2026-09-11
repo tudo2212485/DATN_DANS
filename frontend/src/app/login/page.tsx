@@ -18,7 +18,8 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,7 +56,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F6F2] flex items-center justify-center p-4 selection:bg-[#527853]/20">
+    <div className="w-full flex items-center justify-center p-4 selection:bg-[#527853]/20">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-black/[0.03] border border-black/[0.05] p-8 md:p-10 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-[#527853]/5 blur-2xl pointer-events-none" />

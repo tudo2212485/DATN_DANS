@@ -1,16 +1,23 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, get_db
 from app.api.v1.api import api_router
 from app.core.scheduler import start_scheduler, stop_scheduler
+
+logger = logging.getLogger("app.main")
 
 # Khởi tạo các bảng nếu chưa có
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
-    print(f"Warning: Unable to connect to DB at startup: {e}")
+    logger.warning(f"Warning: Unable to connect to DB at startup: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -29,26 +37,57 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Cấu hình CORS cho phép Frontend Next.js gọi API
+from app.core.security import SecurityHeadersMiddleware
+
+# Cấu hình Security Headers Middleware (OWASP Top 10 Hardening)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Cấu hình CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Trong môi trường dev cho phép all
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Đã xảy ra lỗi nội bộ máy chủ. Vui lòng thử lại sau."},
+    )
+
 # Kết nối Router V1
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-@app.get("/", tags=["Health Check"])
+@app.get("/", tags=["System"])
 def root():
+    """Thông tin cơ bản về hệ thống API"""
     return {
-        "status": "healthy",
-        "service": "AgroForecast Backend API",
-        "version": "2.4.1",
+        "status": "online",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
         "docs": "/docs",
         "api_v1": settings.API_V1_STR
+    }
+
+@app.get("/health", tags=["System"])
+def health_check(db: Session = Depends(get_db)):
+    """Kiểm tra sức khỏe hệ thống và kết nối CSDL PostgreSQL"""
+    db_status = "connected"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    return {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "version": settings.VERSION,
+        "timestamp": str(text("CURRENT_TIMESTAMP"))
     }
 
 if __name__ == "__main__":

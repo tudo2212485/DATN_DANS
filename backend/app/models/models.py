@@ -5,11 +5,12 @@ from app.core.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     email = Column(String(150), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(150), nullable=False)
-    role = Column(String(50), nullable=False, default="analyst")  # 'analyst' hoặc 'admin'
+    role = Column(String(50), nullable=False, default="analyst")  # 'analyst' | 'admin' | 'user'
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -19,7 +20,7 @@ class User(Base):
 class Commodity(Base):
     __tablename__ = "commodities"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     code = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(150), nullable=False)
     category = Column(String(50), nullable=False)
@@ -37,7 +38,7 @@ class Commodity(Base):
 class PriceHistory(Base):
     __tablename__ = "price_history"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, index=True)
     commodity_id = Column(Integer, ForeignKey("commodities.id", ondelete="CASCADE"), nullable=False, index=True)
     record_date = Column(Date, nullable=False, index=True)
     price = Column(Numeric(14, 2), nullable=False)
@@ -53,9 +54,9 @@ class PriceHistory(Base):
 class Forecast(Base):
     __tablename__ = "forecasts"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, index=True)
     commodity_id = Column(Integer, ForeignKey("commodities.id", ondelete="CASCADE"), nullable=False, index=True)
-    model_name = Column(String(50), nullable=False, index=True)  # LSTM, Prophet, ARIMA
+    model_name = Column(String(50), nullable=False, index=True)  # LSTM, Prophet, ARIMA, XGBoost
     forecast_date = Column(Date, nullable=False, index=True)
     predicted_price = Column(Numeric(14, 2), nullable=False)
     lower_ci = Column(Numeric(14, 2), nullable=False)
@@ -73,7 +74,7 @@ class Forecast(Base):
 class AlertRule(Base):
     __tablename__ = "alert_rules"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     commodity_id = Column(Integer, ForeignKey("commodities.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     rule_name = Column(String(150), nullable=False)
@@ -92,7 +93,7 @@ class AlertRule(Base):
 class AlertLog(Base):
     __tablename__ = "alert_logs"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, index=True)
     rule_id = Column(Integer, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
     triggered_price = Column(Numeric(14, 2), nullable=False)
     message = Column(Text, nullable=False)

@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className="h-full">
-      <body className="bg-canvas text-primary-text h-full overflow-hidden flex antialiased selection:bg-brand/20">
+    <html lang="vi" className="min-h-full">
+      <body className="bg-[#F9F6F2] text-primary-text min-h-screen flex antialiased selection:bg-brand/20">
         <LayoutWrapper>
           {children}
         </LayoutWrapper>

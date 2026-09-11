@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 45.9783,
+    "rmse": 54.8376,
+    "mape": 0.59,
+    "r2": 0.9606
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 0.72%)",
+  "trained_at": "2026-09-11 09:10:48",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\RICE_IR504\\lstm_model.pt"
+}

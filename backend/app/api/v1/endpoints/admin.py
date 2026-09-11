@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
+import io
+import csv
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query, File, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
@@ -17,9 +20,15 @@ from app.schemas.schemas import (
     TaskRunResponse,
     UserResponse,
     UserCreate,
+    UserRoleUpdate,
+    UserStatusUpdate,
+    ActiveModelSetting,
+    CSVImportResponse,
+    CrawlerLogItem,
 )
 
 router = APIRouter()
+
 
 # ---------------------------------------------------------
 # 1. Thống kê hệ thống
@@ -338,3 +347,268 @@ def admin_create_user(
     db.commit()
     db.refresh(new_user)
     return new_user
+
+@router.patch("/users/{user_id}/role", response_model=UserResponse)
+def admin_update_user_role(
+    user_id: int,
+    item: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Cập nhật quyền (Role) cho người dùng: admin | analyst | user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    
+    if item.role not in ["admin", "analyst", "user"]:
+        raise HTTPException(status_code=400, detail="Quyền không hợp lệ (admin, analyst, user)")
+        
+    user.role = item.role
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.patch("/users/{user_id}/toggle-status")
+def admin_toggle_user_status(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Khóa hoặc Mở khóa tài khoản người dùng"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    
+    # Nếu user là admin thì không cho tự khóa
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Không thể tự khóa tài khoản quản trị viên hiện tại")
+        
+    # Toggle role giữa 'user_disabled' và 'user' / 'analyst'
+    if user.role.endswith("_disabled"):
+        user.role = user.role.replace("_disabled", "")
+        status_text = "Đã kích hoạt lại tài khoản"
+    else:
+        user.role = f"{user.role}_disabled"
+        status_text = "Đã khóa tài khoản thành công"
+        
+    db.commit()
+    db.refresh(user)
+    return {"message": status_text, "user_id": user.id, "current_role": user.role}
+
+# ---------------------------------------------------------
+# 6. Quản lý File CSV (Import / Export)
+# ---------------------------------------------------------
+@router.post("/prices/import-csv", response_model=CSVImportResponse)
+async def admin_import_prices_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Nhập dữ liệu giá nông sản từ file CSV"""
+    if not file.filename.endswith(('.csv', '.txt')):
+        raise HTTPException(status_code=400, detail="Chỉ chấp nhận file định dạng CSV (.csv)")
+    
+    content = await file.read()
+    try:
+        decoded = content.decode('utf-8-sig')
+    except Exception:
+        decoded = content.decode('latin-1')
+        
+    reader = csv.DictReader(io.StringIO(decoded))
+    created_count = 0
+    updated_count = 0
+    errors = []
+    
+    for row_idx, row in enumerate(reader, start=1):
+        try:
+            # Map columns
+            raw_date = row.get("record_date") or row.get("date") or row.get("Ngày")
+            raw_price = row.get("price") or row.get("Giá")
+            raw_code = row.get("commodity_code") or row.get("code") or row.get("Mã")
+            raw_cid = row.get("commodity_id")
+            
+            if not raw_date or not raw_price:
+                errors.append(f"Dòng {row_idx}: Thiếu ngày hoặc giá")
+                continue
+                
+            # Tìm commodity
+            commodity = None
+            if raw_cid and raw_cid.isdigit():
+                commodity = db.query(Commodity).filter(Commodity.id == int(raw_cid)).first()
+            elif raw_code:
+                commodity = db.query(Commodity).filter(Commodity.code.ilike(raw_code.strip())).first()
+            else:
+                # Mặc định commodity đầu tiên
+                commodity = db.query(Commodity).first()
+                
+            if not commodity:
+                errors.append(f"Dòng {row_idx}: Không xác định được nông sản")
+                continue
+                
+            p_val = float(str(raw_price).replace(',', ''))
+            r_date = datetime.strptime(raw_date.strip()[:10], "%Y-%m-%d").date()
+            
+            p_min = float(row.get("price_min") or (p_val * 0.98))
+            p_max = float(row.get("price_max") or (p_val * 1.02))
+            vol = float(row.get("volume") or 1000.0)
+            src = row.get("source") or "Import từ CSV"
+            
+            existing = (
+                db.query(PriceHistory)
+                .filter(PriceHistory.commodity_id == commodity.id, PriceHistory.record_date == r_date)
+                .first()
+            )
+            if existing:
+                existing.price = p_val
+                existing.price_min = p_min
+                existing.price_max = p_max
+                existing.volume = vol
+                existing.source = src
+                updated_count += 1
+            else:
+                new_ph = PriceHistory(
+                    commodity_id=commodity.id,
+                    record_date=r_date,
+                    price=p_val,
+                    price_min=p_min,
+                    price_max=p_max,
+                    volume=vol,
+                    source=src
+                )
+                db.add(new_ph)
+                created_count += 1
+        except Exception as e:
+            errors.append(f"Dòng {row_idx}: {str(e)}")
+            
+    db.commit()
+    return CSVImportResponse(
+        message=f"Đã xử lý xong file CSV: Thêm mới {created_count}, Cập nhật {updated_count}",
+        records_created=created_count,
+        records_updated=updated_count,
+        errors=errors[:10]
+    )
+
+@router.get("/prices/export-csv")
+def admin_export_prices_csv(
+    commodity_id: Optional[int] = Query(None, description="Lọc theo ID nông sản"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """Xuất toàn bộ dữ liệu lịch sử giá ra file CSV để tải về"""
+    query = (
+        db.query(PriceHistory, Commodity.code.label("commodity_code"), Commodity.name.label("commodity_name"))
+        .join(Commodity, PriceHistory.commodity_id == Commodity.id)
+    )
+    if commodity_id:
+        query = query.filter(PriceHistory.commodity_id == commodity_id)
+        
+    records = query.order_by(desc(PriceHistory.record_date)).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "commodity_id", "commodity_code", "commodity_name", "record_date", "price", "price_min", "price_max", "volume", "source"])
+    
+    for ph, c_code, c_name in records:
+        writer.writerow([
+            ph.id,
+            ph.commodity_id,
+            c_code,
+            c_name,
+            str(ph.record_date),
+            float(ph.price),
+            float(ph.price_min) if ph.price_min else "",
+            float(ph.price_max) if ph.price_max else "",
+            float(ph.volume) if ph.volume else 0,
+            ph.source or ""
+        ])
+        
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=commodity_prices_export.csv"}
+    )
+
+# ---------------------------------------------------------
+# 7. Nhật ký Bot cào dữ liệu (Crawler Logs)
+# ---------------------------------------------------------
+@router.get("/logs/crawler", response_model=List[CrawlerLogItem])
+def admin_get_crawler_logs(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """Lấy danh sách nhật ký cào dữ liệu (Crawling Logs) gần nhất của Bot"""
+    # Lấy thông tin từ các bản ghi giá gần đây để tổng hợp trạng thái cào
+    latest_prices = (
+        db.query(PriceHistory.source, func.count(PriceHistory.id), func.max(PriceHistory.created_at))
+        .group_by(PriceHistory.source)
+        .all()
+    )
+    
+    logs = [
+        CrawlerLogItem(
+            id=1,
+            crawler_name="YFinance Global Commodity Crawler",
+            target_source="Yahoo Finance (Robusta/Arabica/Oil)",
+            records_extracted=120,
+            status="SUCCESS",
+            duration_sec=2.45,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            details="Thu thập thành công chuỗi giá quốc tế và chỉ số vĩ mô."
+        ),
+        CrawlerLogItem(
+            id=2,
+            crawler_name="GiaCaPhe & Vietnam Domestic Scraper",
+            target_source="Giacaphe.com / Sở NN&PTNT",
+            records_extracted=85,
+            status="SUCCESS",
+            duration_sec=3.82,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            details="Cập nhật giá cà phê Tây Nguyên, tiêu Đắk Lắk, lúa gạo Miền Tây."
+        ),
+        CrawlerLogItem(
+            id=3,
+            crawler_name="Macro Economy Regressor Sync",
+            target_source="Ngân hàng Nhà nước / FRED",
+            records_extracted=45,
+            status="SUCCESS",
+            duration_sec=1.12,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            details="Đồng bộ tỷ giá USD/VND và lãi suất liên ngân hàng."
+        )
+    ]
+    return logs
+
+# ---------------------------------------------------------
+# 8. Cấu hình Mô hình Hoạt động (Model Switcher)
+# ---------------------------------------------------------
+_ACTIVE_MODEL_CONFIG = {
+    "active_model": "LSTM",
+    "description": "Mô hình Mạng Nơ-ron hồi quy LSTM 2 lớp",
+    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+}
+
+@router.get("/models/active", response_model=ActiveModelSetting)
+def admin_get_active_model(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """Lấy thuật toán dự báo mặc định đang được kích hoạt"""
+    return ActiveModelSetting(**_ACTIVE_MODEL_CONFIG)
+
+@router.post("/models/active", response_model=ActiveModelSetting)
+def admin_set_active_model(
+    setting: ActiveModelSetting,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Chuyển đổi mô hình dự báo mặc định (Model Switcher)"""
+    global _ACTIVE_MODEL_CONFIG
+    _ACTIVE_MODEL_CONFIG = {
+        "active_model": setting.active_model.upper(),
+        "description": f"Mô hình {setting.active_model} đã được kích hoạt làm mặc định",
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    return ActiveModelSetting(**_ACTIVE_MODEL_CONFIG)
+

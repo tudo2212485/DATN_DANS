@@ -12,7 +12,7 @@ import {
   LogOut, 
   ShieldCheck, 
   ChevronLeft, 
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
 import { getUser, removeToken, User } from '@/lib/auth';
 
@@ -25,23 +25,23 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    name: 'Tổng quan',
+    name: 'Tổng quan thị trường',
     href: '/',
     icon: LayoutDashboard,
   },
   {
-    name: 'Mô hình & Dự báo',
+    name: 'Mô hình & Dự báo AI',
     href: '/forecast',
     icon: TrendingUp,
-    badge: 'AI 96.5%',
   },
   {
-    name: 'Quản lý Cảnh báo',
+    name: 'Cảnh báo giá',
     href: '/alerts',
     icon: Bell,
     badge: '4 Rules',
   },
 ];
+
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -88,12 +88,8 @@ export const Sidebar: React.FC = () => {
                   AgroForecast
                 </h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[11px] font-semibold text-secondary-text tracking-wide">
-                    v2.4.1
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-brand" />
-                  <span className="text-[10px] font-bold text-brand uppercase tracking-wider">
-                    PRO
+                  <span className="text-[11px] font-medium text-secondary-text tracking-wide truncate">
+                    Dự báo giá nông sản
                   </span>
                 </div>
               </div>
@@ -177,14 +173,14 @@ export const Sidebar: React.FC = () => {
               );
             })}
             
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'analyst') && (
               <Link
-                href="/admin"
-                title={isCollapsed ? 'Quản trị dữ liệu' : undefined}
+                href="/dashboard"
+                title={isCollapsed ? 'Admin Control Panel' : undefined}
                 className={`flex items-center ${
                   isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3.5 py-2.5'
                 } rounded-xl text-xs font-bold transition-all duration-200 group relative ${
-                  pathname === '/admin'
+                  pathname.startsWith('/dashboard') || pathname === '/admin'
                     ? 'bg-brand-light text-brand shadow-xs border border-brand/25'
                     : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
                 }`}
@@ -192,12 +188,17 @@ export const Sidebar: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Database
                     className={`w-4 h-4 transition-transform group-hover:scale-110 shrink-0 ${
-                      pathname === '/admin' ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
+                      pathname.startsWith('/dashboard') || pathname === '/admin' ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
                     }`}
                   />
-                  {!isCollapsed && <span className="tracking-tight truncate">Quản trị dữ liệu</span>}
+                  {!isCollapsed && <span className="tracking-tight truncate">Admin Dashboard</span>}
                 </div>
-                {isCollapsed && pathname === '/admin' && (
+                {!isCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-brand/10 text-brand">
+                    CTRL
+                  </span>
+                )}
+                {isCollapsed && (pathname.startsWith('/dashboard') || pathname === '/admin') && (
                   <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
                 )}
               </Link>
@@ -206,19 +207,20 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
+
       {/* Bottom User Profile Section */}
       <div className={`pt-3.5 border-t border-border-subtle flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between'}`}>
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             <div className="w-9 h-9 rounded-xl bg-[#EAE5DF] text-primary-text flex items-center justify-center font-extrabold text-xs shadow-inner uppercase border border-border-subtle">
-              {user?.full_name?.substring(0, 2) || 'U'}
+              {user?.full_name?.substring(0, 2) || 'AD'}
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-sidebar" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col truncate">
               <span className="text-xs font-bold text-primary-text leading-tight flex items-center gap-1 truncate max-w-[105px]">
-                {user?.full_name || 'Đang tải...'}
+                {user?.full_name || 'Quản trị viên'}
               </span>
               <span className="text-[11px] text-secondary-text font-medium truncate">
                 {user?.role === 'admin' ? 'Quản trị viên' : 'Nhà phân tích'}

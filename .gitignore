@@ -10,6 +10,7 @@ ENV/
 env.bak/
 venv.bak/
 backend/venv/
+backend/ml_pipeline/saved_models/TEST_*
 
 # Node / Next.js
 node_modules/

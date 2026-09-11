@@ -1,0 +1,18 @@
+{
+  "features": [
+    "usd_vnd",
+    "crude_oil",
+    "day_of_week",
+    "month",
+    "quarter",
+    "price_lag_1",
+    "price_lag_2",
+    "price_lag_3",
+    "price_lag_7",
+    "price_lag_14",
+    "rolling_mean_7d",
+    "rolling_std_7d",
+    "rolling_mean_14d",
+    "rolling_std_14d"
+  ]
+}

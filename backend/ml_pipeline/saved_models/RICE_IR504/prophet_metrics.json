@@ -1,0 +1,17 @@
+{
+  "model_name": "Prophet",
+  "metrics": {
+    "mae": 403.1011,
+    "rmse": 514.6524,
+    "mape": 5.11,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 6.79%)",
+  "trained_at": "2026-09-11 09:10:43",
+  "exogenous_features": [
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\RICE_IR504\\prophet_model.pkl"
+}

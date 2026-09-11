@@ -268,16 +268,16 @@ def calibrate_pepper_black(start_date: datetime, end_date: datetime) -> pd.DataF
 
 def calibrate_sugarcane(start_date: datetime, end_date: datetime) -> pd.DataFrame:
     """
-    Chuẩn hóa dữ liệu Mía đường theo giá thu mua mía nguyên liệu 10 CCS tại nhà máy (VNĐ/tấn).
-    Dao động thực tế: 950.000 - 1.350.000 đ/tấn.
+    Chuẩn hóa dữ liệu Mía đường theo giá thu mua mía nguyên liệu 10 CCS tại nhà máy (VNĐ/kg).
+    Dao động thực tế: 950 - 1.350 đ/kg (tương đương 950.000 - 1.350.000 đ/tấn).
     """
     dates = pd.date_range(start=start_date, end=end_date, freq='B')
     n = len(dates)
     raw_df = fetch_raw_yfinance("SB=F", start_date, end_date) # Đường thô thế giới
     
     years = dates.year.values + dates.dayofyear.values / 365.25
-    # Xu hướng giá mía nguyên liệu tăng dần theo chi phí phân bón và nhu cầu đường
-    base_price = 980000 + (years - 2020) * 45000
+    # Xu hướng giá mía nguyên liệu tăng dần theo chi phí phân bón và nhu cầu đường (VNĐ/kg)
+    base_price = 980 + (years - 2020) * 45
     
     if not raw_df.empty:
         raw_df_copy = raw_df.copy()
@@ -287,15 +287,15 @@ def calibrate_sugarcane(start_date: datetime, end_date: datetime) -> pd.DataFram
         sb_prices = merged['Close'].values
         if len(sb_prices) == n and np.std(sb_prices) > 0:
             norm_sb = (sb_prices - np.mean(sb_prices)) / np.std(sb_prices)
-            calibrated_price = base_price + norm_sb * 35000
+            calibrated_price = base_price + norm_sb * 35
         else:
             np.random.seed(303)
-            calibrated_price = base_price + np.cumsum(np.random.normal(0, 800, n))
+            calibrated_price = base_price + np.cumsum(np.random.normal(0, 0.8, n))
     else:
         np.random.seed(303)
-        calibrated_price = base_price + np.cumsum(np.random.normal(0, 800, n))
+        calibrated_price = base_price + np.cumsum(np.random.normal(0, 0.8, n))
         
-    calibrated_price = np.clip(calibrated_price, 950000.0, 1350000.0)
+    calibrated_price = np.clip(calibrated_price, 950.0, 1350.0)
     
     df = pd.DataFrame({
         'record_date': [d.date() for d in dates],

@@ -1,0 +1,17 @@
+{
+  "model_name": "Prophet",
+  "metrics": {
+    "mae": 951.7739,
+    "rmse": 1433.6202,
+    "mape": 0.69,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 1.59%)",
+  "trained_at": "2026-09-11 09:10:59",
+  "exogenous_features": [
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\PEPPER_BLACK\\prophet_model.pkl"
+}

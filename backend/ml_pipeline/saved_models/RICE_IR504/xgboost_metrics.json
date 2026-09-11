@@ -1,0 +1,29 @@
+{
+  "model_name": "XGBoost",
+  "metrics": {
+    "mae": 16.5472,
+    "rmse": 21.7453,
+    "mape": 0.21,
+    "r2": 0.9938
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 0.29%)",
+  "trained_at": "2026-09-11 09:10:43",
+  "features": [
+    "usd_vnd",
+    "crude_oil",
+    "day_of_week",
+    "month",
+    "quarter",
+    "price_lag_1",
+    "price_lag_2",
+    "price_lag_3",
+    "price_lag_7",
+    "price_lag_14",
+    "rolling_mean_7d",
+    "rolling_std_7d",
+    "rolling_mean_14d",
+    "rolling_std_14d"
+  ],
+  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\RICE_IR504\\xgboost_model.pkl"
+}

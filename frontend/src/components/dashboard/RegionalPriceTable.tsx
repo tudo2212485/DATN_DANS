@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, TrendingUp, TrendingDown, Building2 } from 'lucide-react';
+import { MapPin, TrendingUp, TrendingDown, ArrowRight, Building2, Filter } from 'lucide-react';
 import { RegionalPriceItem } from '@/types';
 import { fetchRegionalPrices } from '@/lib/api';
+import Link from 'next/link';
 
 const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
   {
     id: 1,
-    commodityName: 'Lúa gạo IR50404',
+    commodityName: 'Lúa gạo IR504',
     code: 'RICE',
     region: 'Đồng bằng Sông Cửu Long',
     price: '8.065',
@@ -16,12 +17,12 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
     minMax: '7.944 - 8.186',
     volume: '28.500 tấn',
     changePct: 1.2,
-    source: 'Hiệp hội Lương thực VN (VFA)',
+    source: 'VFA Hiệp hội Lương thực',
     updatedAt: 'Hôm nay',
   },
   {
     id: 2,
-    commodityName: 'Cà phê Robusta nhân xô',
+    commodityName: 'Cà phê Robusta',
     code: 'COFFEE',
     region: 'Tây Nguyên (Đắk Lắk, Lâm Đồng)',
     price: '93.800',
@@ -42,7 +43,7 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
     minMax: '135.101 - 139.216',
     volume: '4.800 tấn',
     changePct: -0.8,
-    source: 'Hiệp hội Hồ tiêu VN (VPA)',
+    source: 'VPA Hiệp hội Hồ tiêu',
     updatedAt: 'Hôm nay',
   },
   {
@@ -55,13 +56,14 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
     minMax: '1.260.323 - 1.298.708',
     volume: '35.000 tấn',
     changePct: 0.5,
-    source: 'Hiệp hội Mía đường VN (VSSA)',
+    source: 'VSSA Hiệp hội Mía đường',
     updatedAt: 'Hôm nay',
   },
 ];
 
 export const RegionalPriceTable: React.FC = () => {
   const [data, setData] = useState<RegionalPriceItem[]>(FALLBACK_REGIONAL_PRICES);
+  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
 
   useEffect(() => {
     async function loadData() {
@@ -77,89 +79,102 @@ export const RegionalPriceTable: React.FC = () => {
     loadData();
   }, []);
 
+  const regions = Array.from(
+    new Set(data.map((item) => item.region.split('(')[0].trim()))
+  ).filter(Boolean);
+
+  const filteredData = data.filter((item) => {
+    if (selectedRegion === 'ALL') return true;
+    return item.region.toLowerCase().includes(selectedRegion.toLowerCase());
+  });
+
   return (
-    <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card rounded-2xl border border-border-subtle p-5 sm:p-6 shadow-card flex flex-col justify-between h-full space-y-4">
+      {/* Header & Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
         <div>
-          <h2 className="text-base font-bold text-primary-text tracking-tight">
-            Bảng cập nhật giá nông sản theo vùng trọng điểm (Đồng bộ PostgreSQL)
+          <h2 className="text-base font-bold text-primary-text tracking-tight flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-brand" />
+            <span>Giá Niêm Yết Vùng Trọng Điểm</span>
           </h2>
           <p className="text-xs text-secondary-text mt-0.5 font-medium">
-            Giá giao dịch thực tế bình quân tại ruộng và kho thu mua lớn trên toàn quốc
+            Khảo sát giao dịch thực tế tại kho thu mua lớn
           </p>
         </div>
-        <div className="flex items-center gap-1 text-xs font-semibold text-secondary-text bg-canvas px-3 py-1.5 rounded-xl border border-border-subtle">
-          <Building2 className="w-3.5 h-3.5 text-brand" />
-          <span>4 Vùng trọng điểm</span>
+
+        {/* Region Filter */}
+        <div className="flex items-center gap-1.5 text-xs">
+          <Filter className="w-3.5 h-3.5 text-secondary-text" />
+          <select
+            value={selectedRegion}
+            onChange={(e) => setSelectedRegion(e.target.value)}
+            className="bg-canvas border border-border-subtle text-primary-text px-2.5 py-1 rounded-lg text-xs font-semibold focus:outline-none cursor-pointer"
+          >
+            <option value="ALL">Tất cả vùng ({data.length})</option>
+            {regions.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-2 custom-scrollbar">
-        <table className="w-full text-left text-xs whitespace-nowrap">
-          <thead>
-            <tr className="border-b border-border-subtle text-secondary-text font-bold uppercase tracking-wider pb-2">
-              <th className="py-3 px-3 sticky left-0 bg-card z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Nông sản</th>
-              <th className="py-3 px-3">Khu vực / Vùng trọng điểm</th>
-              <th className="py-3 px-3">Giá bình quân</th>
-              <th className="py-3 px-3">Biên độ ngày (Min - Max)</th>
-              <th className="py-3 px-3">Khối lượng GD</th>
-              <th className="py-3 px-3">Biến động</th>
-              <th className="py-3 px-3">Nguồn thu thập</th>
-              <th className="py-3 px-3 text-right">Cập nhật</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-subtle">
-            {data.map((item) => {
-              const isPos = item.changePct >= 0;
-              return (
-                <tr key={item.id} className="hover:bg-canvas/50 transition-colors group">
-                  <td className="py-3.5 px-3 sticky left-0 bg-card group-hover:bg-canvas/90 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] transition-colors">
-                    <div className="font-bold text-primary-text">{item.commodityName}</div>
-                    <span className="text-[10px] font-semibold text-secondary-text uppercase tracking-wider">
-                      {item.code}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-3">
-                    <div className="flex items-center gap-1.5 text-primary-text font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-brand shrink-0" />
-                      <span>{item.region}</span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-3 font-extrabold text-primary-text text-sm">
-                    {item.price} <span className="text-xs font-semibold text-secondary-text">{item.unit}</span>
-                  </td>
-                  <td className="py-3.5 px-3 text-secondary-text font-medium">
-                    {item.minMax} {item.unit}
-                  </td>
-                  <td className="py-3.5 px-3 text-primary-text font-bold">
-                    {item.volume}
-                  </td>
-                  <td className="py-3.5 px-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                        isPos
-                          ? 'bg-brand-badge text-brand border border-brand/15'
-                          : 'bg-accent-coralLight text-accent-coral border border-accent-coral/20'
-                      }`}
-                    >
-                      {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {isPos ? `+${item.changePct}%` : `${item.changePct}%`}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-3 text-secondary-text">
-                    {item.source}
-                  </td>
-                  <td className="py-3.5 px-3 text-right text-secondary-text font-medium">
-                    {item.updatedAt}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Items List */}
+      <div className="space-y-2.5 overflow-y-auto max-h-[300px] custom-scrollbar pr-1">
+        {filteredData.map((item) => {
+          const isPos = item.changePct >= 0;
+          return (
+            <div
+              key={item.id}
+              className="p-3.5 rounded-xl bg-canvas border border-border-subtle hover:border-brand/30 hover:bg-white transition-all shadow-2xs group flex items-center justify-between gap-3"
+            >
+              <div className="space-y-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs text-primary-text truncate">
+                    {item.commodityName}
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-border-subtle/80 text-secondary-text uppercase">
+                    {item.code}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-secondary-text font-medium truncate">
+                  <MapPin className="w-3 h-3 text-brand shrink-0" />
+                  <span className="truncate">{item.region}</span>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0 space-y-1">
+                <div className="text-sm font-extrabold text-primary-text font-mono">
+                  {item.price}{' '}
+                  <span className="text-[10px] font-semibold text-secondary-text">{item.unit}</span>
+                </div>
+                <div className="flex items-center justify-end gap-1.5">
+                  <span
+                    className={`inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                      isPos ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                    }`}
+                  >
+                    {isPos ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                    {isPos ? '+' : ''}
+                    {item.changePct}%
+                  </span>
+                  <Link
+                    href={`/commodities/${item.id}`}
+                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-0.5 ml-1"
+                    title="Xem biểu đồ dự báo AI"
+                  >
+                    <span>Xem AI</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 };
-export default RegionalPriceTable;
 
+export default RegionalPriceTable;
