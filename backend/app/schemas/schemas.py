@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
+from pydantic import BaseModel, Field, EmailStr, model_validator
+from typing import List, Optional, Literal
+import math
 from datetime import date, datetime
 
 # --- User & Auth Schemas ---
@@ -10,7 +11,10 @@ class UserBase(BaseModel):
     is_active: bool = True
 
 class UserCreate(UserBase):
-    password: str
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=150)
+    role: Literal["admin", "analyst", "user"] = "analyst"
+    password: str = Field(min_length=6, max_length=72)
 
 class UserResponse(UserBase):
     id: int
@@ -146,6 +150,7 @@ class ForecastDashboardResponse(BaseModel):
     modelName: str
     metrics: ModelMetricsResponse
     forecastData: List[ForecastPointResponse]
+    training: Optional[dict] = None
 
 # --- Alert Rules Schemas ---
 class AlertRuleCreate(BaseModel):
@@ -198,6 +203,7 @@ class AdminStatsResponse(BaseModel):
     system_status: str = "ONLINE"
 
 class PriceCreateManual(BaseModel):
+    reviewed: bool = False
     commodity_id: int
     record_date: date
     price: float
@@ -206,7 +212,25 @@ class PriceCreateManual(BaseModel):
     volume: Optional[float] = 0.0
     source: Optional[str] = "Nhập thủ công bởi Quản trị viên"
 
+    @model_validator(mode="after")
+    def validate_price(self):
+        if self.reviewed and (not self.source or not self.source.strip() or self.source.startswith(("Nhập thủ công", "Cập nhật thủ công", "Import từ CSV"))):
+            raise ValueError("Cần ghi rõ nguồn thực tế trước khi xác nhận dùng cho huấn luyện")
+        values = [self.price, self.price_min, self.price_max, self.volume]
+        if any(v is not None and (not math.isfinite(v) or v < 0 or v >= 1e12) for v in values) or self.price <= 0:
+            raise ValueError("Giá phải lớn hơn 0; giá và khối lượng phải hữu hạn, không âm và dưới 10^12")
+        if self.record_date > date.today():
+            raise ValueError("Lịch sử giá không được có ngày trong tương lai")
+        if self.price_min is not None and self.price_min > self.price:
+            raise ValueError("Giá thấp nhất không được lớn hơn giá")
+        if self.price_max is not None and self.price_max < self.price:
+            raise ValueError("Giá cao nhất không được nhỏ hơn giá")
+        if self.source and len(self.source) > 100:
+            raise ValueError("Nguồn dữ liệu tối đa 100 ký tự")
+        return self
+
 class AdminPriceItem(BaseModel):
+    provenance: str = "unverified"
     id: int
     commodity_id: int
     commodity_name: str
@@ -218,6 +242,8 @@ class AdminPriceItem(BaseModel):
     source: Optional[str] = None
 
 class TaskRunResponse(BaseModel):
+    task_id: Optional[int] = None
+    progress: int = 0
     task_name: str
     status: str
     message: str

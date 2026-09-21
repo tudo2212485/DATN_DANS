@@ -79,7 +79,7 @@ def test_alert_rule_evaluation(db_session):
     assert len(logs) >= 1
     assert "vượt ngưỡng" in logs[0].message
 
-def test_admin_trigger_scrape_api(client):
+def test_admin_trigger_scrape_api(client, monkeypatch):
     """Kiểm tra API kích hoạt cào dữ liệu chạy nền dành cho Admin"""
     # 1. Đăng nhập Admin
     login_res = client.post("/api/v1/auth/login", json={
@@ -89,6 +89,8 @@ def test_admin_trigger_scrape_api(client):
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     
+    # The endpoint is tested independently from the external publisher.
+    monkeypatch.setattr("app.api.v1.endpoints.admin.run_job", lambda *args: None)
     # 2. Gọi trigger scrape
     response = client.post("/api/v1/admin/tasks/scrape?days=7", headers=headers)
     assert response.status_code == 200

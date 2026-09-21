@@ -18,6 +18,33 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'periodic'; suggested_start?: string }
+export interface HistoryReadiness { ready: boolean; reason: string | null; observation_count: number; start_date: string | null; end_date: string | null; max_gap_days: number }
+export interface HistoryResponse {
+  records: {id: number; date: string; price: number; source: string; provenance: string; source_details?:{market:string;price_type:string;product:string;upstream:string}}[];
+  periodic_records: {id:number;start:string;end:string;published_date:string;buying_price:number;selling_price:number;unit:string;specification:string;market:string;source:string;attribution:string}[];
+  missing_dates: string[]; readiness: HistoryReadiness; range_readiness: HistoryReadiness; unverified_count: number;
+}
+export interface TrainingMetadata {
+  run_id: number; start_date: string; end_date: string; observation_count: number;
+  test_start: string; test_end: string; test_count: number; train_end: string;
+  filled_days: number; baseline: {mae: number; rmse: number; mape: number; r2: number};
+  evaluation: string; trained_at: string; stale_days: number; interval_note: string; dataset_hash: string;
+}
+export async function fetchHistorySources(): Promise<HistorySource[]> {
+  const res = await fetch(`${API_BASE_URL}/history/sources`, {cache:'no-store'});
+  await assertApiOk(res); return res.json();
+}
+export async function fetchTrainingReadiness(commodityId: number): Promise<HistoryReadiness> {
+  const res = await fetch(`${API_BASE_URL}/history/readiness?commodity_id=${commodityId}`,{cache:'no-store'});
+  await assertApiOk(res); return res.json();
+}
+export async function fetchHistory(commodityId: number, start: string, end: string, includeUnverified = false): Promise<HistoryResponse> {
+  const params = new URLSearchParams({commodity_id:String(commodityId),start_date:start,end_date:end,include_unverified:String(includeUnverified)});
+  const res = await fetch(`${API_BASE_URL}/history?${params}`, {cache:'no-store'});
+  await assertApiOk(res); return res.json();
+}
+
 // Helper mapping snake_case from Backend API to camelCase for Frontend
 function mapAlertRule(r: Record<string, unknown>): AlertRuleItem {
   const commodityMap: Record<number, string> = {
@@ -77,7 +104,7 @@ export async function fetchCommoditySpotlight(code: string = 'COFFEE'): Promise<
 export async function fetchRegionalPrices(): Promise<import('@/types').RegionalPriceItem[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/commodities/regional-prices`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     return await res.json();
   } catch {
     return [];
@@ -93,16 +120,17 @@ export async function fetchForecastDashboard(
   commodityId: number = 2,
   modelName: string = 'LSTM',
   days: number = 14
-): Promise<{ metrics: ModelMetrics; forecastData: ForecastPoint[] }> {
+): Promise<{ metrics: ModelMetrics; forecastData: ForecastPoint[]; training?: TrainingMetadata }> {
   const res = await fetch(
     `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}`,
     { cache: 'no-store' }
   );
-  if (!res.ok) throw new Error('API Error fetching forecast');
+  await assertApiOk(res);
   const data = await res.json();
   return {
     metrics: data.metrics,
     forecastData: data.forecastData,
+    training: data.training,
   };
 }
 
@@ -112,20 +140,11 @@ export const fetchForecastData = fetchForecastDashboard;
  * Fetch model comparison metrics for a commodity
  */
 export async function fetchModelComparison(commodityId: number = 2): Promise<ModelComparisonMetrics[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/forecast/compare/${commodityId}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
-    return await res.json();
-  } catch {
-    // Return some mock comparison data if backend is down
-    return [
-      { modelName: 'LSTM', mae: 105.2, rmse: 140.5, mape: 3.2, r2: 0.89, isBest: true },
-      { modelName: 'XGBoost', mae: 110.1, rmse: 145.2, mape: 3.5, r2: 0.87 },
-      { modelName: 'Random Forest', mae: 115.3, rmse: 152.4, mape: 3.8, r2: 0.85 },
-      { modelName: 'Prophet', mae: 125.4, rmse: 165.7, mape: 4.5, r2: 0.82 },
-      { modelName: 'ARIMA', mae: 145.6, rmse: 185.3, mape: 5.2, r2: 0.75 },
-    ];
-  }
+  const res = await fetch(`${API_BASE_URL}/forecast/compare/${commodityId}`, { cache: 'no-store' });
+  await assertApiOk(res);
+  const data = await res.json();
+  data.sort((a: ModelComparisonMetrics, b: ModelComparisonMetrics) => a.rmse - b.rmse);
+  return data.map((item: ModelComparisonMetrics, index: number) => ({ ...item, isBest: index === 0 }));
 }
 
 /**
@@ -134,7 +153,7 @@ export async function fetchModelComparison(commodityId: number = 2): Promise<Mod
 export async function fetchAlertRules(): Promise<AlertRuleItem[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const rawList = await res.json();
     return Array.isArray(rawList) ? rawList.map(mapAlertRule) : INITIAL_ALERT_RULES;
   } catch {
@@ -158,7 +177,7 @@ export async function createAlertRuleApi(payload: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const raw = await res.json();
     return mapAlertRule(raw);
   } catch {
@@ -176,7 +195,8 @@ export async function toggleAlertRuleApi(ruleId: number, isActive: boolean): Pro
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: isActive }),
     });
-    return res.ok;
+    await assertApiOk(res);
+    return true;
   } catch {
     return false;
   }
@@ -190,7 +210,8 @@ export async function deleteAlertRuleApi(ruleId: number): Promise<boolean> {
     const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}`, {
       method: 'DELETE',
     });
-    return res.ok;
+    await assertApiOk(res);
+    return true;
   } catch {
     return false;
   }
@@ -204,7 +225,7 @@ export async function testAlertApi(ruleId: number): Promise<{ status: string; me
     const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}/test`, {
       method: 'POST',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     return await res.json();
   } catch {
     return {
@@ -232,7 +253,7 @@ interface RawAlertLog {
 export async function fetchAlertLogsApi(): Promise<AlertLogItem[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts/logs?limit=30`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const data = await res.json();
     return data.map((item: RawAlertLog) => ({
       id: item.id,
@@ -316,26 +337,17 @@ export async function fetchAdminStats(): Promise<AdminStats> {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const d = await res.json();
     return {
-      totalCommodities: d.total_commodities ?? 4,
-      totalPriceRecords: d.total_price_records ?? 6400,
-      totalForecastRecords: d.total_forecast_records ?? 120,
-      totalAlertRules: d.total_alert_rules ?? 4,
-      latestPriceDate: d.latest_price_date ?? '2026-08-28',
-      systemStatus: d.system_status ?? 'ONLINE',
+      totalCommodities: d.total_commodities ?? 0,
+      totalPriceRecords: d.total_price_records ?? 0,
+      totalForecastRecords: d.total_forecast_records ?? 0,
+      totalAlertRules: d.total_alert_rules ?? 0,
+      latestPriceDate: d.latest_price_date ?? 'Chưa có dữ liệu',
+      systemStatus: d.system_status ?? 'UNKNOWN',
     };
-  } catch {
-    return {
-      totalCommodities: 4,
-      totalPriceRecords: 6420,
-      totalForecastRecords: 120,
-      totalAlertRules: 4,
-      latestPriceDate: '2026-08-28',
-      systemStatus: 'ONLINE',
-    };
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -347,16 +359,9 @@ export async function fetchAdminCommodities() {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     return await res.json();
-  } catch {
-    return [
-      { id: 1, code: 'RICE_IR504', name: 'Lúa gạo IR50404', category: 'Lương thực', unit: 'VNĐ/kg', region: 'Đồng bằng Sông Cửu Long', description: 'Giống lúa thuần năng suất cao' },
-      { id: 2, code: 'COFFEE_ROBUSTA', name: 'Cà phê Robusta', category: 'Cây công nghiệp', unit: 'VNĐ/kg', region: 'Tây Nguyên (Đắk Lắk, Lâm Đồng)', description: 'Cà phê nhân xô xuất khẩu' },
-      { id: 3, code: 'PEPPER_BLACK', name: 'Hồ tiêu đen', category: 'Gia vị xuất khẩu', unit: 'VNĐ/kg', region: 'Đông Nam Bộ & Tây Nguyên', description: 'Tiêu đen xô đạt chuẩn xuất khẩu' },
-      { id: 4, code: 'SUGARCANE', name: 'Mía đường', category: 'Cây công nghiệp', unit: 'VNĐ/tấn', region: 'Miền Trung & Tây Nam Bộ', description: 'Mía nguyên liệu 10 CCS' },
-    ];
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -381,9 +386,7 @@ export async function createCommodityApi(payload: {
       throw new Error(err.detail || 'Không thể tạo nông sản');
     }
     return await res.json();
-  } catch (error) {
-    throw error;
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -411,9 +414,7 @@ export async function updateCommodityApi(
       throw new Error(err.detail || 'Không thể cập nhật nông sản');
     }
     return await res.json();
-  } catch (error) {
-    throw error;
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -425,13 +426,13 @@ export async function deleteCommodityApi(id: number) {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
-    return res.ok;
-  } catch {
+    await assertApiOk(res);
     return true;
-  }
+  } catch (error) { throw error; }
 }
 
 interface RawAdminPrice {
+  provenance?: string;
   id: number;
   commodity_id: number;
   commodity_name: string;
@@ -446,16 +447,18 @@ interface RawAdminPrice {
 /**
  * Lấy lịch sử giá gần nhất cho Admin
  */
-export async function fetchRecentPricesApi(commodityId?: number): Promise<AdminPriceItem[]> {
+export async function fetchRecentPricesApi(commodityId?: number, startDate?: string, endDate?: string, offset: number = 0): Promise<AdminPriceItem[]> {
   try {
-    const url = commodityId 
-      ? `${API_BASE_URL}/admin/prices/recent?commodity_id=${commodityId}&limit=30`
-      : `${API_BASE_URL}/admin/prices/recent?limit=30`;
+    const params = new URLSearchParams({ limit: '30', offset: String(offset) });
+    if (commodityId) params.set('commodity_id', String(commodityId));
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    const url = `${API_BASE_URL}/admin/prices/recent?${params}`;
     const res = await fetch(url, {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const data = await res.json();
     return data.map((d: RawAdminPrice) => ({
       id: d.id,
@@ -467,16 +470,9 @@ export async function fetchRecentPricesApi(commodityId?: number): Promise<AdminP
       priceMax: d.price_max,
       volume: d.volume,
       source: d.source,
+      provenance: d.provenance,
     }));
-  } catch {
-    return [
-      { id: 101, commodityId: 2, commodityName: 'Cà phê Robusta', recordDate: '2026-08-28', price: 62300, priceMin: 61500, priceMax: 63000, volume: 15400, source: 'Sở NN&PTNT Đắk Lắk' },
-      { id: 102, commodityId: 1, commodityName: 'Lúa gạo IR50404', recordDate: '2026-08-28', price: 7850, priceMin: 7700, priceMax: 8000, volume: 32000, source: 'Hiệp hội Lương thực VFA' },
-      { id: 103, commodityId: 3, commodityName: 'Hồ tiêu đen', recordDate: '2026-08-28', price: 142000, priceMin: 140000, priceMax: 143500, volume: 8200, source: 'VPSA Hiệp hội Hồ tiêu' },
-      { id: 104, commodityId: 4, commodityName: 'Mía đường', recordDate: '2026-08-28', price: 1150000, priceMin: 1120000, priceMax: 1180000, volume: 45000, source: 'Nhà máy đường Lam Sơn' },
-      { id: 105, commodityId: 2, commodityName: 'Cà phê Robusta', recordDate: '2026-08-27', price: 62450, priceMin: 61800, priceMax: 63100, volume: 14200, source: 'Sở NN&PTNT Đắk Lắk' },
-    ];
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -490,6 +486,7 @@ export async function createOrUpdatePriceApi(payload: {
   price_max?: number;
   volume?: number;
   source?: string;
+  reviewed?: boolean;
 }): Promise<AdminPriceItem | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/admin/prices`, {
@@ -497,10 +494,7 @@ export async function createOrUpdatePriceApi(payload: {
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Không thể cập nhật giá');
-    }
+    await assertApiOk(res);
     const d = await res.json();
     return {
       id: d.id,
@@ -513,9 +507,7 @@ export async function createOrUpdatePriceApi(payload: {
       volume: d.volume,
       source: d.source,
     };
-  } catch (error) {
-    throw error;
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -527,39 +519,34 @@ export async function deletePriceRecordApi(priceId: number): Promise<boolean> {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
-    return res.ok;
-  } catch {
+    await assertApiOk(res);
     return true;
-  }
+  } catch (error) { throw error; }
 }
 
 /**
  * Kích hoạt tác vụ cào dữ liệu thị trường (Scraper)
  */
-export async function triggerScrapeTaskApi(days: number = 30): Promise<TaskRunResult> {
+export async function triggerScrapeTaskApi(days: number = 30, options?: {commodity_id: number; start_date: string; end_date: string}): Promise<TaskRunResult> {
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/tasks/scrape?days=${days}`, {
+    const params = new URLSearchParams({days: String(days)});
+    if (options) Object.entries(options).forEach(([key, value]) => params.set(key, String(value)));
+    const res = await fetch(`${API_BASE_URL}/admin/tasks/scrape?${params}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const d = await res.json();
     return {
+      taskId: d.task_id,
+      progress: d.progress,
       taskName: d.task_name,
       status: d.status,
       message: d.message,
       recordsProcessed: d.records_processed,
       timestamp: d.timestamp,
     };
-  } catch {
-    return {
-      taskName: 'Cào dữ liệu thị trường (Scraper)',
-      status: 'SUCCESS',
-      message: `Đã kích hoạt cào dữ liệu giá thành công cho ${days} ngày gần nhất.`,
-      recordsProcessed: 120,
-      timestamp: new Date().toLocaleTimeString('vi-VN'),
-    };
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -574,31 +561,26 @@ export async function triggerRetrainTaskApi(commodityId?: number): Promise<TaskR
       method: 'POST',
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const d = await res.json();
     return {
+      taskId: d.task_id,
+      progress: d.progress,
       taskName: d.task_name,
       status: d.status,
       message: d.message,
       recordsProcessed: d.records_processed,
       timestamp: d.timestamp,
     };
-  } catch {
-    return {
-      taskName: 'Huấn luyện lại mô hình AI (Re-train)',
-      status: 'SUCCESS',
-      message: 'Đã hoàn tất tiến trình huấn luyện các mô hình (LSTM, XGBoost, Prophet) với dữ liệu mới.',
-      recordsProcessed: 60,
-      timestamp: new Date().toLocaleTimeString('vi-VN'),
-    };
-  }
+  } catch (error) { throw error; }
 }
 
 interface RawAdminUser {
   id: number;
   email: string;
   full_name: string;
-  role: 'admin' | 'analyst';
+  role: 'admin' | 'analyst' | 'user';
+  is_active?: boolean;
   created_at?: string;
 }
 
@@ -611,22 +593,17 @@ export async function fetchAdminUsersApi(): Promise<AdminUserItem[]> {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const data = await res.json();
     return data.map((u: RawAdminUser) => ({
       id: u.id,
       email: u.email,
       fullName: u.full_name,
       role: u.role,
+      isActive: u.is_active !== false && !u.role.endsWith("_disabled"),
       createdAt: u.created_at,
     }));
-  } catch {
-    return [
-      { id: 1, email: 'admin@agroforecast.vn', fullName: 'Quản trị viên Hệ thống', role: 'admin' },
-      { id: 2, email: 'anhnguyen@agroforecast.vn', fullName: 'Nguyễn Văn Ánh (Analyst)', role: 'analyst' },
-      { id: 3, email: 'linh.market@agroforecast.vn', fullName: 'Trần Thùy Linh', role: 'analyst' },
-    ];
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -654,11 +631,10 @@ export async function createAdminUserApi(payload: {
       email: u.email,
       fullName: u.full_name,
       role: u.role,
+      isActive: u.is_active !== false && !u.role.endsWith("_disabled"),
       createdAt: u.created_at,
     };
-  } catch (error) {
-    throw error;
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -701,32 +677,9 @@ export async function fetchCrawlerLogsApi() {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     return await res.json();
-  } catch {
-    return [
-      {
-        id: 1,
-        crawler_name: 'YFinance Global Commodity Crawler',
-        target_source: 'Yahoo Finance (Robusta/Arabica/Oil)',
-        records_extracted: 120,
-        status: 'SUCCESS',
-        duration_sec: 2.45,
-        timestamp: '2026-09-05 15:30:00',
-        details: 'Thu thập thành công chuỗi giá quốc tế và chỉ số vĩ mô.',
-      },
-      {
-        id: 2,
-        crawler_name: 'GiaCaPhe & Vietnam Domestic Scraper',
-        target_source: 'Giacaphe.com / Sở NN&PTNT',
-        records_extracted: 85,
-        status: 'SUCCESS',
-        duration_sec: 3.82,
-        timestamp: '2026-09-05 14:00:00',
-        details: 'Cập nhật giá cà phê Tây Nguyên, tiêu Đắk Lắk, lúa gạo Miền Tây.',
-      },
-    ];
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -769,11 +722,9 @@ export async function fetchActiveModelApi() {
       headers: getAuthHeaders(),
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     return await res.json();
-  } catch {
-    return { active_model: 'LSTM', description: 'Mô hình Mạng Nơ-ron hồi quy LSTM 2 lớp' };
-  }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -800,7 +751,7 @@ export async function fetchModelComparisonApi(commodityId: number = 2): Promise<
     const res = await fetch(`${API_BASE_URL}/forecast/compare/${commodityId}`, {
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error('API Error');
+    await assertApiOk(res);
     const data = await res.json();
     return data.map((d: { modelName: string; mae: number; rmse: number; mape: number; r2: number }, idx: number) => ({
       modelName: d.modelName,
@@ -808,17 +759,67 @@ export async function fetchModelComparisonApi(commodityId: number = 2): Promise<
       rmse: d.rmse,
       mape: d.mape,
       r2: d.r2,
-      isBest: idx === 0 || d.r2 > 0.9,
+      isBest: idx === 0,
     }));
-  } catch {
-
-    return [
-      { modelName: 'XGBoost', mae: 470.46, rmse: 680.57, mape: 1.15, r2: 0.921, isBest: true },
-      { modelName: 'LSTM', mae: 1250.0, rmse: 1680.25, mape: 2.35, r2: 0.854 },
-      { modelName: 'Prophet', mae: 1583.53, rmse: 1848.59, mape: 3.12, r2: 0.768 },
-      { modelName: 'ARIMA', mae: 1950.8, rmse: 2420.1, mape: 4.05, r2: 0.65 },
-    ];
-  }
+  } catch (error) { throw error; }
 }
 
 
+
+
+export async function assertApiOk(response: Response): Promise<void> {
+  if (response.ok) return;
+  const body = await response.json().catch(() => ({}));
+  const detail = typeof body.detail === 'string' ? body.detail : Array.isArray(body.detail)
+    ? body.detail.map((item: {msg: string}) => item.msg).join('; ') : 'Yêu cầu thất bại';
+  if (response.status === 401 && typeof window !== 'undefined') {
+    localStorage.removeItem('agro_access_token');
+    localStorage.removeItem('agro_user');
+    window.location.assign('/login?redirect=' + encodeURIComponent(window.location.pathname));
+  }
+  throw new Error(detail + ' (HTTP ' + response.status + ')');
+}
+
+function mapTask(d: {task_id: number; task_name: string; status: string; message: string; progress: number; records_processed: number; timestamp: string}): TaskRunResult {
+  return {taskId: d.task_id, taskName: d.task_name, status: d.status, message: d.message, progress: d.progress, recordsProcessed: d.records_processed, timestamp: d.timestamp};
+}
+
+export async function fetchTasksApi(kind: string): Promise<TaskRunResult[]> {
+  const res = await fetch(API_BASE_URL + '/admin/tasks?kind=' + encodeURIComponent(kind), {headers: getAuthHeaders(), cache: 'no-store'});
+  await assertApiOk(res);
+  return (await res.json()).map(mapTask);
+}
+
+export async function fetchTaskApi(id: number): Promise<TaskRunResult> {
+  const res = await fetch(API_BASE_URL + '/admin/tasks/' + id, {headers: getAuthHeaders(), cache: 'no-store'});
+  await assertApiOk(res);
+  return mapTask(await res.json());
+}
+
+export async function downloadPricesCsv(commodityId?: number, startDate?: string, endDate?: string) {
+  const params = new URLSearchParams();
+  if (commodityId) params.set('commodity_id', String(commodityId));
+  if (startDate) params.set('start_date', startDate);
+  if (endDate) params.set('end_date', endDate);
+  const res = await fetch(API_BASE_URL + '/admin/prices/export-csv?' + params, {headers: getAuthHeaders()});
+  await assertApiOk(res);
+  const blob = new Blob(['\uFEFF', await res.text()], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'lich-su-gia.csv';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function fetchHealthApi(): Promise<{status: string; database: string}> {
+  const res = await fetch(API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/health', {cache: 'no-store', signal: AbortSignal.timeout(8000)});
+  await assertApiOk(res);
+  return res.json();
+}
+
+export async function fetchCurrentUserApi() {
+  const res = await fetch(API_BASE_URL + '/auth/me', {headers: getAuthHeaders(), cache: 'no-store'});
+  await assertApiOk(res);
+  return res.json();
+}

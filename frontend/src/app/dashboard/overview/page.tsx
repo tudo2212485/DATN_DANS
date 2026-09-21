@@ -34,13 +34,14 @@ interface CommodityItem {
 }
 
 export default function DashboardOverviewPage() {
+  const [error, setError] = useState('');
   const [stats, setStats] = useState<AdminStats>({
-    totalCommodities: 4,
-    totalPriceRecords: 6420,
-    totalForecastRecords: 120,
-    totalAlertRules: 4,
-    latestPriceDate: '2026-09-05',
-    systemStatus: 'ONLINE',
+    totalCommodities: 0,
+    totalPriceRecords: 0,
+    totalForecastRecords: 0,
+    totalAlertRules: 0,
+    latestPriceDate: 'Chưa tải dữ liệu',
+    systemStatus: 'ĐANG KIỂM TRA',
   });
   const [recentPrices, setRecentPrices] = useState<AdminPriceItem[]>([]);
   const [commodities, setCommodities] = useState<CommodityItem[]>([]);
@@ -48,6 +49,7 @@ export default function DashboardOverviewPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError('');
     try {
       const [sData, pData, cData] = await Promise.all([
         fetchAdminStats(),
@@ -58,7 +60,9 @@ export default function DashboardOverviewPage() {
       setRecentPrices(pData.slice(0, 8));
       setCommodities(cData);
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Không tải được dữ liệu');
+      setStats(prev => ({...prev, systemStatus: 'KHÔNG KẾT NỐI'}));
+      setRecentPrices([]);
     } finally {
       setLoading(false);
     }
@@ -70,6 +74,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="p-4 bg-rose-50 text-rose-700 rounded-xl">{error}</p>}
       {/* Page Title & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
@@ -130,7 +135,7 @@ export default function DashboardOverviewPage() {
           <div className="mt-3">
             <div className="text-3xl font-bold text-primary-text">{stats.totalPriceRecords.toLocaleString('vi-VN')}</div>
             <div className="text-xs text-secondary-text flex items-center gap-1 mt-1">
-              <span>Cập nhật ngày: {stats.latestPriceDate || '2026-09-05'}</span>
+              <span>Cập nhật ngày: {stats.latestPriceDate || 'Chưa có dữ liệu'}</span>
             </div>
           </div>
         </div>
@@ -166,7 +171,7 @@ export default function DashboardOverviewPage() {
               {stats.systemStatus}
             </div>
             <div className="text-xs text-secondary-text flex items-center gap-1 mt-1 font-mono">
-              <span>FastAPI & PostgreSQL OK</span>
+              <span>{stats.systemStatus === 'ONLINE' ? 'FastAPI & PostgreSQL OK' : 'Chưa xác nhận kết nối'}</span>
             </div>
           </div>
         </div>

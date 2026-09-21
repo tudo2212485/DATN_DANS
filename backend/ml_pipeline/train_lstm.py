@@ -63,12 +63,12 @@ def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessio
     data = df[features].values
     
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    scaled_data = scaler.fit_transform(data)
+    scaler.fit(data[:int((len(data) - 14) * 0.85) + 14])
+    scaled_data = scaler.transform(data)
     
     seq_length = 14
     if len(scaled_data) < seq_length + 2:
-        print("Not enough data.")
-        return
+        raise ValueError("Không đủ dữ liệu cho LSTM")
         
     X, y = create_sequences(scaled_data, seq_length)
     
@@ -117,6 +117,15 @@ def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessio
     
     print(f"LSTM Metrics -> MAE: {mae:.2f}, RMSE: {rmse:.2f}, MAPE: {mape:.2f}%, R2: {r2:.3f}")
     
+    all_x = torch.tensor(X, dtype=torch.float32)
+    all_y = torch.tensor(y, dtype=torch.float32)
+    model.train()
+    for _ in range(20):
+        optimizer.zero_grad()
+        loss = criterion(model(all_x).squeeze(), all_y)
+        loss.backward()
+        optimizer.step()
+    model.eval()
     # Forecast future
     preds = []
     curr_seq = torch.tensor(scaled_data[-seq_length:], dtype=torch.float32).unsqueeze(0)
@@ -166,12 +175,13 @@ def run_lstm(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessio
             mae=float(mae),
             rmse=float(rmse),
             mape=float(mape),
-            r2=float(r2) if r2 > 0 else 0.5,
+            r2=float(r2),
             training_date=datetime.now().date()
         ))
     db_session.add_all(records)
     db_session.commit()
     print(f"Saved {horizon} forecasts for {commodity_name} using LSTM.")
+    return len(records)
 
 if __name__ == "__main__":
     db = SessionLocal()

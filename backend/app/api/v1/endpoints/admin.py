@@ -5,12 +5,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
+import math
 
 from app.core.database import get_db, SessionLocal
 from app.core.deps import require_role
 from app.core.security import get_password_hash
-from app.models.models import User, Commodity, PriceHistory, Forecast, AlertRule
+from app.models.models import User, Commodity, PriceHistory, Forecast, AlertRule, BackgroundJob, SystemSetting
 from app.schemas.schemas import (
     AdminStatsResponse,
     CommodityResponse,
@@ -27,6 +28,8 @@ from app.schemas.schemas import (
     CrawlerLogItem,
 )
 
+from app.services.job_service import create_job, run_job, job_response, active_model, MODEL_NAMES
+
 router = APIRouter()
 
 
@@ -36,7 +39,7 @@ router = APIRouter()
 @router.get("/stats", response_model=AdminStatsResponse)
 def get_admin_system_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"]))
+    current_user: User = Depends(require_role(["admin", "analyst"]))
 ):
     """Lấy số liệu thống kê tổng quan hệ thống cho Admin"""
     total_commodities = db.query(Commodity).count()
@@ -66,7 +69,7 @@ def get_admin_system_stats(
 @router.get("/commodities", response_model=List[CommodityResponse])
 def admin_get_commodities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"]))
+    current_user: User = Depends(require_role(["admin", "analyst"]))
 ):
     """Danh sách tất cả nông sản phục vụ quản trị"""
     return db.query(Commodity).order_by(Commodity.id).all()
@@ -132,8 +135,11 @@ def admin_delete_commodity(
 def admin_get_recent_prices(
     commodity_id: Optional[int] = Query(None, description="Lọc theo ID nông sản"),
     limit: int = Query(30, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"]))
+    current_user: User = Depends(require_role(["admin", "analyst"]))
 ):
     """Lấy danh sách các bản ghi giá gần nhất để quản lý và kiểm tra dữ liệu"""
     query = (
@@ -143,11 +149,18 @@ def admin_get_recent_prices(
     if commodity_id:
         query = query.filter(PriceHistory.commodity_id == commodity_id)
     
-    records = query.order_by(desc(PriceHistory.record_date), desc(PriceHistory.id)).limit(limit).all()
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "Ngày bắt đầu phải trước ngày kết thúc")
+    if start_date:
+        query = query.filter(PriceHistory.record_date >= start_date)
+    if end_date:
+        query = query.filter(PriceHistory.record_date <= end_date)
+    records = query.order_by(desc(PriceHistory.record_date), desc(PriceHistory.id)).offset(offset).limit(limit).all()
 
     result = []
     for ph, c_name in records:
         result.append(AdminPriceItem(
+            provenance=ph.provenance,
             id=ph.id,
             commodity_id=ph.commodity_id,
             commodity_name=c_name,
@@ -179,9 +192,13 @@ def admin_create_or_update_price(
     )
 
     if existing:
+        from app.services.history_service import archive_price
+        archive_price(db, existing)
+        existing.provenance = "reviewed" if item.reviewed else "unverified"
+        existing.source_details = None
         existing.price = item.price
-        existing.price_min = item.price_min or (item.price * 0.98)
-        existing.price_max = item.price_max or (item.price * 1.02)
+        existing.price_min = item.price_min
+        existing.price_max = item.price_max
         existing.volume = item.volume or 0.0
         existing.source = item.source or "Cập nhật thủ công bởi Quản trị viên"
         db.commit()
@@ -189,11 +206,12 @@ def admin_create_or_update_price(
         target = existing
     else:
         new_price = PriceHistory(
+            provenance="reviewed" if item.reviewed else "unverified",
             commodity_id=item.commodity_id,
             record_date=item.record_date,
             price=item.price,
-            price_min=item.price_min or (item.price * 0.98),
-            price_max=item.price_max or (item.price * 1.02),
+            price_min=item.price_min,
+            price_max=item.price_max,
             volume=item.volume or 0.0,
             source=item.source or "Nhập thủ công bởi Quản trị viên"
         )
@@ -203,6 +221,7 @@ def admin_create_or_update_price(
         target = new_price
 
     return AdminPriceItem(
+        provenance=target.provenance,
         id=target.id,
         commodity_id=target.commodity_id,
         commodity_name=com.name,
@@ -232,85 +251,50 @@ def admin_delete_price(
 # ---------------------------------------------------------
 # 4. Điều phối tác vụ (Tasks: Scraper & Model Retrain)
 # ---------------------------------------------------------
-def background_run_scraper(days: int = 30):
-    try:
-        from ml_pipeline.scraper import scrape_and_update_db
-        scrape_and_update_db(days=days)
-    except Exception as e:
-        print(f"Lỗi khi chạy Scraper: {e}")
-
-def background_run_retrain(commodity_id: Optional[int] = None):
-    try:
-        from ml_pipeline.train_ml import run_ml_models
-        from ml_pipeline.train_prophet import run_prophet
-        from ml_pipeline.train_lstm import run_lstm
-        from ml_pipeline.baseline_arima import run_arima
-        from ml_pipeline.data_loader import load_clean_data
-        
-        db = SessionLocal()
-        try:
-            if commodity_id:
-                commodities = db.query(Commodity).filter(Commodity.id == commodity_id).all()
-            else:
-                commodities = db.query(Commodity).all()
-                
-            for c in commodities:
-                df = load_clean_data(c.id, db)
-                if not df.empty:
-                    # 1. XGBoost & Random Forest
-                    run_ml_models(c.id, c.name, df, db, horizon=30)
-                    # 2. Prophet
-                    try:
-                        run_prophet(c.id, c.name, df, db, horizon=30)
-                    except Exception as e_p:
-                        print(f"Prophet error for {c.name}: {e_p}")
-                    # 3. ARIMA
-                    try:
-                        run_arima(c.id, c.name, df, db, horizon=30)
-                    except Exception as e_a:
-                        print(f"ARIMA error for {c.name}: {e_a}")
-                    # 4. LSTM
-                    try:
-                        run_lstm(c.id, c.name, df, db, horizon=30)
-                    except Exception as e_l:
-                        print(f"LSTM error for {c.name}: {e_l}")
-        finally:
-            db.close()
-    except Exception as e:
-        print(f"Lỗi khi chạy Re-train mô hình: {e}")
-
 @router.post("/tasks/scrape", response_model=TaskRunResponse)
-def admin_trigger_scrape(
-    days: int = Query(30, ge=1, le=1600, description="Số ngày cần cào hoặc cập nhật"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    current_user: User = Depends(require_role(["admin"]))
-):
-    """Kích hoạt tác vụ thu thập giá tự động (Scraper) chạy nền"""
-    background_tasks.add_task(background_run_scraper, days=days)
-    return TaskRunResponse(
-        task_name="Cào dữ liệu thị trường (Scraper)",
-        status="RUNNING",
-        message=f"Đã kích hoạt tiến trình cào dữ liệu cho {days} ngày gần nhất trong nền.",
-        records_processed=0,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
+def admin_trigger_scrape(background_tasks: BackgroundTasks, days: int = Query(30, ge=1, le=365),
+                        commodity_id: Optional[int] = Query(None), start_date: Optional[date] = Query(None),
+                        end_date: Optional[date] = Query(None),
+                        db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
+    if bool(start_date) != bool(end_date) or (start_date and (start_date > end_date or end_date > date.today() or (end_date - start_date).days > 1826)):
+        raise HTTPException(400, "Cần ngày bắt đầu/kết thúc hợp lệ trong quá khứ, tối đa 5 năm")
+    if commodity_id:
+        commodity = db.get(Commodity, commodity_id)
+        from ml_pipeline.source_catalog import SOURCES
+        if not commodity or commodity.code not in SOURCES:
+            raise HTTPException(400, "Chưa có nguồn thu thập lịch sử tự động cho nông sản này")
+    job = create_job(db, "scrape")
+    background_tasks.add_task(run_job, job.id, "scrape", dict(days=days, commodity_id=commodity_id,
+                              start_date=start_date, end_date=end_date))
+    return job_response(job)
+
 
 @router.post("/tasks/retrain", response_model=TaskRunResponse)
-def admin_trigger_retrain(
-    commodity_id: Optional[int] = Query(None, description="ID nông sản cần huấn luyện (bỏ trống để huấn luyện toàn bộ)"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    current_user: User = Depends(require_role(["admin"]))
-):
-    """Kích hoạt tiến trình huấn luyện lại các mô hình AI (LSTM, XGBoost, Random Forest, Prophet)"""
-    background_tasks.add_task(background_run_retrain, commodity_id=commodity_id)
-    scope = f"nông sản ID {commodity_id}" if commodity_id else "tất cả các mặt hàng nông sản"
-    return TaskRunResponse(
-        task_name="Huấn luyện lại mô hình AI (Re-train Models)",
-        status="RUNNING",
-        message=f"Đã bắt đầu tiến trình re-train các thuật toán cho {scope}.",
-        records_processed=0,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
+def admin_trigger_retrain(background_tasks: BackgroundTasks, commodity_id: Optional[int] = Query(None),
+                         db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
+    if commodity_id and not db.get(Commodity, commodity_id):
+        raise HTTPException(404, "Không tìm thấy nông sản")
+    job = create_job(db, "retrain")
+    background_tasks.add_task(run_job, job.id, "retrain", commodity_id)
+    return job_response(job)
+
+
+@router.get("/tasks", response_model=List[TaskRunResponse])
+def admin_tasks(kind: Optional[str] = None, db: Session = Depends(get_db),
+                current_user: User = Depends(require_role(["admin", "analyst"]))):
+    query = db.query(BackgroundJob)
+    if kind:
+        query = query.filter(BackgroundJob.kind == kind)
+    return [job_response(job) for job in query.order_by(BackgroundJob.id.desc()).limit(20).all()]
+
+
+@router.get("/tasks/{task_id}", response_model=TaskRunResponse)
+def admin_task(task_id: int, db: Session = Depends(get_db),
+               current_user: User = Depends(require_role(["admin", "analyst"]))):
+    job = db.get(BackgroundJob, task_id)
+    if not job:
+        raise HTTPException(404, "Không tìm thấy tác vụ")
+    return job_response(job)
 
 # ---------------------------------------------------------
 # 5. Quản lý Người dùng hệ thống (User Management)
@@ -330,7 +314,7 @@ def admin_create_user(
     current_user: User = Depends(require_role(["admin"]))
 ):
     """Tạo người dùng mới và phân quyền (Analyst hoặc Admin)"""
-    exist = db.query(User).filter(User.email == item.email).first()
+    exist = db.query(User).filter(User.email.ilike(item.email.strip())).first()
     if exist:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -338,7 +322,7 @@ def admin_create_user(
         )
     
     new_user = User(
-        email=item.email,
+        email=item.email.strip().lower(),
         full_name=item.full_name,
         password_hash=get_password_hash(item.password),
         role=item.role
@@ -363,6 +347,8 @@ def admin_update_user_role(
     if item.role not in ["admin", "analyst", "user"]:
         raise HTTPException(status_code=400, detail="Quyền không hợp lệ (admin, analyst, user)")
         
+    if user.id == current_user.id and item.role != "admin":
+        raise HTTPException(400, "Không thể tự hạ quyền tài khoản quản trị đang đăng nhập")
     user.role = item.role
     db.commit()
     db.refresh(user)
@@ -383,17 +369,14 @@ def admin_toggle_user_status(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Không thể tự khóa tài khoản quản trị viên hiện tại")
         
-    # Toggle role giữa 'user_disabled' và 'user' / 'analyst'
+    user.is_active = not user.is_active
+    # Normalize accounts locked by the previous implementation.
     if user.role.endswith("_disabled"):
-        user.role = user.role.replace("_disabled", "")
-        status_text = "Đã kích hoạt lại tài khoản"
-    else:
-        user.role = f"{user.role}_disabled"
-        status_text = "Đã khóa tài khoản thành công"
-        
+        user.role = user.role.removesuffix("_disabled")
+        user.is_active = True
     db.commit()
-    db.refresh(user)
-    return {"message": status_text, "user_id": user.id, "current_role": user.role}
+    return {"message": "Đã kích hoạt lại tài khoản" if user.is_active else "Đã khóa tài khoản thành công",
+            "user_id": user.id, "current_role": user.role, "is_active": user.is_active}
 
 # ---------------------------------------------------------
 # 6. Quản lý File CSV (Import / Export)
@@ -405,10 +388,12 @@ async def admin_import_prices_csv(
     current_user: User = Depends(require_role(["admin"]))
 ):
     """Nhập dữ liệu giá nông sản từ file CSV"""
-    if not file.filename.endswith(('.csv', '.txt')):
+    if not (file.filename or '').lower().endswith(('.csv', '.txt')):
         raise HTTPException(status_code=400, detail="Chỉ chấp nhận file định dạng CSV (.csv)")
     
-    content = await file.read()
+    content = await file.read(5 * 1024 * 1024 + 1)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "File CSV tối đa 5 MB")
     try:
         decoded = content.decode('utf-8-sig')
     except Exception:
@@ -419,7 +404,10 @@ async def admin_import_prices_csv(
     updated_count = 0
     errors = []
     
-    for row_idx, row in enumerate(reader, start=1):
+    if not reader.fieldnames:
+        raise HTTPException(400, "File CSV trống hoặc thiếu dòng tiêu đề")
+    for row_idx, row in enumerate(reader, start=2):
+        savepoint = db.begin_nested()
         try:
             # Map columns
             raw_date = row.get("record_date") or row.get("date") or row.get("Ngày")
@@ -429,6 +417,7 @@ async def admin_import_prices_csv(
             
             if not raw_date or not raw_price:
                 errors.append(f"Dòng {row_idx}: Thiếu ngày hoặc giá")
+                savepoint.rollback()
                 continue
                 
             # Tìm commodity
@@ -438,20 +427,23 @@ async def admin_import_prices_csv(
             elif raw_code:
                 commodity = db.query(Commodity).filter(Commodity.code.ilike(raw_code.strip())).first()
             else:
-                # Mặc định commodity đầu tiên
-                commodity = db.query(Commodity).first()
+                commodity = None
                 
             if not commodity:
                 errors.append(f"Dòng {row_idx}: Không xác định được nông sản")
+                savepoint.rollback()
                 continue
                 
             p_val = float(str(raw_price).replace(',', ''))
             r_date = datetime.strptime(raw_date.strip()[:10], "%Y-%m-%d").date()
             
-            p_min = float(row.get("price_min") or (p_val * 0.98))
-            p_max = float(row.get("price_max") or (p_val * 1.02))
-            vol = float(row.get("volume") or 1000.0)
+            p_min = float(row["price_min"]) if row.get("price_min") else None
+            p_max = float(row["price_max"]) if row.get("price_max") else None
+            vol = float(row.get("volume") or 0.0)
             src = row.get("source") or "Import từ CSV"
+            reviewed = str(row.get("reviewed", "false")).strip().lower() in ("true", "1", "yes")
+            PriceCreateManual(commodity_id=commodity.id, record_date=r_date, price=p_val,
+                              price_min=p_min, price_max=p_max, volume=vol, source=src, reviewed=reviewed)
             
             existing = (
                 db.query(PriceHistory)
@@ -459,14 +451,18 @@ async def admin_import_prices_csv(
                 .first()
             )
             if existing:
+                from app.services.history_service import archive_price
+                archive_price(db, existing)
+                existing.provenance = "reviewed" if reviewed else "unverified"
+                existing.source_details = None
                 existing.price = p_val
                 existing.price_min = p_min
                 existing.price_max = p_max
                 existing.volume = vol
                 existing.source = src
-                updated_count += 1
             else:
                 new_ph = PriceHistory(
+                    provenance="reviewed" if reviewed else "unverified",
                     commodity_id=commodity.id,
                     record_date=r_date,
                     price=p_val,
@@ -476,8 +472,14 @@ async def admin_import_prices_csv(
                     source=src
                 )
                 db.add(new_ph)
+            db.flush()
+            savepoint.commit()
+            if existing:
+                updated_count += 1
+            else:
                 created_count += 1
         except Exception as e:
+            savepoint.rollback()
             errors.append(f"Dòng {row_idx}: {str(e)}")
             
     db.commit()
@@ -491,6 +493,8 @@ async def admin_import_prices_csv(
 @router.get("/prices/export-csv")
 def admin_export_prices_csv(
     commodity_id: Optional[int] = Query(None, description="Lọc theo ID nông sản"),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["admin", "analyst"]))
 ):
@@ -502,11 +506,17 @@ def admin_export_prices_csv(
     if commodity_id:
         query = query.filter(PriceHistory.commodity_id == commodity_id)
         
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "Khoảng ngày không hợp lệ")
+    if start_date:
+        query = query.filter(PriceHistory.record_date >= start_date)
+    if end_date:
+        query = query.filter(PriceHistory.record_date <= end_date)
     records = query.order_by(desc(PriceHistory.record_date)).all()
     
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "commodity_id", "commodity_code", "commodity_name", "record_date", "price", "price_min", "price_max", "volume", "source"])
+    writer.writerow(["id", "commodity_id", "commodity_code", "commodity_name", "record_date", "price", "price_min", "price_max", "volume", "source", "provenance", "reviewed"])
     
     for ph, c_code, c_name in records:
         writer.writerow([
@@ -519,7 +529,9 @@ def admin_export_prices_csv(
             float(ph.price_min) if ph.price_min else "",
             float(ph.price_max) if ph.price_max else "",
             float(ph.volume) if ph.volume else 0,
-            ph.source or ""
+            ph.source or "",
+            ph.provenance,
+            "true" if ph.provenance == "reviewed" else "false"
         ])
         
     output.seek(0)
@@ -539,76 +551,33 @@ def admin_get_crawler_logs(
     current_user: User = Depends(require_role(["admin", "analyst"]))
 ):
     """Lấy danh sách nhật ký cào dữ liệu (Crawling Logs) gần nhất của Bot"""
-    # Lấy thông tin từ các bản ghi giá gần đây để tổng hợp trạng thái cào
-    latest_prices = (
-        db.query(PriceHistory.source, func.count(PriceHistory.id), func.max(PriceHistory.created_at))
-        .group_by(PriceHistory.source)
-        .all()
-    )
-    
-    logs = [
-        CrawlerLogItem(
-            id=1,
-            crawler_name="YFinance Global Commodity Crawler",
-            target_source="Yahoo Finance (Robusta/Arabica/Oil)",
-            records_extracted=120,
-            status="SUCCESS",
-            duration_sec=2.45,
-            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            details="Thu thập thành công chuỗi giá quốc tế và chỉ số vĩ mô."
-        ),
-        CrawlerLogItem(
-            id=2,
-            crawler_name="GiaCaPhe & Vietnam Domestic Scraper",
-            target_source="Giacaphe.com / Sở NN&PTNT",
-            records_extracted=85,
-            status="SUCCESS",
-            duration_sec=3.82,
-            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            details="Cập nhật giá cà phê Tây Nguyên, tiêu Đắk Lắk, lúa gạo Miền Tây."
-        ),
-        CrawlerLogItem(
-            id=3,
-            crawler_name="Macro Economy Regressor Sync",
-            target_source="Ngân hàng Nhà nước / FRED",
-            records_extracted=45,
-            status="SUCCESS",
-            duration_sec=1.12,
-            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            details="Đồng bộ tỷ giá USD/VND và lãi suất liên ngân hàng."
-        )
-    ]
-    return logs
+    jobs = db.query(BackgroundJob).filter(BackgroundJob.kind == "scrape").order_by(BackgroundJob.id.desc()).limit(limit).all()
+    return [CrawlerLogItem(id=j.id, crawler_name="Thu thập lịch sử nông sản Việt Nam", target_source="Xem chi tiết tác vụ và nguồn từng bản ghi",
+                          records_extracted=j.records_processed, status=j.status,
+                          duration_sec=max(0, ((j.finished_at or datetime.now()) - j.created_at).total_seconds()),
+                          timestamp=j.created_at.isoformat(), details=j.message) for j in jobs]
 
 # ---------------------------------------------------------
 # 8. Cấu hình Mô hình Hoạt động (Model Switcher)
 # ---------------------------------------------------------
-_ACTIVE_MODEL_CONFIG = {
-    "active_model": "LSTM",
-    "description": "Mô hình Mạng Nơ-ron hồi quy LSTM 2 lớp",
-    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-}
-
 @router.get("/models/active", response_model=ActiveModelSetting)
-def admin_get_active_model(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
-):
-    """Lấy thuật toán dự báo mặc định đang được kích hoạt"""
-    return ActiveModelSetting(**_ACTIVE_MODEL_CONFIG)
+def admin_get_active_model(db: Session = Depends(get_db),
+                          current_user: User = Depends(require_role(["admin", "analyst"]))):
+    setting = db.get(SystemSetting, "active_model")
+    return ActiveModelSetting(active_model=active_model(db).upper(), description="Mô hình mặc định khi API không chỉ định thuật toán",
+                              updated_at=setting.updated_at.isoformat() if setting else None)
+
 
 @router.post("/models/active", response_model=ActiveModelSetting)
-def admin_set_active_model(
-    setting: ActiveModelSetting,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"]))
-):
-    """Chuyển đổi mô hình dự báo mặc định (Model Switcher)"""
-    global _ACTIVE_MODEL_CONFIG
-    _ACTIVE_MODEL_CONFIG = {
-        "active_model": setting.active_model.upper(),
-        "description": f"Mô hình {setting.active_model} đã được kích hoạt làm mặc định",
-        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    return ActiveModelSetting(**_ACTIVE_MODEL_CONFIG)
-
+def admin_set_active_model(setting: ActiveModelSetting, db: Session = Depends(get_db),
+                          current_user: User = Depends(require_role(["admin"]))):
+    name = setting.active_model.strip().upper()
+    if name not in MODEL_NAMES:
+        raise HTTPException(400, "Thuật toán không được hỗ trợ")
+    row = db.get(SystemSetting, "active_model")
+    if row:
+        row.value = name
+    else:
+        db.add(SystemSetting(key="active_model", value=name))
+    db.commit()
+    return admin_get_active_model(db, current_user)

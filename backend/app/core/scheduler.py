@@ -12,8 +12,17 @@ _scheduler_instance = None
 def scheduled_scraper_task():
     logger.info("Starting scheduled scraper task...")
     try:
-        # Scrape data for the last 1 day
-        scrape_and_update_db(days=1)
+        # Revisit seven days for each supported Vietnamese daily source.
+        from app.services.job_service import create_job, run_job
+        from app.models.models import Commodity
+        from ml_pipeline.source_catalog import SOURCES
+        with SessionLocal() as db:
+            ids = [c.id for c in db.query(Commodity).all() if SOURCES.get(c.code, {}).get('kind') == 'daily']
+        for commodity_id in ids:
+            with SessionLocal() as db:
+                job = create_job(db, "scrape")
+                job_id = job.id
+            run_job(job_id, "scrape", dict(days=7, commodity_id=commodity_id))
         logger.info("Scheduled scraper task completed successfully.")
     except Exception as e:
         logger.error(f"Error in scheduled scraper task: {e}")
@@ -39,7 +48,7 @@ def start_scheduler():
     # Run scraper every day at 6:00 AM
     _scheduler_instance.add_job(
         scheduled_scraper_task,
-        trigger=CronTrigger(hour=6, minute=0),
+        trigger=CronTrigger(hour=18, minute=0, timezone="Asia/Ho_Chi_Minh"),
         id="daily_scraper",
         name="Daily Scraper",
         replace_existing=True,

@@ -1,9 +1,10 @@
 'use client';
 
+import { fetchCurrentUserApi, fetchHealthApi } from '@/lib/api';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { getUser, User, logout } from '@/lib/auth';
+import { User, logout } from '@/lib/auth';
 import {
   LayoutDashboard,
   Database,
@@ -21,23 +22,28 @@ import {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [health, setHealth] = useState('Đang kiểm tra kết nối');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const user = getUser();
-    if (!user) {
-      router.push('/login?redirect=/dashboard');
-      return;
-    }
-    if (user.role !== 'admin' && user.role !== 'analyst') {
-      router.push('/');
-      return;
-    }
-    setCurrentUser(user);
-    setLoading(false);
-  }, [router]);
+    let cancelled = false;
+    fetchCurrentUserApi().then(user => {
+      if (cancelled) return;
+      if (!['admin', 'analyst'].includes(user.role)) { router.replace('/'); return; }
+      if (user.role !== 'admin' && pathname.startsWith('/dashboard/users')) { router.replace('/dashboard/overview'); return; }
+      localStorage.setItem('agro_user', JSON.stringify(user));
+      setCurrentUser(user); setLoading(false);
+    }).catch(() => { if (!cancelled) { logout(); router.replace('/login?redirect=' + encodeURIComponent(pathname)); } });
+    const checkHealth = () => fetchHealthApi().then(result => {
+      if (!cancelled) setHealth(result.status === 'healthy' ? 'API và PostgreSQL đang kết nối' : 'Kết nối CSDL gặp sự cố');
+    }).catch(() => { if (!cancelled) setHealth('Không kết nối được máy chủ'); });
+    void checkHealth();
+    const timer = setInterval(checkHealth, 30000);
+    return () => { cancelled = true; clearInterval(timer); };
+
+  }, [router, pathname]);
 
   if (loading) {
     return (
@@ -138,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="px-3 py-2 text-[11px] font-bold tracking-wider text-secondary-text uppercase">
               Menu Điều Khiển
             </div>
-            {navItems.map((item) => {
+            {navItems.filter(item => currentUser?.role === 'admin' || item.href !== '/dashboard/users').map((item) => {
               const isActive = pathname.startsWith(item.href);
               const Icon = item.icon;
               return (
@@ -166,10 +172,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-3.5 rounded-xl bg-canvas border border-border-subtle text-xs text-secondary-text space-y-1.5">
             <div className="flex items-center gap-2 text-brand font-semibold">
               <Activity className="w-3.5 h-3.5 animate-pulse" />
-              <span>Hệ Thống Trực Tuyến</span>
+              <span>Trạng thái hệ thống</span>
             </div>
             <p className="text-[11px] text-secondary-text leading-relaxed">
-              PostgreSQL DB & FastAPI ML Engine đang hoạt động ổn định.
+              {health}
             </p>
           </div>
         </aside>
@@ -185,7 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
               <div className="space-y-2">
-                {navItems.map((item) => {
+                {navItems.filter(item => currentUser?.role === 'admin' || item.href !== '/dashboard/users').map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname.startsWith(item.href);
                   return (

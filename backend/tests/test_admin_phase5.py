@@ -37,9 +37,8 @@ def test_admin_crawler_logs(client, admin_headers):
     assert res.status_code == 200
     logs = res.json()
     assert isinstance(logs, list)
-    assert len(logs) >= 1
-    assert "crawler_name" in logs[0]
-    assert "records_extracted" in logs[0]
+    # No fabricated entries are returned before the first collection job.
+    assert logs == []
 
 
 def test_admin_active_model_switcher(client, admin_headers):
@@ -108,6 +107,9 @@ def test_admin_user_role_and_status(client, admin_headers, db_session):
     )
     assert toggle_res.status_code == 200
     assert "Đã khóa" in toggle_res.json()["message"]
+    db_session.refresh(user)
+    assert user.is_active is False
+    assert user.role == "admin"
 
 
 def test_rbac_protection(client, user_headers):

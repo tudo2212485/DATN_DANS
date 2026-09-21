@@ -1,19 +1,21 @@
 'use client';
 
+import JobStatus, { useBackgroundJob } from '@/components/dashboard/JobStatus';
+import Link from 'next/link';
+import { getUser } from '@/lib/auth';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   fetchRecentPricesApi,
   triggerScrapeTaskApi,
   fetchCrawlerLogsApi,
   importPricesCsvApi,
-  getExportPricesCsvUrl,
+  downloadPricesCsv,
   createOrUpdatePriceApi,
   deletePriceRecordApi,
   fetchAdminCommodities,
 } from '@/lib/api';
 import {
   AdminPriceItem,
-  TaskRunResult,
   CrawlerLog,
 } from '@/types';
 import {
@@ -22,6 +24,7 @@ import {
   Download,
   Play,
   Plus,
+  Pencil,
   Trash2,
   CheckCircle2,
   AlertCircle,
@@ -38,6 +41,13 @@ interface CommodityItem {
 }
 
 export default function DashboardDataControlPage() {
+  const canEdit = getUser()?.role === 'admin';
+  const [error, setError] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
   const [prices, setPrices] = useState<AdminPriceItem[]>([]);
   const [crawlerLogs, setCrawlerLogs] = useState<CrawlerLog[]>([]);
   const [commodities, setCommodities] = useState<CommodityItem[]>([]);
@@ -46,7 +56,7 @@ export default function DashboardDataControlPage() {
   // Scraper Task state
   const [scrapingDays, setScrapingDays] = useState(30);
   const [scrapeRunning, setScrapeRunning] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState<TaskRunResult | null>(null);
+  const scrape = useBackgroundJob("scrape", () => { void loadAll(); });
 
   // CSV Import state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +65,8 @@ export default function DashboardDataControlPage() {
 
   // Price Modal state
   const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(false);
+  useEffect(() => { if (priceModalOpen) setReviewed(false); }, [priceModalOpen]);
   const [priceForm, setPriceForm] = useState({
     commodity_id: 2,
     record_date: new Date().toISOString().split('T')[0],
@@ -67,8 +79,9 @@ export default function DashboardDataControlPage() {
 
   const loadAll = async () => {
     try {
+      setError('');
       const [pData, lData, cData] = await Promise.all([
-        fetchRecentPricesApi(selectedCommodityFilter),
+        fetchRecentPricesApi(selectedCommodityFilter, startDate, endDate, offset),
         fetchCrawlerLogsApi(),
         fetchAdminCommodities(),
       ]);
@@ -76,30 +89,23 @@ export default function DashboardDataControlPage() {
       setCrawlerLogs(lData);
       setCommodities(cData);
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Không tải được dữ liệu');
+      setPrices([]); setCrawlerLogs([]);
     }
   };
 
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCommodityFilter]);
+  }, [selectedCommodityFilter, startDate, endDate, offset]);
 
   const handleTriggerScraper = async () => {
     setScrapeRunning(true);
     try {
       const res = await triggerScrapeTaskApi(scrapingDays);
-      setScrapeResult(res);
-      // Refresh logs
-      const updatedLogs = await fetchCrawlerLogsApi();
-      setCrawlerLogs(updatedLogs);
+      scrape.begin(res);
     } catch (err: unknown) {
-      setScrapeResult({
-        taskName: 'Cào dữ liệu thị trường',
-        status: 'FAILED',
-        message: err instanceof Error ? err.message : 'Lỗi khi kích hoạt bot cào',
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-      });
+      setError(err instanceof Error ? err.message : 'Không kích hoạt được thu thập');
     } finally {
       setScrapeRunning(false);
     }
@@ -113,7 +119,7 @@ export default function DashboardDataControlPage() {
     setImportResult(null);
     try {
       const res = await importPricesCsvApi(file);
-      setImportResult({ message: res.message, type: 'success' });
+      setImportResult({ message: [res.message, ...(res.errors || [])].join(' · '), type: res.errors?.length ? 'error' : 'success' });
       await loadAll();
     } catch (err: unknown) {
       setImportResult({ message: err instanceof Error ? err.message : 'Lỗi khi upload file CSV', type: 'error' });
@@ -131,6 +137,7 @@ export default function DashboardDataControlPage() {
     }
 
     try {
+      setBusy(true);
       await createOrUpdatePriceApi({
         commodity_id: Number(priceForm.commodity_id),
         record_date: priceForm.record_date,
@@ -139,13 +146,14 @@ export default function DashboardDataControlPage() {
         price_max: priceForm.price_max ? parseFloat(priceForm.price_max) : undefined,
         volume: priceForm.volume ? parseFloat(priceForm.volume) : 0,
         source: priceForm.source,
+        reviewed,
       });
       setPriceModalOpen(false);
       setPriceForm({ ...priceForm, price: '' });
       await loadAll();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Không thể lưu bản ghi giá');
-    }
+      setError(err instanceof Error ? err.message : 'Không thể lưu bản ghi giá');
+    } finally { setBusy(false); }
   };
 
   const handleDeletePrice = async (id: number) => {
@@ -154,12 +162,13 @@ export default function DashboardDataControlPage() {
       await deletePriceRecordApi(id);
       await loadAll();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Không thể xóa bản ghi giá');
+      setError(err instanceof Error ? err.message : 'Không thể xóa bản ghi giá');
     }
   };
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700">{error}</p>}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
@@ -181,25 +190,19 @@ export default function DashboardDataControlPage() {
             className="hidden"
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
+            disabled={!canEdit || importing} onClick={() => fileInputRef.current?.click()}
             className="px-3.5 py-2 rounded-xl bg-card hover:bg-canvas text-primary-text border border-border-subtle text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
           >
             <Upload className="w-3.5 h-3.5 text-brand" />
             {importing ? 'Đang nạp CSV...' : 'Import CSV'}
           </button>
 
-          <a
-            href={getExportPricesCsvUrl(selectedCommodityFilter)}
-            download="commodity_prices_export.csv"
-            className="px-3.5 py-2 rounded-xl bg-card hover:bg-canvas text-primary-text border border-border-subtle text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
-          >
-            <Download className="w-3.5 h-3.5 text-secondary-text" />
-            Export CSV
-          </a>
+          <button onClick={async () => { try { await downloadPricesCsv(selectedCommodityFilter, startDate, endDate); } catch (e) { setError(e instanceof Error ? e.message : 'Xuất CSV thất bại'); } }} className="px-3.5 py-2 rounded-xl bg-card border border-border-subtle text-xs font-semibold flex items-center gap-2">
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
 
           <button
-            onClick={() => setPriceModalOpen(true)}
+            disabled={!canEdit} onClick={() => { setEditingPrice(false); setError(''); setPriceForm({commodity_id: commodities[0]?.id || 1, record_date: new Date().toISOString().slice(0, 10), price: "", price_min: "", price_max: "", volume: "0", source: "Nhập thủ công bởi Admin"}); setPriceModalOpen(true); }}
             className="px-3.5 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -232,15 +235,16 @@ export default function DashboardDataControlPage() {
       )}
 
       {/* Section 1: Bot Crawler Trigger Panel */}
+      <Link href="/history" className="block p-4 rounded-xl bg-brand/10 text-brand">Mở Lịch sử giá: chọn nông sản, khoảng ngày, xem biểu đồ và huấn luyện →</Link>
       <div className="p-6 rounded-2xl bg-card border border-border-subtle shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-primary-text flex items-center gap-2">
               <Activity className="w-4 h-4 text-brand" />
-              Kích Hoạt Thu Thập Dữ Liệu Tự Động (Manual Crawler Trigger)
+              Thu Thập Lịch Sử Giá Cà Phê
             </h2>
             <p className="text-xs text-secondary-text mt-0.5">
-              Gửi yêu cầu tới Scraper Engine để cào dữ liệu từ Yahoo Finance, Giacaphe.com và Hiệp hội nông sản
+              Đọc giá theo ngày từ Giacaphe. Giữ bản ghi có nguồn; bản ghi cũ được lưu vào lịch sử chỉnh sửa trước khi cập nhật. Nguồn có thể giới hạn lịch sử xa.
             </p>
           </div>
 
@@ -261,25 +265,16 @@ export default function DashboardDataControlPage() {
 
             <button
               onClick={handleTriggerScraper}
-              disabled={scrapeRunning}
+              disabled={!canEdit || scrapeRunning || scrape.running}
               className="px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold flex items-center gap-2 shadow-xs transition disabled:opacity-50"
             >
               <Play className={`w-3.5 h-3.5 fill-current ${scrapeRunning ? 'animate-spin' : ''}`} />
-              {scrapeRunning ? 'Đang chạy Bot...' : 'Kích Hoạt Cào Ngay'}
+              {scrapeRunning || scrape.running ? 'Đang thu thập...' : 'Kích Hoạt Cào Ngay'}
             </button>
           </div>
         </div>
 
-        {scrapeResult && (
-          <div className="p-3.5 rounded-xl bg-canvas border border-border-subtle flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-primary-text">Trạng thái:</span>
-              <span className="text-brand font-medium">{scrapeResult.message}</span>
-            </div>
-            <span className="text-secondary-text text-[11px]">{scrapeResult.timestamp}</span>
-          </div>
-        )}
+        <JobStatus job={scrape.job} error={scrape.error} />
       </div>
 
       {/* Section 2: Crawling Logs Table */}
@@ -314,23 +309,40 @@ export default function DashboardDataControlPage() {
               {crawlerLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-canvas/60 transition">
                   <td className="py-3 px-4 text-secondary-text">#{log.id}</td>
-                  <td className="py-3 px-4 font-sans font-medium text-primary-text">{log.crawler_name}</td>
+                  <td className="py-3 px-4 font-sans font-medium text-primary-text">
+                    {log.crawler_name}
+                    <details className="mt-1 text-xs text-secondary-text"><summary>Chi tiết</summary>{log.details}</details>
+                  </td>
                   <td className="py-3 px-4 text-secondary-text">{log.target_source}</td>
                   <td className="py-3 px-4 text-brand font-semibold">{log.records_extracted}</td>
-                  <td className="py-3 px-4 text-secondary-text">{log.duration_sec}s</td>
+                  <td className="py-3 px-4 text-secondary-text">{log.duration_sec.toFixed(2)}s</td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-semibold">
+                    <span className={`px-2 py-0.5 rounded-full border text-[10px] font-sans font-semibold ${log.status === 'FAILED' ? 'bg-rose-50 text-rose-700' : log.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                       {log.status}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-secondary-text">{log.timestamp}</td>
                 </tr>
               ))}
+              {crawlerLogs.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-secondary-text">
+                    Chưa có tác vụ thu thập dữ liệu.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-4 items-end text-sm">
+        <label>Từ ngày<input aria-label="Từ ngày" type="date" value={startDate} onChange={e => {setStartDate(e.target.value); setOffset(0);}} className="block border rounded-lg p-2" /></label>
+        <label>Đến ngày<input aria-label="Đến ngày" type="date" value={endDate} onChange={e => {setEndDate(e.target.value); setOffset(0);}} className="block border rounded-lg p-2" /></label>
+        <button onClick={() => {setStartDate(''); setEndDate(''); setOffset(0);}} className="p-2 border rounded-lg">Xóa bộ lọc ngày</button>
+        <button onClick={() => void loadAll()} className="p-2 border rounded-lg">Làm mới dữ liệu</button>
+      </div>
+      <p className="text-xs text-secondary-text">CSV: commodity_code, record_date (YYYY-MM-DD), price, source; tùy chọn price_min, price_max, volume. Tối đa 5 MB. Giá theo đơn vị của nông sản.</p>
       {/* Section 3: Price Data Management Table */}
       <div className="p-6 rounded-2xl bg-card border border-border-subtle shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border-subtle">
@@ -340,7 +352,7 @@ export default function DashboardDataControlPage() {
               Bảng Quản Lý Giá Nông Sản (Price History Records)
             </h2>
             <p className="text-xs text-secondary-text mt-0.5">
-              Kiểm tra, điều chỉnh hoặc xóa các điểm giá sai lệch
+              Kiểm tra, điều chỉnh hoặc xóa giá. CSV dùng huấn luyện cần nguồn thực tế và cột reviewed=true sau khi đối chiếu.
             </p>
           </div>
 
@@ -348,7 +360,7 @@ export default function DashboardDataControlPage() {
             <Filter className="w-3.5 h-3.5 text-secondary-text" />
             <select
               value={selectedCommodityFilter || ''}
-              onChange={(e) => setSelectedCommodityFilter(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={(e) => { setOffset(0); setSelectedCommodityFilter(e.target.value ? Number(e.target.value) : undefined); }}
               className="bg-canvas border border-border-subtle text-primary-text px-3 py-1.5 rounded-xl focus:outline-none"
             >
               <option value="">Tất cả nông sản</option>
@@ -372,6 +384,7 @@ export default function DashboardDataControlPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
+              {prices.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-secondary-text">Không có bản ghi trong phạm vi đã chọn.</td></tr>}
               {prices.map((p) => (
                 <tr key={p.id} className="hover:bg-canvas/60 transition">
                   <td className="py-3 px-4 font-mono text-secondary-text">{p.recordDate}</td>
@@ -383,7 +396,28 @@ export default function DashboardDataControlPage() {
                   <td className="py-3 px-4 text-secondary-text text-[11px]">{p.source || 'Nhập thủ công'}</td>
                   <td className="py-3 px-4 text-right">
                     <button
-                      onClick={() => handleDeletePrice(p.id)}
+                      disabled={!canEdit}
+                      onClick={() => {
+                        setEditingPrice(true);
+                        setError('');
+                        setPriceForm({
+                          commodity_id: p.commodityId,
+                          record_date: p.recordDate,
+                          price: String(p.price),
+                          price_min: String(p.priceMin ?? ''),
+                          price_max: String(p.priceMax ?? ''),
+                          volume: String(p.volume ?? 0),
+                          source: p.source || '',
+                        });
+                        setPriceModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg text-secondary-text hover:text-brand hover:bg-brand-light transition disabled:opacity-40"
+                      title="Sửa điểm giá"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      disabled={!canEdit} onClick={() => handleDeletePrice(p.id)}
                       className="p-1.5 rounded-lg text-secondary-text hover:text-rose-600 hover:bg-rose-50 transition"
                       title="Xóa điểm giá"
                     >
@@ -397,20 +431,28 @@ export default function DashboardDataControlPage() {
         </div>
       </div>
 
+      <div className="flex gap-4 items-center text-sm">
+        <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 30))} className="p-2 border rounded-lg disabled:opacity-40">Trang trước</button>
+        <span>Trang {offset / 30 + 1} · {prices.length} bản ghi</span>
+        <button disabled={prices.length < 30} onClick={() => setOffset(offset + 30)} className="p-2 border rounded-lg disabled:opacity-40">Trang sau</button>
+      </div>
+
       {/* Modal: Thêm điểm giá mới */}
       {priceModalOpen && (
         <div className="fixed inset-0 z-50 bg-primary-text/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-card border border-border-subtle rounded-2xl p-6 space-y-4 shadow-xl">
             <h3 className="text-lg font-bold text-primary-text flex items-center gap-2">
               <Plus className="w-5 h-5 text-brand" />
-              Thêm Điểm Giá Mới
+              {editingPrice ? 'Sửa Điểm Giá' : 'Thêm Điểm Giá Mới'}
             </h3>
+            {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
 
             <form onSubmit={handleSavePrice} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-secondary-text font-medium mb-1">Loại Nông Sản</label>
                 <select
                   value={priceForm.commodity_id}
+                  disabled={editingPrice}
                   onChange={(e) => setPriceForm({ ...priceForm, commodity_id: Number(e.target.value) })}
                   className="w-full bg-canvas border border-border-subtle rounded-xl px-3 py-2 text-primary-text"
                 >
@@ -426,6 +468,7 @@ export default function DashboardDataControlPage() {
                   <input
                     type="date"
                     value={priceForm.record_date}
+                    disabled={editingPrice}
                     onChange={(e) => setPriceForm({ ...priceForm, record_date: e.target.value })}
                     className="w-full bg-canvas border border-border-subtle rounded-xl px-3 py-2 text-primary-text"
                     required
@@ -435,6 +478,8 @@ export default function DashboardDataControlPage() {
                   <label className="block text-secondary-text font-medium mb-1">Giá Chính Thức (VNĐ)</label>
                   <input
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     value={priceForm.price}
                     onChange={(e) => setPriceForm({ ...priceForm, price: e.target.value })}
                     placeholder="VD: 62500"
@@ -444,8 +489,14 @@ export default function DashboardDataControlPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-2">
+                <label>Giá thấp nhất<input aria-label="Giá thấp nhất" type="number" min="0" step="0.01" value={priceForm.price_min} onChange={e => setPriceForm({...priceForm, price_min: e.target.value})} className="mt-1 w-full p-2 border rounded-lg" /></label>
+                <label>Giá cao nhất<input aria-label="Giá cao nhất" type="number" min="0" step="0.01" value={priceForm.price_max} onChange={e => setPriceForm({...priceForm, price_max: e.target.value})} className="mt-1 w-full p-2 border rounded-lg" /></label>
+                <label>Khối lượng<input aria-label="Khối lượng" type="number" min="0" step="0.01" value={priceForm.volume} onChange={e => setPriceForm({...priceForm, volume: e.target.value})} className="mt-1 w-full p-2 border rounded-lg" /></label>
+              </div>
               <div>
-                <label className="block text-secondary-text font-medium mb-1">Nguồn Thu Thập</label>
+                <label className="block mb-3"><input type="checkbox" checked={reviewed} onChange={e=>setReviewed(e.target.checked)}/> Tôi đã đối chiếu giá với nguồn, cho phép dùng bản ghi này để huấn luyện</label>
+                <label className="block text-secondary-text font-medium mb-1">Nguồn Thu Thập (ghi rõ nguồn thực tế nếu xác nhận)</label>
                 <input
                   type="text"
                   value={priceForm.source}
@@ -463,7 +514,7 @@ export default function DashboardDataControlPage() {
                   Hủy Bỏ
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={busy}
                   className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold shadow-xs transition"
                 >
                   Lưu Bản Ghi Giá

@@ -37,7 +37,7 @@ def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_ses
     train, test = df_p.iloc[:train_size], df_p.iloc[train_size:]
     
     if len(train) == 0 or len(test) == 0:
-        return
+        raise ValueError("Không đủ dữ liệu cho Prophet")
         
     # Initialize and train eval model
     eval_model = Prophet(daily_seasonality=False, yearly_seasonality=True)
@@ -114,12 +114,13 @@ def run_prophet(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_ses
             mae=float(mae),
             rmse=float(rmse),
             mape=float(mape),
-            r2=float(r2) if r2 > 0 else 0.5,
+            r2=float(r2),
             training_date=datetime.now().date()
         ))
     db_session.add_all(records)
     db_session.commit()
     print(f"Saved {horizon} forecasts for {commodity_name} using Prophet.")
+    return len(records)
 
 if __name__ == "__main__":
     db = SessionLocal()

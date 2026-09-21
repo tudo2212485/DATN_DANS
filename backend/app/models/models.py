@@ -2,6 +2,25 @@ from sqlalchemy import Column, Integer, BigInteger, String, Text, Numeric, Boole
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    key = Column(String(100), primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    kind = Column(String(30), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="RUNNING")
+    message = Column(Text, nullable=False, default="Đang chờ xử lý")
+    records_processed = Column(Integer, nullable=False, default=0)
+    progress = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    finished_at = Column(DateTime, nullable=True)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -46,6 +65,8 @@ class PriceHistory(Base):
     price_max = Column(Numeric(14, 2), nullable=True)
     volume = Column(Numeric(16, 2), default=0)
     source = Column(String(100), default="Sở NN&PTNT / Hiệp hội Nông sản")
+    provenance = Column(String(30), nullable=False, default="unverified", server_default="unverified")
+    source_details = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     commodity = relationship("Commodity", back_populates="prices")
@@ -57,6 +78,7 @@ class Forecast(Base):
     id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, index=True)
     commodity_id = Column(Integer, ForeignKey("commodities.id", ondelete="CASCADE"), nullable=False, index=True)
     model_name = Column(String(50), nullable=False, index=True)  # LSTM, Prophet, ARIMA, XGBoost
+    training_run_id = Column(Integer, ForeignKey("training_runs.id"), nullable=True)
     forecast_date = Column(Date, nullable=False, index=True)
     predicted_price = Column(Numeric(14, 2), nullable=False)
     lower_ci = Column(Numeric(14, 2), nullable=False)
@@ -69,6 +91,40 @@ class Forecast(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     commodity = relationship("Commodity", back_populates="forecasts")
+
+
+class TrainingRun(Base):
+    __tablename__ = "training_runs"
+    id = Column(Integer, primary_key=True)
+    commodity_id = Column(Integer, ForeignKey("commodities.id"), nullable=False)
+    dataset_hash = Column(String(64), nullable=False)
+    metadata_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class PeriodicPrice(Base):
+    __tablename__ = "periodic_prices"
+    id = Column(Integer, primary_key=True)
+    commodity_id = Column(Integer, ForeignKey("commodities.id"), nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    published_date = Column(Date, nullable=False)
+    buying_price = Column(Numeric(14, 2), nullable=False)
+    selling_price = Column(Numeric(14, 2), nullable=False)
+    unit = Column(String(30), nullable=False)
+    specification = Column(String(150), nullable=False)
+    market = Column(String(150), nullable=False)
+    source_url = Column(Text, nullable=False, unique=True)
+    attribution = Column(Text, nullable=False)
+    collected_at = Column(DateTime, server_default=func.now())
+
+
+class PriceRevision(Base):
+    __tablename__ = "price_revisions"
+    id = Column(Integer, primary_key=True)
+    price_id = Column(BigInteger, nullable=False)
+    snapshot_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class AlertRule(Base):

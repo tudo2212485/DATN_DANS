@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from app.models.models import Commodity, Forecast, PriceHistory
+from sqlalchemy import desc, func
+from app.models.models import Commodity, Forecast, PriceHistory, TrainingRun
+from app.services.history_service import observations, modeling_rows, fingerprint
+import json
+from datetime import date
 from app.schemas.schemas import (
     ForecastDashboardResponse,
     ForecastPointResponse,
@@ -15,14 +18,17 @@ def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetrics
     if not commodity:
         raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
         
-    models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id).distinct().all()
+    latest_run = db.query(func.max(Forecast.training_run_id)).filter(Forecast.commodity_id == commodity_id).scalar()
+    run = db.get(TrainingRun, latest_run) if latest_run else None
+    if not run or run.dataset_hash != fingerprint(modeling_rows(observations(db, commodity_id))):
+        return []
+    models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id, Forecast.training_run_id == latest_run).distinct().all()
     
     result = []
-    found_names = set()
     for (m_name,) in models:
         f = (
             db.query(Forecast)
-            .filter(Forecast.commodity_id == commodity_id, Forecast.model_name == m_name)
+            .filter(Forecast.commodity_id == commodity_id, Forecast.model_name == m_name, Forecast.training_run_id == latest_run)
             .order_by(desc(Forecast.training_date), desc(Forecast.forecast_date))
             .first()
         )
@@ -37,31 +43,7 @@ def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetrics
                     trainDate=f.training_date.strftime("%d/%m/%Y") if f.training_date else "N/A"
                 )
             )
-            found_names.add(m_name.upper())
-
-    # Fallback or supplementary 5 standard models if DB only has partial records
-    all_standard_models = [
-        {"name": "LSTM", "mae": 420.5, "rmse": 610.2, "mape": 1.12, "r2": 0.942},
-        {"name": "XGBoost", "mae": 470.8, "rmse": 680.5, "mape": 1.25, "r2": 0.925},
-        {"name": "Random Forest", "mae": 520.4, "rmse": 730.1, "mape": 1.48, "r2": 0.890},
-        {"name": "Prophet", "mae": 680.2, "rmse": 890.6, "mape": 2.10, "r2": 0.840},
-        {"name": "ARIMA", "mae": 850.6, "rmse": 1120.4, "mape": 2.95, "r2": 0.760},
-    ]
-
-    for sm in all_standard_models:
-        if sm["name"].upper() not in found_names:
-            result.append(
-                ModelMetricsResponse(
-                    modelName=sm["name"],
-                    mae=sm["mae"],
-                    rmse=sm["rmse"],
-                    mape=sm["mape"],
-                    r2=sm["r2"],
-                    trainDate="05/09/2026"
-                )
-            )
-
-    return result
+    return sorted(result, key=lambda m: m.rmse)
 
 def get_forecast_dashboard(
     db: Session, commodity_id: int = 2, model_name: str = "LSTM", days: int = 10
@@ -71,23 +53,25 @@ def get_forecast_dashboard(
         raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
 
     # Get recent historical prices
-    history = (
-        db.query(PriceHistory)
-        .filter(PriceHistory.commodity_id == commodity_id)
-        .order_by(desc(PriceHistory.record_date))
-        .limit(4)
-        .all()
-    )
-    history = list(reversed(history))
+    all_history = observations(db, commodity_id)
+    history = all_history[-30:]
 
+    from app.services.job_service import MODEL_NAMES
+    if model_name.upper() not in MODEL_NAMES:
+        raise HTTPException(400, "Thuật toán không được hỗ trợ")
+    latest_training_date = db.query(func.max(Forecast.training_date)).filter(
+        Forecast.commodity_id == commodity_id, Forecast.model_name.ilike(model_name)
+    ).scalar()
     # Get forecasts for this model
     forecast_rows = (
         db.query(Forecast)
         .filter(
             Forecast.commodity_id == commodity_id,
-            Forecast.model_name.ilike(model_name)
+            Forecast.model_name.ilike(model_name),
+            Forecast.training_date == latest_training_date,
+            Forecast.forecast_date > history[-1].record_date if history else True
         )
-        .order_by(Forecast.forecast_date)
+        .order_by(Forecast.forecast_date, desc(Forecast.training_date), desc(Forecast.id))
         .limit(days)
         .all()
     )
@@ -119,6 +103,14 @@ def get_forecast_dashboard(
 
     if forecast_rows:
         first_f = forecast_rows[0]
+        run = db.get(TrainingRun, first_f.training_run_id) if first_f.training_run_id else None
+        if not run or run.dataset_hash != fingerprint(modeling_rows(all_history)):
+            raise HTTPException(409, "Dữ liệu đã thay đổi hoặc dự báo cũ chưa có nguồn đầu vào được xác minh. Hãy thu thập đủ lịch sử và huấn luyện lại.")
+        training = json.loads(run.metadata_json)
+        training.pop("snapshot", None)
+        training.update(run_id=run.id, dataset_hash=run.dataset_hash, trained_at=run.created_at.isoformat(),
+                        stale_days=max(0, (date.today() - history[-1].record_date).days),
+                        interval_note="Dải ước lượng ±1,96 RMSE; chưa kiểm chứng độ bao phủ 95%.")
         if first_f.mae is not None:
             latest_metrics = ModelMetricsResponse(
                 modelName=model_name,
@@ -126,13 +118,13 @@ def get_forecast_dashboard(
                 rmse=float(first_f.rmse) if first_f.rmse else 0.0,
                 mape=float(first_f.mape) if first_f.mape else 0.0,
                 r2=float(first_f.r2) if first_f.r2 else 0.0,
-                trainDate=first_f.training_date.strftime("%d/%m/%Y") if first_f.training_date else "28/08/2026"
+                trainDate=first_f.training_date.strftime("%d/%m/%Y") if first_f.training_date else "N/A"
             )
 
         for i, f in enumerate(forecast_rows):
             forecast_data.append(
                 ForecastPointResponse(
-                    date=f.forecast_date.strftime(f"%d/%m (T+{i+1})"),
+                    date=f.forecast_date.isoformat(),
                     predictedPrice=float(f.predicted_price),
                     lowerCI=float(f.lower_ci),
                     upperCI=float(f.upper_ci),
@@ -140,34 +132,13 @@ def get_forecast_dashboard(
                 )
             )
     else:
-        # Tự động gọi PricePredictor để dự báo theo thời gian thực nếu chưa có bản ghi trong bảng forecast
-        from ml_pipeline.predictor import PricePredictor
-        predictor = PricePredictor(commodity.code, db=db)
-        pred_res = predictor.forecast(model_name=model_name, days=days, use_cache=True)
-        m = pred_res.get("metrics", {})
-        latest_metrics = ModelMetricsResponse(
-            modelName=model_name,
-            mae=float(m.get("mae", 0.0)),
-            rmse=float(m.get("rmse", 0.0)),
-            mape=float(m.get("mape", 0.0)),
-            r2=float(m.get("r2", 0.5)),
-            trainDate="Hôm nay"
-        )
-        for i, pt in enumerate(pred_res.get("forecast", [])):
-            forecast_data.append(
-                ForecastPointResponse(
-                    date=f"{pt['display_date']} (T+{i+1})",
-                    predictedPrice=float(pt["yhat"]),
-                    lowerCI=float(pt["yhat_lower"]),
-                    upperCI=float(pt["yhat_upper"]),
-                    isForecast=True
-                )
-            )
+        raise HTTPException(409, "Chưa có dự báo phù hợp với dữ liệu mới nhất. Hãy huấn luyện lại mô hình trong trang quản trị.")
 
     return ForecastDashboardResponse(
         commodity=CommodityResponse.model_validate(commodity),
         modelName=model_name,
         metrics=latest_metrics,
-        forecastData=forecast_data
+        forecastData=forecast_data,
+        training=training
     )
 

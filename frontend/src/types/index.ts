@@ -96,6 +96,7 @@ export interface AdminStats {
 }
 
 export interface AdminPriceItem {
+  provenance?: string;
   id: number;
   commodityId: number;
   commodityName: string;
@@ -111,11 +112,14 @@ export interface AdminUserItem {
   id: number;
   email: string;
   fullName: string;
-  role: 'admin' | 'analyst';
+  role: 'admin' | 'analyst' | 'user';
+  isActive?: boolean;
   createdAt?: string;
 }
 
 export interface TaskRunResult {
+  taskId?: number;
+  progress?: number;
   taskName: string;
   status: string;
   message: string;

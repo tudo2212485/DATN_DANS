@@ -33,7 +33,7 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
             detail=f"Email '{payload.email}' đã được đăng ký trong hệ thống."
         )
     
-    role = payload.role if payload.role in ["admin", "analyst", "user"] else "analyst"
+    role = "user"
     
     new_user = User(
         email=email_clean,
@@ -66,7 +66,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
             detail="Email hoặc mật khẩu không chính xác."
         )
 
-    if hasattr(user, 'is_active') and not user.is_active:
+    if not user.is_active or user.role.endswith("_disabled"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản này đã bị tạm khóa bởi Quản trị viên. Vui lòng liên hệ để được hỗ trợ."

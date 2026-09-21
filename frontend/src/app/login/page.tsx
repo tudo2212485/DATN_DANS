@@ -28,12 +28,14 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Email hoặc mật khẩu không chính xác');
+        const error = await response.json().catch(() => ({}));
+        throw new Error(typeof error.detail === 'string' ? error.detail : 'Không thể đăng nhập');
       }
 
       const data = await response.json();
       setToken(data.access_token, data.user);
-      router.push('/');
+      const target = new URLSearchParams(window.location.search).get('redirect');
+      router.push(target?.startsWith('/') && !target.startsWith('//') ? target : '/');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Đã có lỗi xảy ra khi đăng nhập');

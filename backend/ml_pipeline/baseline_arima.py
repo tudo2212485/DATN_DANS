@@ -64,7 +64,7 @@ def run_arima(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessi
     train, test = prices[:train_size], prices[train_size:]
     
     if len(train) == 0 or len(test) == 0:
-        return
+        raise ValueError("Không đủ dữ liệu cho ARIMA")
         
     # Find best order on train set
     best_order, _ = optimize_arima(train)
@@ -119,12 +119,13 @@ def run_arima(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_sessi
             mae=float(mae),
             rmse=float(rmse),
             mape=float(mape),
-            r2=float(r2) if r2 > 0 else 0.5,
+            r2=float(r2),
             training_date=datetime.now().date()
         ))
     db_session.add_all(records)
     db_session.commit()
     print(f"Saved {horizon} forecasts for {commodity_name} using ARIMA.")
+    return len(records)
 
 if __name__ == "__main__":
     db = SessionLocal()

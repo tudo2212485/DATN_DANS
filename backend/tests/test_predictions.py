@@ -178,10 +178,13 @@ def test_api_predictions_metrics(client, db_session):
     assert isinstance(data["models"], list)
 
 
-def test_api_predictions_retrain(client):
+def test_api_predictions_retrain(client, monkeypatch):
     """Kiểm tra Endpoint POST /api/v1/predictions/retrain chạy ngầm"""
-    response = client.post("/api/v1/predictions/retrain")
+    assert client.post("/api/v1/predictions/retrain").status_code == 401
+    monkeypatch.setattr("app.api.v1.endpoints.admin.run_job", lambda *args: None)
+    token = client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": "Admin123!"}).json()["access_token"]
+    response = client.post("/api/v1/predictions/retrain", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "RUNNING"
-    assert "Machine Learning" in data["task_name"]
+    assert data["task_id"] > 0

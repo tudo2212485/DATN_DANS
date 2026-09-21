@@ -37,19 +37,22 @@ export default function CommodityDetailPage() {
   const [forecastPoints, setForecastPoints] = useState<ForecastPoint[]>([]);
   const [metrics, setMetrics] = useState<ModelMetrics>({
     modelName: 'LSTM',
-    mae: 470.5,
-    rmse: 680.0,
-    mape: 1.12,
-    r2: 0.942,
-    trainDate: '2026-09-05',
+    mae: 0,
+    rmse: 0,
+    mape: 0,
+    r2: 0,
+    trainDate: 'N/A',
   });
 
   const [selectedModel, setSelectedModel] = useState<string>('LSTM');
   const [selectedDays, setSelectedDays] = useState<number>(7);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState('');
 
   const loadCommodityAndForecast = async () => {
     setIsLoading(true);
+    setError('');
+    setForecastPoints([]);
     try {
       // 1. Lấy thông tin commodity
       const allComms = await fetchCommoditiesOverview();
@@ -63,7 +66,7 @@ export default function CommodityDetailPage() {
         if (fRes.metrics) setMetrics(fRes.metrics);
       }
     } catch (e) {
-      console.error('Error loading commodity details:', e);
+      setError(e instanceof Error ? e.message : 'Không tải được chi tiết nông sản');
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +109,7 @@ export default function CommodityDetailPage() {
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">{error}</p>}
       {/* Top Breadcrumb & Return button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border-subtle">
         <div className="flex items-center gap-3">

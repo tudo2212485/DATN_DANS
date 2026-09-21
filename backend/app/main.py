@@ -5,22 +5,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from datetime import datetime, timezone
 
 from app.core.config import settings
 from app.core.database import engine, Base, get_db
 from app.api.v1.api import api_router
 from app.core.scheduler import start_scheduler, stop_scheduler
+from app.core.schema_upgrade import upgrade_existing_schema
 
 logger = logging.getLogger("app.main")
 
 # Khởi tạo các bảng nếu chưa có
 try:
+    upgrade_existing_schema()
     Base.metadata.create_all(bind=engine)
 except Exception as e:
     logger.warning(f"Warning: Unable to connect to DB at startup: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.models.models import BackgroundJob
+    from app.core.database import SessionLocal
+    from datetime import datetime
+    with SessionLocal() as db:
+        db.query(BackgroundJob).filter(BackgroundJob.status == "RUNNING").update({
+            "status": "FAILED", "message": "Tác vụ bị gián đoạn khi máy chủ khởi động lại", "finished_at": datetime.now()})
+        db.commit()
     # Khởi động Background Scheduler
     start_scheduler()
     yield
@@ -87,7 +97,7 @@ def health_check(db: Session = Depends(get_db)):
         "status": "healthy" if db_status == "connected" else "degraded",
         "database": db_status,
         "version": settings.VERSION,
-        "timestamp": str(text("CURRENT_TIMESTAMP"))
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 if __name__ == "__main__":

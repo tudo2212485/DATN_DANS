@@ -41,6 +41,8 @@ def get_current_user(
             detail="Không tìm thấy tài khoản người dùng tương ứng",
         )
     
+    if not user.is_active or user.role.endswith("_disabled"):
+        raise HTTPException(403, "Tài khoản đã bị khóa")
     return user
 
 def get_optional_current_user(

@@ -203,6 +203,30 @@ export const Sidebar: React.FC = () => {
                 )}
               </Link>
             )}
+
+            <Link
+              href="/history"
+              title={isCollapsed ? 'Lịch sử giá' : undefined}
+              className={`flex items-center ${
+                isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3.5 py-2.5'
+              } rounded-xl text-xs font-bold transition-all duration-200 group relative ${
+                pathname === '/history'
+                  ? 'bg-brand-light text-brand shadow-xs border border-brand/25'
+                  : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Database
+                  className={`w-4 h-4 transition-transform group-hover:scale-110 shrink-0 ${
+                    pathname === '/history' ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
+                  }`}
+                />
+                {!isCollapsed && <span className="tracking-tight truncate">Lịch sử giá</span>}
+              </div>
+              {isCollapsed && pathname === '/history' && (
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
+              )}
+            </Link>
           </nav>
         </div>
       </div>
@@ -220,24 +244,24 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="flex flex-col truncate">
               <span className="text-xs font-bold text-primary-text leading-tight flex items-center gap-1 truncate max-w-[105px]">
-                {user?.full_name || 'Quản trị viên'}
+                {user?.full_name || 'Khách'}
               </span>
               <span className="text-[11px] text-secondary-text font-medium truncate">
-                {user?.role === 'admin' ? 'Quản trị viên' : 'Nhà phân tích'}
+                {!user ? 'Chưa đăng nhập' : user.role === 'admin' ? 'Quản trị viên' : user.role === 'analyst' ? 'Nhà phân tích' : 'Người dùng'}
               </span>
             </div>
           )}
         </div>
 
         <div className={`flex items-center ${isCollapsed ? 'flex-col gap-1' : 'gap-1'}`}>
-          {!isCollapsed && (
+          {!isCollapsed && user && (
             <div title="Tài khoản đã xác thực" className="text-brand p-1">
               <ShieldCheck className="w-4 h-4" />
             </div>
           )}
           <button 
             onClick={handleLogout}
-            title="Đăng xuất"
+            title={user ? 'Đăng xuất' : 'Đăng nhập'}
             className="text-secondary-text hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />

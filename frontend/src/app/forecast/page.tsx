@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import TrainingSummary from '@/components/forecast/TrainingSummary';
+import {TrainingMetadata, fetchHistorySources, HistorySource} from '@/lib/api';
 import Header from '@/components/layout/Header';
 import {
   ComposedChart,
@@ -12,11 +15,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import {
-  COMMODITIES_DATA,
-  MODEL_METRICS_LIST,
-  FORECAST_PREDICTIONS_SAMPLE,
-} from '@/lib/mockData';
 import { ModelMetrics, ForecastPoint, ModelComparisonMetrics } from '@/types';
 import { fetchForecastDashboard, fetchModelComparison } from '@/lib/api';
 import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
@@ -25,24 +23,37 @@ import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp
 type SupportedModel = 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'Random Forest';
 
 export default function ForecastPage() {
+  const [training, setTraining] = useState<TrainingMetadata>();
+  const [catalog, setCatalog] = useState<HistorySource[]>([]);
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('commodity_id'));
+    if(id > 0) setSelectedCommodityId(id);
+    fetchHistorySources().then(setCatalog).catch(e=>setError(e.message));
+  }, []);
   const [selectedCommodityId, setSelectedCommodityId] = useState<number>(2); // Coffee
   const [selectedModel, setSelectedModel] = useState<SupportedModel>('LSTM');
   const [forecastDays, setForecastDays] = useState<number>(10);
 
-  const [metrics, setMetrics] = useState<ModelMetrics>(MODEL_METRICS_LIST.LSTM);
-  const [forecastData, setForecastData] = useState<ForecastPoint[]>(FORECAST_PREDICTIONS_SAMPLE);
+  const [metrics, setMetrics] = useState<ModelMetrics>({ modelName: 'LSTM', mae: 0, rmse: 0, mape: 0, r2: 0, trainDate: 'N/A' });
+  const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
   const [comparisonData, setComparisonData] = useState<ModelComparisonMetrics[]>([]);
   const [metricToDisplay, setMetricToDisplay] = useState<'mae' | 'rmse' | 'mape' | 'r2'>('mae');
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState('');
 
   const currentCommodity =
-    COMMODITIES_DATA.find((c) => c.id === selectedCommodityId) || COMMODITIES_DATA[1];
+    catalog.find((c) => c.id === selectedCommodityId) || {name:'Nông sản',unit:'',code:''};
 
   // Fetch forecast data dynamically from FastAPI PostgreSQL backend
   useEffect(() => {
     let isMounted = true;
     async function loadForecast() {
       setLoading(true);
+      setError('');
+      setForecastData([]);
+      setComparisonData([]);
+      setTraining(undefined);
+      setMetrics({modelName:selectedModel, mae:0, rmse:0, mape:0, r2:0, trainDate:'N/A'});
       try {
         const [res, compRes] = await Promise.all([
           fetchForecastDashboard(selectedCommodityId, selectedModel, forecastDays),
@@ -50,13 +61,14 @@ export default function ForecastPage() {
         ]);
         if (isMounted) {
           if (res?.metrics) setMetrics(res.metrics);
+          setTraining(res.training);
           if (res?.forecastData && res.forecastData.length > 0) {
             setForecastData(res.forecastData);
           }
           if (compRes) setComparisonData(compRes);
         }
       } catch (err) {
-        console.error('Error fetching forecast:', err);
+        if (isMounted) setError(err instanceof Error ? err.message : 'Không tải được dữ liệu dự báo');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -79,7 +91,7 @@ export default function ForecastPage() {
 
   const handleExportCSV = () => {
     if (!forecastOnlyData || forecastOnlyData.length === 0) return;
-    const headers = ['Ngày', 'Nông sản', 'Mô hình', `Giá dự báo (${currentCommodity.unit})`, '95% CI Lower', '95% CI Upper'];
+    const headers = ['Ngày', 'Nông sản', 'Mô hình', `Giá dự báo (${currentCommodity.unit})`, 'Ngưỡng dưới ước lượng', 'Ngưỡng trên ước lượng'];
     const rows = forecastOnlyData.map(item => [
       item.date,
       currentCommodity.name,
@@ -101,10 +113,13 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
+      {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">{error}</p>}
+      <Link className="inline-block text-brand underline" href={`/history?commodity_id=${selectedCommodityId}`}>Xem / thu thập lịch sử giá →</Link>
+      {training && <TrainingSummary training={training} commodityId={selectedCommodityId} rmse={metrics.rmse}/>}
       {/* Header */}
       <Header
         title="Mô hình & Dự báo Giá Nông sản"
-        subtitle="Dự báo chuỗi thời gian kèm khoảng tin cậy 95% (Confidence Interval) & Đánh giá sai số từ Database"
+        subtitle="Dự báo từ lịch sử có nguồn, kèm dải ước lượng và đánh giá sai số theo thời gian"
         showLiveBadge={false}
       />
 
@@ -121,7 +136,7 @@ export default function ForecastPage() {
               onChange={(e) => setSelectedCommodityId(Number(e.target.value))}
               className="bg-canvas border border-border-subtle text-primary-text text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 transition-all cursor-pointer"
             >
-              {COMMODITIES_DATA.map((c) => (
+              {catalog.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.unit})
                 </option>
@@ -177,12 +192,12 @@ export default function ForecastPage() {
         {/* Model Meta Badge */}
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-canvas border border-border-subtle text-primary-text text-xs font-semibold">
           <BrainCircuit className="w-4 h-4 text-brand" />
-          <span>{loading ? 'Đang tải dữ liệu...' : `Mô hình: PyTorch ${metrics.modelName || selectedModel} (Epochs: 50 | Batch: 32)`}</span>
+          <span>{loading ? 'Đang tải dữ liệu...' : `Mô hình: ${metrics.modelName || selectedModel} · huấn luyện ${metrics.trainDate}`}</span>
         </div>
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {forecastData.length > 0 && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* MAE */}
         <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
@@ -232,7 +247,7 @@ export default function ForecastPage() {
           </div>
           <span className="text-[11px] text-secondary-text mt-1 block">Goodness of Fit (Tối đa 1.0)</span>
         </div>
-      </div>
+      </div>}
 
       {/* Model Comparison Section */}
       {comparisonData.length > 0 && (
@@ -248,10 +263,10 @@ export default function ForecastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
           <div>
             <h2 className="text-base font-bold text-primary-text tracking-tight">
-              Biểu đồ Dự báo {currentCommodity.name} & Dải Tin Cậy 95% ({selectedModel})
+              Biểu đồ Dự báo {currentCommodity.name} & Dải ước lượng ({selectedModel})
             </h2>
             <p className="text-xs text-secondary-text mt-0.5 font-medium">
-              Đường xanh liền: Giá thực tế · Đường cam đứt: Dự báo {selectedModel} · Vùng bóng: Khoảng tin cậy 95%
+              Đường xanh liền: Giá lịch sử · Đường cam đứt: Dự báo {selectedModel} · Vùng bóng: Dải ước lượng
             </p>
           </div>
 
@@ -266,7 +281,7 @@ export default function ForecastPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40" />
-              <span className="text-secondary-text">95% CI</span>
+              <span className="text-secondary-text">Ước lượng</span>
             </div>
           </div>
         </div>
@@ -274,7 +289,7 @@ export default function ForecastPage() {
         {/* Recharts ComposedChart (~390px) */}
         <div className="w-full h-[390px] pt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={displayForecastData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+            <ComposedChart data={displayForecastData.map(p=>({...p,predictedPrice:p.isForecast?p.predictedPrice:null,ciRange:p.isForecast?p.ciRange:null}))} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="forecastCIGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.25} />
@@ -322,7 +337,7 @@ export default function ForecastPage() {
                           </div>
                         )}
                         <div className="text-secondary-text flex justify-between gap-4 pt-1 border-t border-border-subtle/60 text-[11px] font-mono">
-                          <span>95% CI:</span>
+                          <span>Ước lượng:</span>
                           <span>
                             [{data.lowerCI.toLocaleString('vi-VN')} - {data.upperCI.toLocaleString('vi-VN')}]
                           </span>
@@ -341,7 +356,7 @@ export default function ForecastPage() {
                 strokeDasharray="4 4"
                 strokeWidth={1}
                 fill="url(#forecastCIGradient)"
-                name="Khoảng tin cậy 95%"
+                name="Dải ước lượng"
               />
               {/* Actual price line (solid olive green) */}
               <Line
@@ -376,7 +391,7 @@ export default function ForecastPage() {
             </h3>
             <p className="text-xs text-secondary-text mt-0.5 flex items-center gap-1.5">
               <ArrowDownUp className="w-3.5 h-3.5 text-brand" />
-              <span>Dữ liệu chuỗi thời gian kết hợp khoảng tin cậy 95% theo từng phiên</span>
+              <span>Ngày dự báo tính sau mốc lịch sử cuối cùng, kèm dải ước lượng</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -403,8 +418,8 @@ export default function ForecastPage() {
                 <th className="py-3 px-4">Ngày giao dịch</th>
                 <th className="py-3 px-4">Mô hình</th>
                 <th className="py-3 px-4">Giá dự báo ({currentCommodity.unit})</th>
-                <th className="py-3 px-4">Ngưỡng dưới (95% CI)</th>
-                <th className="py-3 px-4">Ngưỡng trên (95% CI)</th>
+                <th className="py-3 px-4">Ngưỡng dưới (ước lượng)</th>
+                <th className="py-3 px-4">Ngưỡng trên (ước lượng)</th>
                 <th className="py-3 px-4 text-right">Biến động</th>
               </tr>
             </thead>

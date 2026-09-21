@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Ensure UTF-8 output on Windows
@@ -56,12 +56,13 @@ def save_forecast(db_session, commodity_id, model_name, preds, std_err, metrics,
             mae=float(metrics['mae']),
             rmse=float(metrics['rmse']),
             mape=float(metrics['mape']),
-            r2=float(metrics['r2']) if metrics['r2'] > 0 else 0.5,
+            r2=float(metrics['r2']),
             training_date=datetime.now().date()
         ))
     db_session.add_all(records)
     db_session.commit()
     print(f"Saved forecasts for {model_name}.")
+    return len(records)
 
 def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_session, horizon: int = 30):
     print(f"\n--- Training Tabular ML Models for {commodity_name} ---")
@@ -73,8 +74,7 @@ def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_s
     y_train, y_test = y[:train_size], y[train_size:]
     
     if len(X_train) == 0 or len(X_test) == 0:
-        print("Not enough data to train.")
-        return
+        raise ValueError("Không đủ dữ liệu huấn luyện và kiểm thử")
         
     base_price = np.mean(y)
     
@@ -100,7 +100,7 @@ def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_s
         'max_depth': [3, 5],
         'learning_rate': [0.05, 0.1]
     }
-    grid_search = GridSearchCV(estimator=xgb_base, param_grid=param_grid, cv=3, scoring='neg_mean_absolute_error')
+    grid_search = GridSearchCV(estimator=xgb_base, param_grid=param_grid, cv=TimeSeriesSplit(n_splits=3), scoring='neg_mean_absolute_error')
     grid_search.fit(X_train, y_train)
     xgb_model = grid_search.best_estimator_
     
@@ -126,36 +126,22 @@ def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_s
     rf_model.fit(X, y)
     xgb_model.fit(X, y)
     
-    # Generate future predictions autoregressively (simple approach)
-    # Using the last row of df_feat to start
-    last_row = df_feat.iloc[-1].copy()
-    
-    rf_future_preds = []
-    xgb_future_preds = []
-    
-    curr_rf_row = last_row.copy()
-    curr_xgb_row = last_row.copy()
-    
-    for i in range(1, horizon + 1):
-        # We assume exogenous variables stay constant for simplicity in this demo future loop
-        # Extract feature arrays
-        rf_x = curr_rf_row[feature_names].values.reshape(1, -1)
-        xgb_x = curr_xgb_row[feature_names].values.reshape(1, -1)
-        
-        rf_p = rf_model.predict(rf_x)[0]
-        xgb_p = xgb_model.predict(xgb_x)[0]
-        
-        rf_future_preds.append(rf_p)
-        xgb_future_preds.append(xgb_p)
-        
-        # Update lags for next iteration (simple shift) - in reality needs full recompute
-        for lag in [14, 7, 3, 2]:
-            if f'price_lag_{lag}' in feature_names and f'price_lag_{lag-1}' in feature_names:
-                curr_rf_row[f'price_lag_{lag}'] = curr_rf_row[f'price_lag_{lag-1}']
-                curr_xgb_row[f'price_lag_{lag}'] = curr_xgb_row[f'price_lag_{lag-1}']
-        
-        curr_rf_row['price_lag_1'] = rf_p
-        curr_xgb_row['price_lag_1'] = xgb_p
+    # Recompute all date, lag and rolling features for each new forecast day.
+    def future_prices(model):
+        history = df.copy()
+        predictions = []
+        for _ in range(horizon):
+            next_row = history.iloc[-1].copy()
+            next_row['record_date'] = pd.to_datetime(next_row['record_date']) + pd.Timedelta(days=1)
+            history = pd.concat([history, pd.DataFrame([next_row])], ignore_index=True)
+            features = create_features(history, target_col='price').iloc[-1][feature_names]
+            prediction = float(max(model.predict(features.to_numpy(dtype=float).reshape(1, -1))[0], 0))
+            history.loc[history.index[-1], 'price'] = prediction
+            predictions.append(prediction)
+        return predictions
+
+    rf_future_preds = future_prices(rf_model)
+    xgb_future_preds = future_prices(xgb_model)
         
     last_date = df['record_date'].iloc[-1]
     if hasattr(last_date, 'date'): last_date = last_date.date()
@@ -163,6 +149,7 @@ def run_ml_models(commodity_id: int, commodity_name: str, df: pd.DataFrame, db_s
     
     save_forecast(db_session, commodity_id, "Random Forest", rf_future_preds, rf_metrics['rmse'], rf_metrics, future_dates, base_price)
     save_forecast(db_session, commodity_id, "XGBoost", xgb_future_preds, xgb_metrics['rmse'], xgb_metrics, future_dates, base_price)
+    return len(rf_future_preds) + len(xgb_future_preds)
 
 if __name__ == "__main__":
     db = SessionLocal()

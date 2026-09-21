@@ -9,13 +9,14 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === '/login';
+  const isPublicPage = pathname === '/history' || pathname === '/forecast';
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) {
       setIsAuthenticated(false);
-      if (pathname !== '/login') {
+      if (pathname !== '/login' && !isPublicPage) {
         router.replace('/login');
       }
     } else {
@@ -24,7 +25,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         router.replace('/');
       }
     }
-  }, [pathname, router]);
+  }, [pathname, router, isPublicPage]);
 
   // Khi đang ở trang Login hoặc Admin Dashboard độc lập
   if (isLoginPage) {
@@ -45,7 +46,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   }
 
   // Khi chưa có Token và đang chuyển hướng
-  if (isAuthenticated === false) {
+  if (isAuthenticated === false && !isPublicPage) {
     return (
       <div className="flex items-center justify-center min-h-screen w-full bg-[#F9F6F2]">
         <div className="flex flex-col items-center gap-3">

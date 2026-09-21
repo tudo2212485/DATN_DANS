@@ -1,5 +1,6 @@
 'use client';
 
+import { getUser } from '@/lib/auth';
 import React, { useState, useEffect } from 'react';
 import {
   fetchAdminUsersApi,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 
 export default function DashboardUsersPage() {
+  const currentUserId = getUser()?.id;
+  const [busy, setBusy] = useState(false);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -37,7 +40,8 @@ export default function DashboardUsersPage() {
       const data = await fetchAdminUsersApi();
       setUsers(data);
     } catch (e) {
-      console.error(e);
+      setUsers([]);
+      setToastMessage({text: e instanceof Error ? e.message : 'Không tải được tài khoản', type: 'error'});
     } finally {
       setLoading(false);
     }
@@ -49,6 +53,7 @@ export default function DashboardUsersPage() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBusy(true);
     try {
       await createAdminUserApi(userForm);
       setUserModalOpen(false);
@@ -57,27 +62,29 @@ export default function DashboardUsersPage() {
       await loadUsers();
     } catch (err: unknown) {
       setToastMessage({ text: err instanceof Error ? err.message : 'Không thể tạo người dùng', type: 'error' });
-    }
+    } finally { setBusy(false); }
   };
 
   const handleRoleChange = async (userId: number, newRole: string) => {
+    setBusy(true);
     try {
       await updateUserRoleApi(userId, newRole);
       setToastMessage({ text: `Đã cập nhật quyền thành '${newRole}' thành công`, type: 'success' });
       await loadUsers();
     } catch (err: unknown) {
       setToastMessage({ text: err instanceof Error ? err.message : 'Không thể đổi quyền', type: 'error' });
-    }
+    } finally { setBusy(false); }
   };
 
   const handleToggleStatus = async (userId: number) => {
+    setBusy(true);
     try {
       const res = await toggleUserStatusApi(userId);
       setToastMessage({ text: res.message || 'Đã thay đổi trạng thái tài khoản', type: 'success' });
       await loadUsers();
     } catch (err: unknown) {
       setToastMessage({ text: err instanceof Error ? err.message : 'Không thể thay đổi trạng thái', type: 'error' });
-    }
+    } finally { setBusy(false); }
   };
 
   return (
@@ -161,7 +168,7 @@ export default function DashboardUsersPage() {
             </thead>
             <tbody className="divide-y divide-border-subtle">
               {users.map((u) => {
-                const isDisabled = u.role.includes('_disabled');
+                const isDisabled = u.isActive === false || u.role.includes('_disabled');
                 const baseRole = u.role.replace('_disabled', '');
                 return (
                   <tr key={u.id} className="hover:bg-canvas/60 transition">
@@ -170,7 +177,7 @@ export default function DashboardUsersPage() {
                     <td className="py-3.5 px-4 font-mono text-secondary-text">{u.email}</td>
                     <td className="py-3.5 px-4">
                       <select
-                        value={baseRole}
+                        disabled={busy || u.id === currentUserId} value={baseRole}
                         onChange={(e) => handleRoleChange(u.id, e.target.value)}
                         className="bg-canvas border border-border-subtle text-xs text-primary-text rounded-lg px-2.5 py-1 focus:outline-none focus:border-brand"
                       >
@@ -192,7 +199,7 @@ export default function DashboardUsersPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
-                        onClick={() => handleToggleStatus(u.id)}
+                        disabled={busy || u.id === currentUserId} onClick={() => handleToggleStatus(u.id)}
                         className={`p-1.5 rounded-lg text-xs transition ${
                           isDisabled
                             ? 'text-brand hover:bg-brand-light'
@@ -279,7 +286,7 @@ export default function DashboardUsersPage() {
                   Hủy Bỏ
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={busy}
                   className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold shadow-xs transition"
                 >
                   Tạo Người Dùng

@@ -8,8 +8,13 @@
 DROP TABLE IF EXISTS alert_logs CASCADE;
 DROP TABLE IF EXISTS alert_rules CASCADE;
 DROP TABLE IF EXISTS forecasts CASCADE;
+DROP TABLE IF EXISTS training_runs CASCADE;
+DROP TABLE IF EXISTS price_revisions CASCADE;
+DROP TABLE IF EXISTS periodic_prices CASCADE;
 DROP TABLE IF EXISTS price_history CASCADE;
 DROP TABLE IF EXISTS commodities CASCADE;
+DROP TABLE IF EXISTS background_jobs CASCADE;
+DROP TABLE IF EXISTS system_settings CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- ------------------------------------------------------------------------------
@@ -27,6 +32,26 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_email ON users(email);
+
+-- Cấu hình bền vững cho mô hình mặc định đang phục vụ API.
+CREATE TABLE system_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trạng thái thật của tác vụ thu thập dữ liệu và huấn luyện mô hình.
+CREATE TABLE background_jobs (
+    id SERIAL PRIMARY KEY,
+    kind VARCHAR(30) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'RUNNING',
+    message TEXT NOT NULL DEFAULT 'Đang chờ xử lý',
+    records_processed INT NOT NULL DEFAULT 0,
+    progress INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP
+);
+CREATE INDEX idx_background_jobs_kind ON background_jobs(kind);
 
 -- ------------------------------------------------------------------------------
 -- 2. BẢNG NÔNG SẢN (commodities)
@@ -55,6 +80,8 @@ CREATE TABLE price_history (
     price_max NUMERIC(14, 2),                    -- Mức giá cao nhất
     volume NUMERIC(16, 2) DEFAULT 0,             -- Khối lượng giao dịch ước tính (tấn)
     source VARCHAR(100) DEFAULT 'Sở NN&PTNT / Hiệp hội Nông sản',
+    provenance VARCHAR(30) NOT NULL DEFAULT 'unverified', -- collected, reviewed, unverified
+    source_details TEXT,                         -- JSON mô tả đúng mặt hàng, địa bàn và loại giá tại nguồn
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_commodity_date UNIQUE (commodity_id, record_date)
 );
@@ -63,12 +90,51 @@ CREATE INDEX idx_price_history_commodity_date ON price_history(commodity_id, rec
 CREATE INDEX idx_price_history_date ON price_history(record_date);
 
 -- ------------------------------------------------------------------------------
--- 4. BẢNG DỰ BÁO GIÁ (forecasts)
+-- 4. BẢNG GIÁ THEO KỲ CÔNG BỐ (không nội suy thành dữ liệu ngày)
+-- ------------------------------------------------------------------------------
+CREATE TABLE periodic_prices (
+    id SERIAL PRIMARY KEY,
+    commodity_id INT NOT NULL REFERENCES commodities(id) ON DELETE CASCADE,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    published_date DATE NOT NULL,
+    buying_price NUMERIC(14, 2) NOT NULL,
+    selling_price NUMERIC(14, 2) NOT NULL,
+    unit VARCHAR(30) NOT NULL,
+    specification VARCHAR(150) NOT NULL,
+    market VARCHAR(150) NOT NULL,
+    source_url TEXT NOT NULL UNIQUE,
+    attribution TEXT NOT NULL,
+    collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_periodic_prices_commodity_period ON periodic_prices(commodity_id, period_start DESC);
+
+-- Bản lưu trước khi thay dữ liệu chưa xác minh bằng dữ liệu thu thập/xác nhận.
+CREATE TABLE price_revisions (
+    id SERIAL PRIMARY KEY,
+    price_id BIGINT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bản chụp đầu vào giúp tái lập và kiểm tra từng lần huấn luyện.
+CREATE TABLE training_runs (
+    id SERIAL PRIMARY KEY,
+    commodity_id INT NOT NULL REFERENCES commodities(id) ON DELETE CASCADE,
+    dataset_hash VARCHAR(64) NOT NULL,
+    metadata_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_training_runs_commodity ON training_runs(commodity_id, created_at DESC);
+
+-- ------------------------------------------------------------------------------
+-- 5. BẢNG DỰ BÁO GIÁ (forecasts)
 -- ------------------------------------------------------------------------------
 CREATE TABLE forecasts (
     id BIGSERIAL PRIMARY KEY,
     commodity_id INT NOT NULL REFERENCES commodities(id) ON DELETE CASCADE,
     model_name VARCHAR(50) NOT NULL,             -- LSTM, Prophet, ARIMA
+    training_run_id INT REFERENCES training_runs(id),
     forecast_date DATE NOT NULL,                 -- Ngày trong tương lai được dự báo (T+1 -> T+30)
     predicted_price NUMERIC(14, 2) NOT NULL,     -- Giá dự báo điểm (Point estimate)
     lower_ci NUMERIC(14, 2) NOT NULL,            -- Biên dưới khoảng tin cậy 95%
@@ -85,7 +151,7 @@ CREATE TABLE forecasts (
 CREATE INDEX idx_forecasts_lookup ON forecasts(commodity_id, model_name, forecast_date);
 
 -- ------------------------------------------------------------------------------
--- 5. BẢNG QUY TẮC CẢNH BÁO BIẾN ĐỘNG GIÁ (alert_rules)
+-- 6. BẢNG QUY TẮC CẢNH BÁO BIẾN ĐỘNG GIÁ (alert_rules)
 -- ------------------------------------------------------------------------------
 CREATE TABLE alert_rules (
     id SERIAL PRIMARY KEY,
@@ -104,7 +170,7 @@ CREATE INDEX idx_alert_rules_commodity ON alert_rules(commodity_id, is_active);
 CREATE INDEX idx_alert_rules_user ON alert_rules(user_id);
 
 -- ------------------------------------------------------------------------------
--- 6. BẢNG NHẬT KÝ CẢNH BÁO ĐÃ KÍCH HOẠT (alert_logs)
+-- 7. BẢNG NHẬT KÝ CẢNH BÁO ĐÃ KÍCH HOẠT (alert_logs)
 -- ------------------------------------------------------------------------------
 CREATE TABLE alert_logs (
     id BIGSERIAL PRIMARY KEY,

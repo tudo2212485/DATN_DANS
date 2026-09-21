@@ -1,4 +1,8 @@
+import os
 import pytest
+
+# Never migrate or train against the user's database during test collection.
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -18,6 +22,30 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def isolate_background_work(monkeypatch, tmp_path):
+    import app.core.database as database
+    import app.core.scheduler as scheduler
+    import app.api.v1.endpoints.predictions as predictions
+    import app.services.job_service as jobs
+    import app.services.training_service as training
+    import ml_pipeline.observation_scraper as scraper
+    import ml_pipeline.model_trainer as trainer
+    import ml_pipeline.predictor as predictor
+    import ml_pipeline.data_loader as loader
+    import pandas as pd
+    for module in (database, scheduler, predictions, jobs, training, scraper):
+        monkeypatch.setattr(module, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(trainer, "SAVED_MODELS_DIR", str(tmp_path))
+    monkeypatch.setattr(predictor, "SAVED_MODELS_DIR", str(tmp_path))
+    monkeypatch.setattr(loader, "get_exogenous_data", lambda *args: pd.DataFrame())
+    monkeypatch.setattr("app.main.start_scheduler", lambda: None)
+    monkeypatch.setattr("app.main.stop_scheduler", lambda: None)
+    predictor.clear_prediction_cache()
+    yield
+    predictor.clear_prediction_cache()
 
 @pytest.fixture(scope="function")
 def db_session():

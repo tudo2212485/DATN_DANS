@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_db, SessionLocal
+from app.core.deps import require_role
 from app.models.models import Commodity, Forecast
 from app.schemas.schemas import (
     PredictionForecastResponse,
@@ -123,18 +124,12 @@ def _async_retrain_task(commodity_id: Optional[int] = None):
 def trigger_model_retrain(
     commodity_id: Optional[int] = Query(None, description="ID nông sản cần huấn luyện lại (bỏ trống để huấn luyện toàn bộ)"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["admin"])),
 ):
     """
     Kích hoạt tiến trình huấn luyện lại toàn bộ mô hình (Prophet, XGBoost, LSTM)
     chạy nền (Async Execution) không làm nghẽn FastAPI Event Loop.
     """
-    background_tasks.add_task(_async_retrain_task, commodity_id=commodity_id)
-    target_str = f"nông sản ID {commodity_id}" if commodity_id else "toàn bộ danh mục nông sản"
-    return TaskRunResponse(
-        task_name="Huấn luyện mô hình Machine Learning (Retrain)",
-        status="RUNNING",
-        message=f"Đã bắt đầu tác vụ huấn luyện các mô hình (Prophet, XGBoost, PyTorch LSTM) cho {target_str}.",
-        records_processed=0,
-        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
+    from app.api.v1.endpoints.admin import admin_trigger_retrain
+    return admin_trigger_retrain(background_tasks, commodity_id, db, current_user)

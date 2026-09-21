@@ -84,7 +84,7 @@ def test_jwt_tampering_and_expiration():
     expired_token = create_access_token(subject=999, role="admin", expires_delta=timedelta(seconds=-10))
     assert decode_access_token(expired_token) is None
 
-def test_sql_injection_defense_in_commodity_query():
+def test_sql_injection_defense_in_commodity_query(client):
     """Test 6: Kiểm tra tính an toàn chống SQL Injection trên endpoint tra cứu"""
     # Payload injection nguy hiểm
     sqli_payload = "COFFEE' OR '1'='1"
