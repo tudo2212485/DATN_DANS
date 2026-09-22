@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import TrainingSummary from '@/components/forecast/TrainingSummary';
-import {TrainingMetadata, fetchHistorySources, fetchTrainingReadiness, HistorySource} from '@/lib/api';
+import {TrainingMetadata, fetchHistory, fetchHistorySources, fetchTrainingReadiness, HistorySource} from '@/lib/api';
 import Header from '@/components/layout/Header';
 import {
   ComposedChart,
@@ -21,6 +21,8 @@ import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
 import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown, Download } from 'lucide-react';
 
 type SupportedModel = 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'Random Forest';
+type ChartMode = 'forecast' | 'history' | 'periodic' | 'empty';
+type ChartPoint = ForecastPoint & { sellingPrice?: number };
 
 export default function ForecastPage() {
   const [training, setTraining] = useState<TrainingMetadata>();
@@ -56,11 +58,12 @@ export default function ForecastPage() {
   const [forecastDays, setForecastDays] = useState<number>(10);
 
   const [metrics, setMetrics] = useState<ModelMetrics>({ modelName: 'LSTM', mae: 0, rmse: 0, mape: 0, r2: 0, trainDate: 'N/A' });
-  const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
+  const [forecastData, setForecastData] = useState<ChartPoint[]>([]);
   const [comparisonData, setComparisonData] = useState<ModelComparisonMetrics[]>([]);
   const [metricToDisplay, setMetricToDisplay] = useState<'mae' | 'rmse' | 'mape' | 'r2'>('mae');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState('');
+  const [chartMode, setChartMode] = useState<ChartMode>('empty');
 
   const currentCommodity =
     catalog.find((c) => c.id === selectedCommodityId) || {name:'Nông sản',unit:'',code:''};
@@ -75,6 +78,7 @@ export default function ForecastPage() {
       setForecastData([]);
       setComparisonData([]);
       setTraining(undefined);
+      setChartMode('empty');
       setMetrics({modelName:selectedModel, mae:0, rmse:0, mape:0, r2:0, trainDate:'N/A'});
       try {
         const [res, compRes] = await Promise.all([
@@ -86,11 +90,51 @@ export default function ForecastPage() {
           setTraining(res.training);
           if (res?.forecastData && res.forecastData.length > 0) {
             setForecastData(res.forecastData);
+            setChartMode('forecast');
           }
           if (compRes) setComparisonData(compRes);
         }
       } catch (err) {
-        if (isMounted) setError(err instanceof Error ? err.message : 'Không tải được dữ liệu dự báo');
+        const forecastError = err instanceof Error ? err.message : 'Không tải được dữ liệu dự báo';
+        try {
+          const end = new Date();
+          const start = new Date(end);
+          start.setDate(start.getDate() - 1825);
+          const history = await fetchHistory(
+            selectedCommodityId,
+            start.toISOString().slice(0, 10),
+            end.toISOString().slice(0, 10),
+          );
+          if (!isMounted) return;
+          if (history.records.length > 0) {
+            setForecastData(history.records.slice(-180).map((record) => ({
+              date: record.date,
+              actualPrice: record.price,
+              predictedPrice: record.price,
+              lowerCI: record.price,
+              upperCI: record.price,
+              isForecast: false,
+            })));
+            setChartMode('history');
+            setError(`${forecastError} Đang hiển thị dữ liệu lịch sử đã xác minh.`);
+          } else if (history.periodic_records.length > 0) {
+            setForecastData(history.periodic_records.map((record) => ({
+              date: record.published_date,
+              actualPrice: record.buying_price,
+              sellingPrice: record.selling_price,
+              predictedPrice: record.buying_price,
+              lowerCI: record.buying_price,
+              upperCI: record.buying_price,
+              isForecast: false,
+            })));
+            setChartMode('periodic');
+            setError(`${forecastError} Đang hiển thị báo cáo giá mua và giá bán theo kỳ.`);
+          } else {
+            setError(forecastError);
+          }
+        } catch {
+          if (isMounted) setError(forecastError);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -135,7 +179,7 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-      {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">{error}</p>}
+      {error && <p role="alert" className={`p-4 rounded-xl border ${chartMode === 'history' || chartMode === 'periodic' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{error}</p>}
       {selectedCommodityId > 0 && <Link className="inline-block text-brand underline" href={`/history?commodity_id=${selectedCommodityId}`}>Xem / thu thập lịch sử giá →</Link>}
       {training && <TrainingSummary training={training} commodityId={selectedCommodityId} rmse={metrics.rmse}/>}
       {/* Header */}
@@ -214,12 +258,12 @@ export default function ForecastPage() {
         {/* Model Meta Badge */}
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-canvas border border-border-subtle text-primary-text text-xs font-semibold">
           <BrainCircuit className="w-4 h-4 text-brand" />
-          <span>{loading ? 'Đang tải dữ liệu...' : `Mô hình: ${metrics.modelName || selectedModel} · huấn luyện ${metrics.trainDate}`}</span>
+          <span>{loading ? 'Đang tải dữ liệu...' : chartMode === 'forecast' ? `Mô hình: ${metrics.modelName || selectedModel} · huấn luyện ${metrics.trainDate}` : 'Chế độ xem dữ liệu lịch sử'}</span>
         </div>
       </div>
 
       {/* Metric Cards Row */}
-      {forecastData.length > 0 && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {chartMode === 'forecast' && forecastData.length > 0 && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* MAE */}
         <div className="bg-card rounded-2xl border border-border-subtle p-4 shadow-card hover:shadow-hover transition-all">
           <div className="flex items-center justify-between text-secondary-text mb-1">
@@ -285,26 +329,36 @@ export default function ForecastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
           <div>
             <h2 className="text-base font-bold text-primary-text tracking-tight">
-              Biểu đồ Dự báo {currentCommodity.name} & Dải ước lượng ({selectedModel})
+              {chartMode === 'forecast' && `Biểu đồ Dự báo ${currentCommodity.name} & Dải ước lượng (${selectedModel})`}
+              {chartMode === 'history' && `Biểu đồ Lịch sử giá ${currentCommodity.name}`}
+              {chartMode === 'periodic' && `Biểu đồ Giá mua và Giá bán ${currentCommodity.name} theo kỳ`}
+              {chartMode === 'empty' && `Biểu đồ ${currentCommodity.name}`}
             </h2>
             <p className="text-xs text-secondary-text mt-0.5 font-medium">
-              Đường xanh liền: Giá lịch sử · Đường cam đứt: Dự báo {selectedModel} · Vùng bóng: Dải ước lượng
+              {chartMode === 'forecast' && `Đường xanh liền: Giá lịch sử · Đường cam đứt: Dự báo ${selectedModel} · Vùng bóng: Dải ước lượng`}
+              {chartMode === 'history' && 'Đường xanh: Giá lịch sử có nguồn xác minh · Chưa vẽ đường dự báo vì chuỗi dữ liệu chưa đủ điều kiện huấn luyện'}
+              {chartMode === 'periodic' && 'Đường xanh: Giá mua · Đường tím: Giá bán · Dữ liệu báo cáo theo kỳ, chưa đủ số kỳ để huấn luyện mô hình'}
+              {chartMode === 'empty' && 'Chưa có dữ liệu đủ điều kiện để hiển thị'}
             </p>
           </div>
 
           <div className="flex items-center gap-4 text-xs font-semibold">
             <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-1 rounded bg-[#527853]" />
-              <span className="text-secondary-text">Giá thực tế</span>
+              <span className="text-secondary-text">{chartMode === 'periodic' ? 'Giá mua' : 'Giá thực tế'}</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            {chartMode === 'periodic' && <div className="flex items-center gap-1.5">
+              <span className="w-3.5 h-1 rounded bg-[#7C3AED]" />
+              <span className="text-secondary-text">Giá bán</span>
+            </div>}
+            {chartMode === 'forecast' && <div className="flex items-center gap-1.5">
               <span className="w-3.5 h-1 rounded bg-[#D97706] border-b border-dashed border-[#D97706]" />
               <span className="text-secondary-text">Dự báo {selectedModel}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
+            </div>}
+            {chartMode === 'forecast' && <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40" />
               <span className="text-secondary-text">Ước lượng</span>
-            </div>
+            </div>}
           </div>
         </div>
 
@@ -346,24 +400,30 @@ export default function ForecastPage() {
                             {data.isForecast ? 'Dự báo' : 'Thực tế'}
                           </span>
                         </div>
-                        {data.actualPrice && (
+                        {data.actualPrice != null && (
                           <div className="flex justify-between gap-4 text-emerald-700 font-bold font-mono">
-                            <span>Giá thực tế:</span>
+                            <span>{chartMode === 'periodic' ? 'Giá mua:' : 'Giá thực tế:'}</span>
                             <span>{data.actualPrice.toLocaleString('vi-VN')} đ</span>
                           </div>
                         )}
-                        {data.predictedPrice && (
+                        {data.sellingPrice != null && (
+                          <div className="flex justify-between gap-4 text-violet-700 font-bold font-mono">
+                            <span>Giá bán:</span>
+                            <span>{data.sellingPrice.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                        )}
+                        {data.isForecast && data.predictedPrice != null && (
                           <div className="flex justify-between gap-4 text-amber-700 font-bold font-mono">
                             <span>Dự báo AI:</span>
                             <span>{data.predictedPrice.toLocaleString('vi-VN')} đ</span>
                           </div>
                         )}
-                        <div className="text-secondary-text flex justify-between gap-4 pt-1 border-t border-border-subtle/60 text-[11px] font-mono">
+                        {data.isForecast && <div className="text-secondary-text flex justify-between gap-4 pt-1 border-t border-border-subtle/60 text-[11px] font-mono">
                           <span>Ước lượng:</span>
                           <span>
                             [{data.lowerCI.toLocaleString('vi-VN')} - {data.upperCI.toLocaleString('vi-VN')}]
                           </span>
-                        </div>
+                        </div>}
                       </div>
                     );
                   }
@@ -371,7 +431,7 @@ export default function ForecastPage() {
                 }}
               />
               {/* Confidence Interval Band */}
-              <Area
+              {chartMode === 'forecast' && <Area
                 type="monotone"
                 dataKey="ciRange"
                 stroke="#F59E0B"
@@ -379,7 +439,7 @@ export default function ForecastPage() {
                 strokeWidth={1}
                 fill="url(#forecastCIGradient)"
                 name="Dải ước lượng"
-              />
+              />}
               {/* Actual price line (solid olive green) */}
               <Line
                 type="monotone"
@@ -387,10 +447,18 @@ export default function ForecastPage() {
                 stroke="#527853"
                 strokeWidth={3}
                 dot={{ r: 4, fill: '#527853', stroke: '#FFFFFF', strokeWidth: 2 }}
-                name="Giá thực tế"
+                name={chartMode === 'periodic' ? 'Giá mua' : 'Giá thực tế'}
               />
+              {chartMode === 'periodic' && <Line
+                type="monotone"
+                dataKey="sellingPrice"
+                stroke="#7C3AED"
+                strokeWidth={3}
+                dot={{ r: 4, fill: '#7C3AED', stroke: '#FFFFFF', strokeWidth: 2 }}
+                name="Giá bán"
+              />}
               {/* Forecast price line (dashed amber) */}
-              <Line
+              {chartMode === 'forecast' && <Line
                 type="monotone"
                 dataKey="predictedPrice"
                 stroke="#D97706"
@@ -398,14 +466,14 @@ export default function ForecastPage() {
                 strokeDasharray="5 5"
                 dot={{ r: 4, fill: '#D97706', stroke: '#FFFFFF', strokeWidth: 2 }}
                 name="Dự báo AI"
-              />
+              />}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Forecast Details Table with Smooth Vertical Scrollbar & Compact 10-Day Height */}
-      <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card">
+      {chartMode === 'forecast' && <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
           <div>
             <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
@@ -488,7 +556,7 @@ export default function ForecastPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
