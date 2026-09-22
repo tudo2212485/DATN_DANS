@@ -45,10 +45,10 @@ def start_scheduler():
         
     _scheduler_instance = BackgroundScheduler()
     
-    # Run scraper every day at 6:00 AM
+    # Refresh verified observations and stale eligible forecasts twice a day.
     _scheduler_instance.add_job(
         scheduled_scraper_task,
-        trigger=CronTrigger(hour=18, minute=0, timezone="Asia/Ho_Chi_Minh"),
+        trigger=CronTrigger(hour="6,18", minute=0, timezone="Asia/Ho_Chi_Minh"),
         id="daily_scraper",
         name="Daily Scraper",
         replace_existing=True,

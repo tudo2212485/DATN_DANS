@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from app.models.models import Commodity, Forecast, PriceHistory, TrainingRun
-from app.services.history_service import observations, modeling_rows, fingerprint
+from app.services.history_service import observations, modeling_rows, fingerprint, readiness
 import json
 from datetime import date
 from app.schemas.schemas import (
@@ -55,6 +55,13 @@ def get_forecast_dashboard(
     # Get recent historical prices
     all_history = observations(db, commodity_id)
     history = all_history[-30:]
+    quality = readiness(all_history)
+    if not quality["ready"]:
+        raise HTTPException(
+            409,
+            f"Chưa thể tạo biểu đồ dự báo cho {commodity.name}: {quality['reason']} "
+            "Hệ thống vẫn tự thu thập dữ liệu theo lịch và sẽ tự huấn luyện khi chuỗi đủ điều kiện.",
+        )
 
     from app.services.job_service import MODEL_NAMES
     if model_name.upper() not in MODEL_NAMES:

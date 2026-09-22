@@ -2,7 +2,7 @@
 from datetime import datetime
 from fastapi import HTTPException
 from app.core.database import SessionLocal
-from app.models.models import BackgroundJob, SystemSetting
+from app.models.models import BackgroundJob, Commodity, Forecast, SystemSetting, TrainingRun
 
 MODEL_NAMES = {"LSTM": "LSTM", "XGBOOST": "XGBoost", "PROPHET": "Prophet", "ARIMA": "ARIMA", "RANDOM FOREST": "Random Forest"}
 
@@ -41,14 +41,71 @@ def update_job(job_id, **values):
             db.commit()
 
 
+def sync_forecast_after_scrape(job_id, options):
+    """Retrain a collected commodity only when its verified snapshot changed."""
+    from app.services.history_service import fingerprint, modeling_rows, observations, readiness
+    from app.services.training_service import retrain
+
+    commodity_id = options.get("commodity_id") if isinstance(options, dict) else None
+    with SessionLocal() as db:
+        if commodity_id:
+            commodities = db.query(Commodity).filter(Commodity.id == commodity_id).all()
+        else:
+            commodities = db.query(Commodity).filter(Commodity.code == "COFFEE_ROBUSTA").all()
+
+        pending = []
+        messages = []
+        for commodity in commodities:
+            rows = observations(db, commodity.id)
+            quality = readiness(rows)
+            if not quality["ready"]:
+                messages.append(f"{commodity.name}: chưa tự huấn luyện vì {quality['reason']}")
+                continue
+            current_hash = fingerprint(modeling_rows(rows))
+            latest_run = (
+                db.query(TrainingRun)
+                .filter(TrainingRun.commodity_id == commodity.id)
+                .order_by(TrainingRun.id.desc())
+                .first()
+            )
+            trained_model_count = (
+                db.query(Forecast.model_name)
+                .filter(Forecast.training_run_id == latest_run.id)
+                .distinct()
+                .count()
+                if latest_run else 0
+            )
+            if latest_run and latest_run.dataset_hash == current_hash and trained_model_count == len(MODEL_NAMES):
+                messages.append(f"{commodity.name}: dự báo đã đồng bộ với dữ liệu mới nhất.")
+            else:
+                pending.append((commodity.id, commodity.name))
+
+    failed = False
+    for index, (target_id, target_name) in enumerate(pending):
+        result = retrain(
+            target_id,
+            lambda percent, message, index=index: update_job(
+                job_id,
+                progress=min(99, 65 + int(((index + percent / 100) / max(1, len(pending))) * 34)),
+                message=f"Đã thu thập dữ liệu. {message}",
+            ),
+        )
+        failed = failed or result["status"] == "FAILED"
+        messages.append(f"{target_name}: {result['message']}")
+
+    return " ".join(messages), failed
+
+
 def run_job(job_id, kind, parameter):
     try:
         if kind == "scrape":
             from ml_pipeline.scraper import scrape_and_update_db
             options = parameter if isinstance(parameter, dict) else {"days": parameter}
             result = scrape_and_update_db(**options, progress=lambda done, total: update_job(
-                job_id, progress=int(done * 100 / total), message=f"Đã xử lý {done}/{total} bước thu thập (ngày/trang/báo cáo tùy nguồn)."))
-            update_job(job_id, status=result["status"], message=result["message"],
+                job_id, progress=int(done * 65 / total), message=f"Đã xử lý {done}/{total} bước thu thập (ngày/trang/báo cáo tùy nguồn)."))
+            sync_message, sync_failed = sync_forecast_after_scrape(job_id, options)
+            final_status = "PARTIAL" if sync_failed and result["status"] == "SUCCESS" else result["status"]
+            update_job(job_id, status=final_status, message=f"{result['message']} {sync_message}".strip(),
                        records_processed=result["count"], progress=100, finished_at=datetime.now())
         else:
             from app.services.training_service import retrain

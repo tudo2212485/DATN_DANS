@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import TrainingSummary from '@/components/forecast/TrainingSummary';
-import {TrainingMetadata, fetchHistorySources, HistorySource} from '@/lib/api';
+import {TrainingMetadata, fetchHistorySources, fetchTrainingReadiness, HistorySource} from '@/lib/api';
 import Header from '@/components/layout/Header';
 import {
   ComposedChart,
@@ -26,11 +26,32 @@ export default function ForecastPage() {
   const [training, setTraining] = useState<TrainingMetadata>();
   const [catalog, setCatalog] = useState<HistorySource[]>([]);
   useEffect(() => {
-    const id = Number(new URLSearchParams(window.location.search).get('commodity_id'));
-    if(id > 0) setSelectedCommodityId(id);
-    fetchHistorySources().then(setCatalog).catch(e=>setError(e.message));
+    let active = true;
+    async function initializeCommodity() {
+      try {
+        const sources = await fetchHistorySources();
+        if (!active) return;
+        setCatalog(sources);
+        const requestedId = Number(new URLSearchParams(window.location.search).get('commodity_id'));
+        if (requestedId > 0 && sources.some((source) => source.id === requestedId)) {
+          setSelectedCommodityId(requestedId);
+          return;
+        }
+        const states = await Promise.all(
+          sources.map(async (source) => ({
+            source,
+            readiness: await fetchTrainingReadiness(source.id).catch(() => null),
+          }))
+        );
+        if (active) setSelectedCommodityId(states.find((item) => item.readiness?.ready)?.source.id || sources[0]?.id || 0);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : 'Không tải được danh mục nông sản');
+      }
+    }
+    initializeCommodity();
+    return () => { active = false; };
   }, []);
-  const [selectedCommodityId, setSelectedCommodityId] = useState<number>(2); // Coffee
+  const [selectedCommodityId, setSelectedCommodityId] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState<SupportedModel>('LSTM');
   const [forecastDays, setForecastDays] = useState<number>(10);
 
@@ -46,6 +67,7 @@ export default function ForecastPage() {
 
   // Fetch forecast data dynamically from FastAPI PostgreSQL backend
   useEffect(() => {
+    if (selectedCommodityId <= 0) return;
     let isMounted = true;
     async function loadForecast() {
       setLoading(true);
@@ -114,7 +136,7 @@ export default function ForecastPage() {
   return (
     <div className="space-y-6">
       {error && <p role="alert" className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">{error}</p>}
-      <Link className="inline-block text-brand underline" href={`/history?commodity_id=${selectedCommodityId}`}>Xem / thu thập lịch sử giá →</Link>
+      {selectedCommodityId > 0 && <Link className="inline-block text-brand underline" href={`/history?commodity_id=${selectedCommodityId}`}>Xem / thu thập lịch sử giá →</Link>}
       {training && <TrainingSummary training={training} commodityId={selectedCommodityId} rmse={metrics.rmse}/>}
       {/* Header */}
       <Header

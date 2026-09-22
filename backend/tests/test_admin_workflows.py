@@ -72,10 +72,15 @@ def test_real_job_lifecycle_and_conflict(client, db_session, headers, monkeypatc
 
 def test_default_model_applies_to_forecast_api(client, db_session, headers):
     commodity = db_session.query(Commodity).first()
-    yesterday = date.today() - timedelta(days=1)
     from app.models.models import TrainingRun
     from app.services.history_service import observations, fingerprint
-    db_session.add(PriceHistory(commodity_id=commodity.id, record_date=yesterday, price=100, provenance='collected'))
+    for offset in range(60):
+        db_session.add(PriceHistory(
+            commodity_id=commodity.id,
+            record_date=date.today() - timedelta(days=60 - offset),
+            price=100 + offset,
+            provenance='collected',
+        ))
     db_session.commit()
     run = TrainingRun(commodity_id=commodity.id, dataset_hash=fingerprint(observations(db_session,commodity.id)), metadata_json='{}')
     db_session.add(run)
@@ -90,3 +95,37 @@ def test_default_model_applies_to_forecast_api(client, db_session, headers):
     assert result.json()['modelName'] == 'XGBoost'
     assert result.json()['metrics']['r2'] == -0.5
     assert client.post('/api/v1/admin/models/active', headers=headers, json={'active_model': 'invalid'}).status_code == 400
+
+
+def test_scrape_job_auto_retrains_changed_ready_series(db_session, monkeypatch):
+    import app.services.job_service as jobs
+    import app.services.training_service as training
+    import ml_pipeline.scraper as scraper
+
+    commodity = db_session.query(Commodity).first()
+    for offset in range(60):
+        db_session.add(PriceHistory(
+            commodity_id=commodity.id,
+            record_date=date.today() - timedelta(days=60 - offset),
+            price=100 + offset,
+            provenance='collected',
+            source='Test source',
+        ))
+    job = BackgroundJob(kind='scrape', status='RUNNING', message='running')
+    db_session.add(job)
+    db_session.commit()
+
+    monkeypatch.setattr(scraper, 'scrape_and_update_db', lambda **kwargs: {
+        'status': 'SUCCESS', 'count': 0, 'message': 'Không có bản ghi mới.'
+    })
+    called = []
+    monkeypatch.setattr(training, 'retrain', lambda commodity_id, progress: (
+        called.append(commodity_id) or {'status': 'SUCCESS', 'count': 150, 'message': 'Đã huấn luyện.'}
+    ))
+
+    jobs.run_job(job.id, 'scrape', {'days': 7, 'commodity_id': commodity.id})
+    db_session.expire_all()
+    finished = db_session.get(BackgroundJob, job.id)
+    assert called == [commodity.id]
+    assert finished.status == 'SUCCESS' and finished.progress == 100
+    assert 'Đã huấn luyện' in finished.message
