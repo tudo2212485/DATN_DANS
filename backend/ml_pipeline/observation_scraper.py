@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from app.core.database import SessionLocal
 from app.models.models import Commodity, PriceHistory, PeriodicPrice
 from app.services.history_service import archive_price
-from .source_catalog import SOURCES, SUGARCANE_REPORTS
+from .source_catalog import COFFEE_ARCHIVE, SOURCES, SUGARCANE_REPORTS
 
 HEADERS = {"User-Agent": "AgroForecast/1.0 (academic price history collector)"}
 
@@ -103,8 +103,23 @@ def scrape_and_update_db(days=30, progress=None, commodity_id=None, start_date=N
                 time.sleep(0.2)
             if progress:
                 progress(index + 1, days)
+        archive_count = archive_skipped = 0
+        if start < date.today() - timedelta(days=30):
+            try:
+                archive_count, archive_skipped = collect_agro_history(
+                    db, http, commodity, COFFEE_ARCHIVE, start, end
+                )
+                created += archive_count
+                skipped += archive_skipped
+            except (requests.RequestException, ValueError) as exc:
+                errors.append(f"Kho lưu trữ AGROINFO: {exc}")
     message = (f"Cà phê {start} – {end}: ghi nhận {created}, giữ nguyên {skipped} bản ghi; "
                f"{unavailable} ngày không có trang công bố.")
+    if archive_count or archive_skipped:
+        message += (
+            f" AGROINFO {COFFEE_ARCHIVE['market']}: thêm {archive_count}, "
+            f"giữ nguyên {archive_skipped} quan sát lưu trữ."
+        )
     if errors:
         message += " Lỗi nguồn: " + "; ".join(errors[:5])
     if not created and not skipped and not errors:
@@ -136,10 +151,19 @@ def collect_domestic_history(db, http, commodity, start, end, progress=None):
                 progress(index+1, len(SUGARCANE_REPORTS))
         status = ('PARTIAL' if count or skipped else 'FAILED') if errors else 'SUCCESS'
         return dict(count=count, status=status, message=f"Mía: lưu {count}, giữ nguyên {skipped} báo cáo theo kỳ. "
-                    "Bộ Công Thương/Khuyến nông Phú Yên, giá mua và bán riêng; không đưa vào huấn luyện ngày. "
-                    "Danh mục đã xác minh hiện có hai kỳ năm 2024." + (' Lỗi: '+'; '.join(errors) if errors else ''))
+                    "Bộ Công Thương/Khuyến nông Phú Yên, giá mua và bán riêng; mô hình dùng giá mua theo nhịp công bố, không biến thành quan sát ngày. "
+                    f"Danh mục đã xác minh hiện có {len(SUGARCANE_REPORTS)} kỳ giai đoạn 2020–2025."
+                    + (' Lỗi: '+'; '.join(errors) if errors else ''))
     if commodity.unit.lower().replace('đ','d') != 'vnd/kg':
         raise ValueError("AGROINFO trả VNĐ/kg, đơn vị nông sản không khớp")
+    count, skipped = collect_agro_history(db, http, commodity, config, start, end, progress)
+    return dict(count=count, status='SUCCESS' if count or skipped else 'FAILED',
+                message=f"AGROINFO – {config['product']} – {config['market']} – {config['price_type']}: "
+                f"ghi nhận {count}, giữ nguyên {skipped} ngày trong {start} – {end}. "
+                + ("Ngày không công bố được để trống." if count or skipped else "Nguồn không có dữ liệu đúng mặt hàng/địa bàn trong khoảng này; thử khoảng lịch sử cũ hơn."))
+
+
+def collect_agro_history(db, http, commodity, config, start, end, progress=None):
     from .agro_history import fetch_history
     rows = fetch_history(http, config, start, end, progress)
     count, skipped = 0, 0
@@ -161,7 +185,4 @@ def collect_domestic_history(db, http, commodity, start, end, progress=None):
         existing.source_details = json.dumps(item['details'], ensure_ascii=False)
         count += 1
     db.commit()
-    return dict(count=count, status='SUCCESS' if rows else 'FAILED',
-                message=f"AGROINFO – {config['product']} – {config['market']} – {config['price_type']}: "
-                f"ghi nhận {count}, giữ nguyên {skipped} ngày trong {start} – {end}. "
-                + ("Ngày không công bố được để trống." if rows else "Nguồn không có dữ liệu đúng mặt hàng/địa bàn trong khoảng này; thử khoảng lịch sử cũ hơn."))
+    return count, skipped

@@ -12,14 +12,14 @@
 
 | Nông sản | Nguồn khảo sát | Khả năng sử dụng |
 |---|---|---|
-| Cà phê | [Giacaphe, bảng giá theo ngày](https://giacaphe.com/gia-ca-phe-noi-dia-ngay-2026-09-11/) | Giá Robusta nội địa theo ngày. Nguồn giới hạn lịch sử xa nếu không đăng nhập nên tác vụ có thể hoàn thành một phần. |
+| Cà phê | [Giacaphe, bảng giá theo ngày](https://giacaphe.com/gia-ca-phe-noi-dia-ngay-2026-09-11/) và [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Giacaphe bổ sung giá Robusta nội địa gần đây. Chuỗi huấn luyện dùng `Cà phê nhân`, thị trường `Đắk Lăk` (đúng nhãn của nguồn), loại giá `Bán buôn`, đơn vị `VND/kg` từ AGROINFO; nguồn và quy cách của từng điểm được lưu trong bản chụp huấn luyện. |
 | Hồ tiêu | [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Thu đúng `Hạt tiêu đen trong nước`, thị trường `Đắk Lắk`, loại giá `Bán buôn`, đơn vị `VND/kg`. |
-| Lúa IR50404 | [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Thu đúng `Lúa IR 50404 - lúa tươi`, thị trường `An Giang`, loại giá `Bán tại hộ`, đơn vị `VND/kg`. Nguồn không công bố đủ mọi ngày. |
-| Mía đường | [Bộ Công Thương – giá nông sản Phú Yên](https://thuongmaibiengioimiennui.gov.vn/gia-hang-hoa/2024/2/tham-khao-gia-ca-thi-truong-nong-san-tai-phu-yen) | Báo cáo theo kỳ cho `Mía (từ 7 – 10 chữ đường)` tại Tây Hòa, Phú Yên, đơn vị đồng/tấn. Hệ thống lưu riêng giá mua và giá bán, giữ nguyên kỳ báo cáo. |
+| Lúa IR50404 | [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Thu đúng `Lúa IR 50404 - lúa tươi`, thị trường `An Giang`, loại giá `Bán tại hộ`, đơn vị `VND/kg`. Vì nguồn công bố không đều, hệ thống huấn luyện và dự báo theo mốc công bố. |
+| Mía đường | [Bộ Công Thương – giá nông sản Phú Yên](https://thuongmaibiengioimiennui.gov.vn/gia-hang-hoa/2024/2/tham-khao-gia-ca-thi-truong-nong-san-tai-phu-yen) | 15 báo cáo giai đoạn 2020–2025 cho `Mía (từ 7 – 10 chữ đường)` tại Tây Hòa, Phú Yên. Hệ thống lưu riêng giá mua/giá bán và dùng giá mua làm biến mục tiêu dự báo theo kỳ. |
 
 AGROINFO là nguồn ASP.NET phân trang; bộ thu thập gửi đúng bộ lọc ngày, sản phẩm, thị trường và loại giá, sau đó kiểm tra lại từng dòng trước khi lưu. Nếu nguồn đổi nhãn, cột, đơn vị hoặc trả trùng ngày với giá khác nhau, tác vụ dừng thay vì đoán dữ liệu. Chọn 365 ngày không có nghĩa sẽ có đủ 365 quan sát vì nguồn có thể không công bố giá mỗi ngày.
 
-Mía hiện chỉ có báo cáo giá theo kỳ. Các bản ghi này nằm ở `periodic_prices` và xuất CSV theo kỳ; hệ thống không sao chép một báo cáo thành nhiều ngày và chưa cho huấn luyện dự báo ngày từ chuỗi này. Muốn dự báo mía theo ngày cần thêm nguồn Việt Nam công bố nhất quán ít nhất 60 quan sát ngày.
+Mía chỉ có báo cáo giá theo kỳ. Các bản ghi nằm ở `periodic_prices` và xuất CSV theo kỳ; hệ thống không sao chép một báo cáo thành nhiều ngày. Khi có ít nhất 8 kỳ, năm thuật toán được đánh giá trên các kỳ công bố và tạo tối đa 12 mốc tiếp theo theo khoảng cách công bố trung vị. Kết quả được ghi rõ là dự báo giá mua theo kỳ, không phải giá ngày.
 
 ## Nguồn gốc dữ liệu
 
@@ -33,12 +33,13 @@ Mía hiện chỉ có báo cáo giá theo kỳ. Các bản ghi này nằm ở `p
 
 ## Đánh giá và tạo dự báo
 
-- Dùng đoạn công bố mới nhất sau khoảng gián đoạn dài trên 30 ngày; các điểm cũ vẫn được giữ để tra cứu nhưng không nối qua khoảng trống lớn. Đoạn huấn luyện cần tối thiểu 60 quan sát và không có khoảng thiếu liên tiếp quá 14 ngày (đủ bao quát kỳ nghỉ dài như Tết). Đây là ngưỡng vận hành tối thiểu, không khẳng định độ chính xác cao.
-- Sắp theo ngày, giữ một quan sát/ngày, điền khoảng thiếu bằng giá gần nhất đã biết. Không điền ngược từ tương lai.
-- Giữ lại 15% ngày quan sát cuối, tối thiểu 7 và tối đa 30 ngày quan sát. Năm mô hình cùng được đánh giá nhiều bước từ cùng một mốc; không đọc giá thực tế của đoạn kiểm thử khi dự báo.
+- Chuỗi ngày liên tục (cà phê, hồ tiêu) cần tối thiểu 60 quan sát và không có khoảng thiếu liên tiếp quá 14 ngày. Hệ thống chọn đoạn hoàn chỉnh gần nhất và không để một đoạn mới còn quá ngắn vô hiệu hóa toàn bộ kho lịch sử.
+- Lúa dùng 60 mốc công bố trở lên, giữ đúng ngày AGROINFO có giá và không tự tạo giá cho ngày nguồn không công bố. Mía dùng tối thiểu 8 kỳ báo cáo, giữ nguyên ngày/kỳ và giá mua/giá bán.
+- Với chuỗi ngày, sắp theo ngày, giữ một quan sát/ngày và chỉ điền khoảng thiếu ngắn bằng giá gần nhất đã biết. Với lúa/mía, mô hình học theo thứ tự mốc công bố và không tạo quan sát ngày trung gian.
+- Chuỗi ngày giữ lại 15% quan sát cuối (tối thiểu 7, tối đa 30); chuỗi theo mốc/kỳ giữ lại 25% quan sát cuối. Năm mô hình cùng được đánh giá nhiều bước từ cùng một mốc; không đọc giá thực tế của đoạn kiểm thử khi dự báo.
 - RMSE/MAE/MAPE/R² chỉ tính trên ngày có quan sát, không chấm điểm trên giá điền. Giữ nguyên R² âm.
 - Mốc đối chiếu là giá cuối tập huấn luyện được giữ nguyên cho toàn bộ đoạn kiểm thử, tương ứng dự báo nhiều bước. Chỉ so sánh các mô hình thuộc cùng lần huấn luyện và cùng đầu vào.
-- Sau đánh giá, huấn luyện lại trên toàn bộ lịch sử đủ điều kiện rồi lưu 30 giá dự báo. Đầu ra này được lưu trong CSDL; luồng mới không phụ thuộc các tệp mô hình cũ.
+- Sau đánh giá, huấn luyện lại trên toàn bộ lịch sử đủ điều kiện rồi lưu 30 ngày dự báo cho chuỗi ngày hoặc 12 mốc cho chuỗi theo nhịp công bố. Đầu ra này được lưu trong CSDL; luồng mới không phụ thuộc các tệp mô hình cũ.
 - Dải ±1,96 RMSE chỉ là ước lượng, chưa kiểm chứng độ bao phủ 95% và không phải cam kết giá.
 - Nếu dữ liệu có nguồn thay đổi, dự báo trước đó trả HTTP 409 yêu cầu huấn luyện lại. Dự báo cũ không có bản chụp đầu vào cũng không được phục vụ như kết quả hợp lệ.
 
@@ -49,9 +50,9 @@ Kiểm thử dùng CSDL SQLite và dữ liệu fixture, bao gồm chạy thực 
 
 Frontend kiểm tra bằng `npm run build`. Bản chạy local kết nối PostgreSQL. Để nghiệm thu dự báo từ giá thị trường thực tế, phải thu thập hoặc nhập đủ lịch sử có nguồn; không dùng bộ dữ liệu fixture hay dữ liệu seed để thay thế phần này.
 
-Kiểm chứng thực tế ngày 16/09/2026:
+Kiểm chứng thực tế ngày 22/09/2026:
 
-- Cà phê: nguồn cho đọc 14 ngày quan sát từ 31/08 đến 15/09 rồi chặn lịch sử xa; `ready=false` (14/60), dự báo cũ trả HTTP 409.
-- Lúa IR50404: thu 112 quan sát AGROINFO nhưng các đợt công bố rời rạc; đoạn mới nhất sau khoảng gián đoạn dài chỉ có 2 quan sát nên khóa huấn luyện.
+- Cà phê: 125 quan sát trong chuỗi sử dụng từ 05/01 đến 22/09/2026; đã huấn luyện đủ năm mô hình và lưu 150 điểm dự báo.
+- Lúa IR50404: 112 mốc AGROINFO từ 05/01/2024 đến 06/08/2025; đã huấn luyện đủ năm mô hình và lưu 60 điểm dự báo theo mốc. Giao diện cảnh báo rõ độ cũ của dữ liệu.
 - Hồ tiêu: thu 132 quan sát AGROINFO. Đoạn liên tục mới nhất giữ 128 quan sát từ 20/11/2025 đến 14/09/2026 và loại 4 điểm trước khoảng ngừng công bố 311 ngày khỏi đầu vào. Đã huấn luyện năm mô hình và lưu 150 điểm dự báo (30 ngày/mô hình).
-- Mía: lưu đúng hai kỳ báo cáo năm 2024 trong `periodic_prices`; chưa dự báo ngày do không có đủ chuỗi ngày nhất quán từ nguồn Việt Nam.
+- Mía: lưu 15 kỳ báo cáo 2020–2025 trong `periodic_prices`; đã huấn luyện đủ năm mô hình trên giá mua và lưu 60 điểm dự báo theo kỳ. Giao diện vẫn hiển thị riêng giá mua/giá bán trong lịch sử và cảnh báo độ cũ.

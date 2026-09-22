@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.models import Commodity, TrainingRun, PeriodicPrice
-from app.services.history_service import observations, readiness
+from app.services.history_service import observations, training_context
 from ml_pipeline.source_catalog import SOURCES
 import json
 
@@ -12,10 +12,10 @@ router = APIRouter()
 
 @router.get("/readiness")
 def training_readiness(commodity_id: int, db: Session = Depends(get_db)):
-    if not db.get(Commodity, commodity_id):
+    commodity = db.get(Commodity, commodity_id)
+    if not commodity:
         raise HTTPException(404, "Không tìm thấy nông sản")
-    rows = observations(db, commodity_id)
-    return readiness(rows)
+    return training_context(db, commodity)["quality"]
 
 
 @router.get("/training-runs/{run_id}")
@@ -38,7 +38,8 @@ def sources(db: Session = Depends(get_db)):
 @router.get("")
 def history(commodity_id: int, start_date: date = Query(...), end_date: date = Query(...),
             include_unverified: bool = False, db: Session = Depends(get_db)):
-    if not db.get(Commodity, commodity_id):
+    commodity = db.get(Commodity, commodity_id)
+    if not commodity:
         raise HTTPException(404, "Không tìm thấy nông sản")
     if end_date < start_date or end_date > date.today() or (end_date - start_date).days > 1826:
         raise HTTPException(400, "Chọn khoảng quá khứ hợp lệ, tối đa 5 năm mỗi lần xem")
@@ -55,8 +56,8 @@ def history(commodity_id: int, start_date: date = Query(...), end_date: date = Q
                          provenance=r.provenance, source_details=json.loads(r.source_details) if r.source_details else None) for r in rows],
         "missing_dates": [str(start_date + timedelta(days=i)) for i in range(count)
                           if start_date + timedelta(days=i) not in dates],
-        "readiness": readiness(observations(db, commodity_id)),
-        "range_readiness": readiness(observations(db, commodity_id, start_date, end_date)),
+        "readiness": training_context(db, commodity)["quality"],
+        "range_readiness": training_context(db, commodity, start_date, end_date)["quality"],
         "unverified_count": sum(r.provenance not in ("collected", "reviewed")
                                 for r in observations(db, commodity_id, start_date, end_date, False)),
     }

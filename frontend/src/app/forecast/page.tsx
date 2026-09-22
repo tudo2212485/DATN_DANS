@@ -66,7 +66,15 @@ export default function ForecastPage() {
   const [chartMode, setChartMode] = useState<ChartMode>('empty');
 
   const currentCommodity =
-    catalog.find((c) => c.id === selectedCommodityId) || {name:'Nông sản',unit:'',code:''};
+    catalog.find((c) => c.id === selectedCommodityId) || {name:'Nông sản',unit:'',code:'',kind:'daily' as const};
+  const isPeriodic = currentCommodity.kind === 'periodic';
+  const isIrregular = currentCommodity.kind === 'irregular';
+  const usesPublicationCadence = isPeriodic || isIrregular;
+  const horizonUnit = isPeriodic ? 'kỳ' : isIrregular ? 'mốc' : 'ngày';
+
+  useEffect(() => {
+    if (selectedCommodityId > 0) setForecastDays(usesPublicationCadence ? 6 : 10);
+  }, [selectedCommodityId, usesPublicationCadence]);
 
   // Fetch forecast data dynamically from FastAPI PostgreSQL backend
   useEffect(() => {
@@ -235,10 +243,10 @@ export default function ForecastPage() {
           {/* Horizon Select */}
           <div className="flex flex-col">
             <label className="text-[11px] font-bold text-secondary-text uppercase tracking-wider mb-1.5">
-              Thời hạn dự báo
+              {usesPublicationCadence ? `Số ${horizonUnit} dự báo` : 'Thời hạn dự báo'}
             </label>
             <div className="flex items-center gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
-              {[7, 10, 14, 30].map((days) => (
+              {(usesPublicationCadence ? [3, 6, 9, 12] : [7, 10, 14, 30]).map((days) => (
                 <button
                   key={days}
                   onClick={() => setForecastDays(days)}
@@ -248,7 +256,7 @@ export default function ForecastPage() {
                       : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.02]'
                   }`}
                 >
-                  {days} ngày
+                  {days} {horizonUnit}
                 </button>
               ))}
             </div>
@@ -329,7 +337,7 @@ export default function ForecastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
           <div>
             <h2 className="text-base font-bold text-primary-text tracking-tight">
-              {chartMode === 'forecast' && `Biểu đồ Dự báo ${currentCommodity.name} & Dải ước lượng (${selectedModel})`}
+              {chartMode === 'forecast' && `Biểu đồ Dự báo ${currentCommodity.name} ${usesPublicationCadence ? `theo ${horizonUnit}` : ''} & Dải ước lượng (${selectedModel})`}
               {chartMode === 'history' && `Biểu đồ Lịch sử giá ${currentCommodity.name}`}
               {chartMode === 'periodic' && `Biểu đồ Giá mua và Giá bán ${currentCommodity.name} theo kỳ`}
               {chartMode === 'empty' && `Biểu đồ ${currentCommodity.name}`}
@@ -477,11 +485,11 @@ export default function ForecastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
           <div>
             <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
-              <span>Bảng chi tiết giá trị dự báo {forecastDays} ngày tới</span>
+              <span>Bảng chi tiết giá trị dự báo {forecastDays} {horizonUnit} tới</span>
             </h3>
             <p className="text-xs text-secondary-text mt-0.5 flex items-center gap-1.5">
               <ArrowDownUp className="w-3.5 h-3.5 text-brand" />
-              <span>Ngày dự báo tính sau mốc lịch sử cuối cùng, kèm dải ước lượng</span>
+              <span>{usesPublicationCadence ? 'Mốc dự báo cách nhau theo nhịp công bố lịch sử, kèm dải ước lượng' : 'Ngày dự báo tính sau mốc lịch sử cuối cùng, kèm dải ước lượng'}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">

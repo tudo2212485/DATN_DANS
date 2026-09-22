@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
-from app.models.models import Commodity, Forecast, PriceHistory, TrainingRun
-from app.services.history_service import observations, modeling_rows, fingerprint, readiness
+from app.models.models import Commodity, Forecast, TrainingRun
+from app.services.history_service import fingerprint, training_context
 import json
 from datetime import date
 from app.schemas.schemas import (
@@ -18,9 +18,10 @@ def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetrics
     if not commodity:
         raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
         
+    context = training_context(db, commodity)
     latest_run = db.query(func.max(Forecast.training_run_id)).filter(Forecast.commodity_id == commodity_id).scalar()
     run = db.get(TrainingRun, latest_run) if latest_run else None
-    if not run or run.dataset_hash != fingerprint(modeling_rows(observations(db, commodity_id))):
+    if not run or run.dataset_hash != fingerprint(context["rows"]):
         return []
     models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id, Forecast.training_run_id == latest_run).distinct().all()
     
@@ -53,9 +54,9 @@ def get_forecast_dashboard(
         raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
 
     # Get recent historical prices
-    all_history = observations(db, commodity_id)
-    history = all_history[-30:]
-    quality = readiness(all_history)
+    context = training_context(db, commodity)
+    history = context["rows"][-30:]
+    quality = context["quality"]
     if not quality["ready"]:
         raise HTTPException(
             409,
@@ -111,13 +112,17 @@ def get_forecast_dashboard(
     if forecast_rows:
         first_f = forecast_rows[0]
         run = db.get(TrainingRun, first_f.training_run_id) if first_f.training_run_id else None
-        if not run or run.dataset_hash != fingerprint(modeling_rows(all_history)):
+        if not run or run.dataset_hash != fingerprint(context["rows"]):
             raise HTTPException(409, "Dữ liệu đã thay đổi hoặc dự báo cũ chưa có nguồn đầu vào được xác minh. Hãy thu thập đủ lịch sử và huấn luyện lại.")
         training = json.loads(run.metadata_json)
         training.pop("snapshot", None)
         training.update(run_id=run.id, dataset_hash=run.dataset_hash, trained_at=run.created_at.isoformat(),
                         stale_days=max(0, (date.today() - history[-1].record_date).days),
-                        interval_note="Dải ước lượng ±1,96 RMSE; chưa kiểm chứng độ bao phủ 95%.")
+                        interval_note=("Dải ước lượng ±1,96 RMSE theo kỳ; chuỗi mía dùng giá mua trong báo cáo."
+                                       if context["cadence"] == "periodic" else
+                                       "Dải ước lượng ±1,96 RMSE theo mốc công bố AGROINFO."
+                                       if context["cadence"] == "irregular" else
+                                       "Dải ước lượng ±1,96 RMSE; chưa kiểm chứng độ bao phủ 95%."))
         if first_f.mae is not None:
             latest_metrics = ModelMetricsResponse(
                 modelName=model_name,

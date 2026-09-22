@@ -3,9 +3,12 @@ import numpy as np
 import pandas as pd
 
 
-def predict_series(name, series, horizon):
+def predict_series(name, series, horizon, future_index=None):
     values = np.asarray(series, dtype=float)
-    dates = pd.date_range(series.index[-1] + pd.Timedelta(days=1), periods=horizon)
+    dates = pd.DatetimeIndex(future_index) if future_index is not None else pd.date_range(
+        series.index[-1] + pd.Timedelta(days=1), periods=horizon
+    )
+    lookback = min(14, max(2, len(values) // 3))
     if name in ("Random Forest", "XGBoost"):
         if name == "Random Forest":
             from sklearn.ensemble import RandomForestRegressor
@@ -13,11 +16,11 @@ def predict_series(name, series, horizon):
         else:
             from xgboost import XGBRegressor
             model = XGBRegressor(n_estimators=100, max_depth=3, learning_rate=.05, random_state=42, n_jobs=1)
-        x = np.asarray([values[i-14:i] for i in range(14, len(values))])
-        model.fit(x, values[14:])
+        x = np.asarray([values[i-lookback:i] for i in range(lookback, len(values))])
+        model.fit(x, values[lookback:])
         history, result = list(values), []
         for _ in range(horizon):
-            prediction = max(float(model.predict(np.asarray(history[-14:]).reshape(1, -1))[0]), 0)
+            prediction = max(float(model.predict(np.asarray(history[-lookback:]).reshape(1, -1))[0]), 0)
             result.append(prediction)
             history.append(prediction)
         return np.asarray(result)
@@ -36,8 +39,8 @@ def predict_series(name, series, horizon):
         torch.manual_seed(42)
         scaler = MinMaxScaler(feature_range=(-1, 1))
         scaled = scaler.fit_transform(values.reshape(-1, 1)).ravel()
-        x = torch.tensor(np.asarray([scaled[i-14:i] for i in range(14, len(values))]), dtype=torch.float32).unsqueeze(-1)
-        y = torch.tensor(scaled[14:], dtype=torch.float32).unsqueeze(-1)
+        x = torch.tensor(np.asarray([scaled[i-lookback:i] for i in range(lookback, len(values))]), dtype=torch.float32).unsqueeze(-1)
+        y = torch.tensor(scaled[lookback:], dtype=torch.float32).unsqueeze(-1)
         model = MultiLayerLSTM(1, hidden_size=32)
         optimizer = torch.optim.Adam(model.parameters(), lr=.005)
         model.train()
@@ -50,7 +53,7 @@ def predict_series(name, series, horizon):
         history, result = list(scaled), []
         with torch.no_grad():
             for _ in range(horizon):
-                prediction = float(model(torch.tensor(history[-14:], dtype=torch.float32).reshape(1, 14, 1)).item())
+                prediction = float(model(torch.tensor(history[-lookback:], dtype=torch.float32).reshape(1, lookback, 1)).item())
                 history.append(prediction)
                 result.append(prediction)
         return np.maximum(scaler.inverse_transform(np.asarray(result).reshape(-1, 1)).ravel(), 0)

@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import numpy as np
 import pandas as pd
 import pytest
-from app.models.models import Commodity, PriceHistory, Forecast, TrainingRun, PriceRevision
-from app.services.history_service import observations, modeling_rows, readiness
+from app.models.models import Commodity, PeriodicPrice, PriceHistory, Forecast, TrainingRun, PriceRevision
+from app.services.history_service import observations, modeling_rows, readiness, training_context
 from ml_pipeline.observation_scraper import parse_coffee_observation, SourceAccessRequired
 
 
@@ -92,6 +92,49 @@ def test_modeling_uses_latest_series_after_long_publication_break(db_session):
     quality = readiness(all_rows)
     assert len(selected) == 70 and selected[0].record_date == recent_start
     assert quality['ready'] and quality['excluded_older_observations'] == 10
+
+
+def test_modeling_keeps_latest_complete_series_when_new_fragment_is_short(db_session):
+    commodity = db_session.query(Commodity).first()
+    old_start = date.today()-timedelta(days=300)
+    recent_start = date.today()-timedelta(days=10)
+    for start, count in [(old_start, 68), (recent_start, 2)]:
+        for i in range(count):
+            db_session.add(PriceHistory(commodity_id=commodity.id, record_date=start+timedelta(days=i),
+                                        price=1000+i, provenance='reviewed', source='Isolated test fixture'))
+    db_session.commit()
+    selected = modeling_rows(observations(db_session, commodity.id))
+    assert len(selected) == 68 and selected[-1].record_date < recent_start
+    assert readiness(observations(db_session, commodity.id))['ready']
+
+
+def test_periodic_reports_train_as_periods_without_creating_daily_prices(db_session, monkeypatch):
+    import app.services.training_service as training
+    commodity = db_session.query(Commodity).first()
+    commodity.code = 'SUGARCANE'
+    start = date(2023, 1, 1)
+    for i in range(10):
+        published = start + timedelta(days=i * 60)
+        db_session.add(PeriodicPrice(
+            commodity_id=commodity.id, period_start=published-timedelta(days=9), period_end=published,
+            published_date=published, buying_price=700000+i*10000, selling_price=900000+i*10000,
+            unit='VND/tấn', specification='Mía (từ 7 – 10 chữ đường)', market='Tây Hòa, Phú Yên',
+            source_url=f'https://example.test/report-{i}', attribution='Isolated test fixture'))
+    db_session.commit()
+    seen = []
+    def predict(name, series, horizon, future_index=None):
+        seen.append((len(series), horizon, future_index is not None))
+        return np.full(horizon, series.iloc[-1])
+    monkeypatch.setattr(training, 'predict_series', predict)
+    result = training.retrain(commodity.id, lambda *args: None)
+    context = training_context(db_session, commodity)
+    run = db_session.query(TrainingRun).one()
+    metadata = json.loads(run.metadata_json)
+    assert context['quality']['ready'] and context['cadence'] == 'periodic'
+    assert result['status'] == 'SUCCESS' and result['count'] == 60
+    assert metadata['cadence'] == 'periodic' and metadata['filled_days'] == 0
+    assert all(has_dates for _, _, has_dates in seen)
+    assert db_session.query(PriceHistory).count() == 0
 
 
 def test_scraper_preserves_old_snapshot_and_stops_at_access_boundary(db_session,monkeypatch):

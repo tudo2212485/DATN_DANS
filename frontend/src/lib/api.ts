@@ -18,7 +18,7 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'periodic'; suggested_start?: string }
+export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'irregular' | 'periodic'; suggested_start?: string }
 export interface HistoryReadiness { ready: boolean; reason: string | null; observation_count: number; start_date: string | null; end_date: string | null; max_gap_days: number }
 export interface HistoryResponse {
   records: {id: number; date: string; price: number; source: string; provenance: string; source_details?:{market:string;price_type:string;product:string;upstream:string}}[];
@@ -30,6 +30,7 @@ export interface TrainingMetadata {
   test_start: string; test_end: string; test_count: number; train_end: string;
   filled_days: number; baseline: {mae: number; rmse: number; mape: number; r2: number};
   evaluation: string; trained_at: string; stale_days: number; interval_note: string; dataset_hash: string;
+  cadence?: 'daily' | 'irregular' | 'periodic'; cadence_days?: number; target?: string;
 }
 export async function fetchHistorySources(): Promise<HistorySource[]> {
   const res = await fetch(`${API_BASE_URL}/history/sources`, {cache:'no-store'});

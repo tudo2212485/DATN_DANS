@@ -43,7 +43,7 @@ def update_job(job_id, **values):
 
 def sync_forecast_after_scrape(job_id, options):
     """Retrain a collected commodity only when its verified snapshot changed."""
-    from app.services.history_service import fingerprint, modeling_rows, observations, readiness
+    from app.services.history_service import fingerprint, training_context
     from app.services.training_service import retrain
 
     commodity_id = options.get("commodity_id") if isinstance(options, dict) else None
@@ -56,12 +56,12 @@ def sync_forecast_after_scrape(job_id, options):
         pending = []
         messages = []
         for commodity in commodities:
-            rows = observations(db, commodity.id)
-            quality = readiness(rows)
+            context = training_context(db, commodity)
+            quality = context["quality"]
             if not quality["ready"]:
                 messages.append(f"{commodity.name}: chưa tự huấn luyện vì {quality['reason']}")
                 continue
-            current_hash = fingerprint(modeling_rows(rows))
+            current_hash = fingerprint(context["rows"])
             latest_run = (
                 db.query(TrainingRun)
                 .filter(TrainingRun.commodity_id == commodity.id)
