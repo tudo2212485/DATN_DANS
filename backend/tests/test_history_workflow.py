@@ -131,7 +131,7 @@ def test_periodic_reports_train_as_periods_without_creating_daily_prices(db_sess
     run = db_session.query(TrainingRun).one()
     metadata = json.loads(run.metadata_json)
     assert context['quality']['ready'] and context['cadence'] == 'periodic'
-    assert result['status'] == 'SUCCESS' and result['count'] == 60
+    assert result['status'] == 'SUCCESS' and result['count'] == 150
     assert metadata['cadence'] == 'periodic' and metadata['filled_days'] == 0
     assert all(has_dates for _, _, has_dates in seen)
     assert db_session.query(PriceHistory).count() == 0

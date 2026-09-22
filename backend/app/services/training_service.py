@@ -34,7 +34,7 @@ def retrain(commodity_id, progress):
                 holdout = series.iloc[-test_count:]
                 actual = holdout.to_numpy()
                 mask = np.ones(len(holdout), dtype=bool)
-                future_count = 12
+                future_count = 30
                 future_dates = pd.date_range(
                     series.index[-1] + pd.Timedelta(days=context["cadence_days"]),
                     periods=future_count,

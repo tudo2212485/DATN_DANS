@@ -70,11 +70,12 @@ export default function ForecastPage() {
   const isPeriodic = currentCommodity.kind === 'periodic';
   const isIrregular = currentCommodity.kind === 'irregular';
   const usesPublicationCadence = isPeriodic || isIrregular;
-  const horizonUnit = isPeriodic ? 'kỳ' : isIrregular ? 'mốc' : 'ngày';
+  const cadenceLabel = isPeriodic ? 'kỳ' : isIrregular ? 'mốc công bố' : 'ngày';
+  const horizonUnit = 'ngày';
 
   useEffect(() => {
-    if (selectedCommodityId > 0) setForecastDays(usesPublicationCadence ? 6 : 10);
-  }, [selectedCommodityId, usesPublicationCadence]);
+    if (selectedCommodityId > 0) setForecastDays(10);
+  }, [selectedCommodityId]);
 
   // Fetch forecast data dynamically from FastAPI PostgreSQL backend
   useEffect(() => {
@@ -243,10 +244,10 @@ export default function ForecastPage() {
           {/* Horizon Select */}
           <div className="flex flex-col">
             <label className="text-[11px] font-bold text-secondary-text uppercase tracking-wider mb-1.5">
-              {usesPublicationCadence ? `Số ${horizonUnit} dự báo` : 'Thời hạn dự báo'}
+              Thời hạn dự báo
             </label>
             <div className="flex items-center gap-1.5 bg-canvas p-1 rounded-xl border border-border-subtle">
-              {(usesPublicationCadence ? [3, 6, 9, 12] : [7, 10, 14, 30]).map((days) => (
+              {[7, 10, 14, 30].map((days) => (
                 <button
                   key={days}
                   onClick={() => setForecastDays(days)}
@@ -337,7 +338,7 @@ export default function ForecastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
           <div>
             <h2 className="text-base font-bold text-primary-text tracking-tight">
-              {chartMode === 'forecast' && `Biểu đồ Dự báo ${currentCommodity.name} ${usesPublicationCadence ? `theo ${horizonUnit}` : ''} & Dải ước lượng (${selectedModel})`}
+              {chartMode === 'forecast' && `Biểu đồ Dự báo ${currentCommodity.name} ${usesPublicationCadence ? `theo ${cadenceLabel}` : ''} & Dải ước lượng (${selectedModel})`}
               {chartMode === 'history' && `Biểu đồ Lịch sử giá ${currentCommodity.name}`}
               {chartMode === 'periodic' && `Biểu đồ Giá mua và Giá bán ${currentCommodity.name} theo kỳ`}
               {chartMode === 'empty' && `Biểu đồ ${currentCommodity.name}`}

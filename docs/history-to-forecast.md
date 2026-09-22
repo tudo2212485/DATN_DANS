@@ -19,7 +19,7 @@
 
 AGROINFO là nguồn ASP.NET phân trang; bộ thu thập gửi đúng bộ lọc ngày, sản phẩm, thị trường và loại giá, sau đó kiểm tra lại từng dòng trước khi lưu. Nếu nguồn đổi nhãn, cột, đơn vị hoặc trả trùng ngày với giá khác nhau, tác vụ dừng thay vì đoán dữ liệu. Chọn 365 ngày không có nghĩa sẽ có đủ 365 quan sát vì nguồn có thể không công bố giá mỗi ngày.
 
-Mía chỉ có báo cáo giá theo kỳ. Các bản ghi nằm ở `periodic_prices` và xuất CSV theo kỳ; hệ thống không sao chép một báo cáo thành nhiều ngày. Khi có ít nhất 8 kỳ, năm thuật toán được đánh giá trên các kỳ công bố và tạo tối đa 12 mốc tiếp theo theo khoảng cách công bố trung vị. Kết quả được ghi rõ là dự báo giá mua theo kỳ, không phải giá ngày.
+Mía chỉ có báo cáo giá theo kỳ. Các bản ghi nằm ở `periodic_prices` và xuất CSV theo kỳ; hệ thống không sao chép một báo cáo thành nhiều ngày. Khi có ít nhất 8 kỳ, năm thuật toán được đánh giá trên các kỳ công bố và tạo tối đa 30 mốc tiếp theo theo khoảng cách công bố trung vị. Kết quả được ghi rõ là dự báo giá mua theo kỳ, không phải giá ngày.
 
 ## Nguồn gốc dữ liệu
 
@@ -39,7 +39,7 @@ Mía chỉ có báo cáo giá theo kỳ. Các bản ghi nằm ở `periodic_pric
 - Chuỗi ngày giữ lại 15% quan sát cuối (tối thiểu 7, tối đa 30); chuỗi theo mốc/kỳ giữ lại 25% quan sát cuối. Năm mô hình cùng được đánh giá nhiều bước từ cùng một mốc; không đọc giá thực tế của đoạn kiểm thử khi dự báo.
 - RMSE/MAE/MAPE/R² chỉ tính trên ngày có quan sát, không chấm điểm trên giá điền. Giữ nguyên R² âm.
 - Mốc đối chiếu là giá cuối tập huấn luyện được giữ nguyên cho toàn bộ đoạn kiểm thử, tương ứng dự báo nhiều bước. Chỉ so sánh các mô hình thuộc cùng lần huấn luyện và cùng đầu vào.
-- Sau đánh giá, huấn luyện lại trên toàn bộ lịch sử đủ điều kiện rồi lưu 30 ngày dự báo cho chuỗi ngày hoặc 12 mốc cho chuỗi theo nhịp công bố. Đầu ra này được lưu trong CSDL; luồng mới không phụ thuộc các tệp mô hình cũ.
+- Sau đánh giá, huấn luyện lại trên toàn bộ lịch sử đủ điều kiện rồi lưu tối đa 30 đầu ra cho mỗi mô hình. Chuỗi ngày dùng 30 ngày; chuỗi không đều hoặc theo kỳ giữ ngày dự báo theo nhịp công bố lịch sử. Đầu ra này được lưu trong CSDL; luồng mới không phụ thuộc các tệp mô hình cũ.
 - Dải ±1,96 RMSE chỉ là ước lượng, chưa kiểm chứng độ bao phủ 95% và không phải cam kết giá.
 - Nếu dữ liệu có nguồn thay đổi, dự báo trước đó trả HTTP 409 yêu cầu huấn luyện lại. Dự báo cũ không có bản chụp đầu vào cũng không được phục vụ như kết quả hợp lệ.
 
@@ -53,6 +53,6 @@ Frontend kiểm tra bằng `npm run build`. Bản chạy local kết nối Postg
 Kiểm chứng thực tế ngày 22/09/2026:
 
 - Cà phê: 125 quan sát trong chuỗi sử dụng từ 05/01 đến 22/09/2026; đã huấn luyện đủ năm mô hình và lưu 150 điểm dự báo.
-- Lúa IR50404: 112 mốc AGROINFO từ 05/01/2024 đến 06/08/2025; đã huấn luyện đủ năm mô hình và lưu 60 điểm dự báo theo mốc. Giao diện cảnh báo rõ độ cũ của dữ liệu.
+- Lúa IR50404: 112 mốc AGROINFO từ 05/01/2024 đến 06/08/2025; đã huấn luyện đủ năm mô hình. Mỗi lần huấn luyện lưu tối đa 30 điểm cho từng mô hình theo nhịp công bố và giao diện cảnh báo rõ độ cũ của dữ liệu.
 - Hồ tiêu: thu 132 quan sát AGROINFO. Đoạn liên tục mới nhất giữ 128 quan sát từ 20/11/2025 đến 14/09/2026 và loại 4 điểm trước khoảng ngừng công bố 311 ngày khỏi đầu vào. Đã huấn luyện năm mô hình và lưu 150 điểm dự báo (30 ngày/mô hình).
 - Mía: lưu 15 kỳ báo cáo 2020–2025 trong `periodic_prices`; đã huấn luyện đủ năm mô hình trên giá mua và lưu 60 điểm dự báo theo kỳ. Giao diện vẫn hiển thị riêng giá mua/giá bán trong lịch sử và cảnh báo độ cũ.
