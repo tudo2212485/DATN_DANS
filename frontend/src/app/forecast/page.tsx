@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import TrainingSummary from '@/components/forecast/TrainingSummary';
 import {TrainingMetadata, fetchHistory, fetchHistorySources, fetchTrainingReadiness, HistorySource} from '@/lib/api';
 import Header from '@/components/layout/Header';
@@ -18,11 +17,20 @@ import {
 import { ModelMetrics, ForecastPoint, ModelComparisonMetrics } from '@/types';
 import { fetchForecastDashboard, fetchModelComparison } from '@/lib/api';
 import ModelComparisonChart from '@/components/forecast/ModelComparisonChart';
-import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown, Download } from 'lucide-react';
+import { BrainCircuit, Activity, BarChart3, ShieldCheck, ArrowDownUp, TrendingUp, TrendingDown, Download, CalendarDays, CircleDollarSign, Sparkles } from 'lucide-react';
 
 type SupportedModel = 'LSTM' | 'Prophet' | 'ARIMA' | 'XGBoost' | 'Random Forest';
 type ChartMode = 'forecast' | 'history' | 'periodic' | 'empty';
 type ChartPoint = ForecastPoint & { sellingPrice?: number };
+
+function normalizeModelName(name:string):SupportedModel {
+  const normalized=name.toLowerCase().replace(/[_\s-]/g,'');
+  if(normalized==='randomforest') return 'Random Forest';
+  if(normalized==='xgboost') return 'XGBoost';
+  if(normalized==='prophet') return 'Prophet';
+  if(normalized==='arima') return 'ARIMA';
+  return 'LSTM';
+}
 
 export default function ForecastPage() {
   const [training, setTraining] = useState<TrainingMetadata>();
@@ -163,6 +171,11 @@ export default function ForecastPage() {
   const forecastOnlyData = displayForecastData.filter(item => item.isForecast);
   const lastHistoryPoint = [...displayForecastData].reverse().find(item => !item.isForecast);
   const basePrice = lastHistoryPoint ? lastHistoryPoint.actualPrice || lastHistoryPoint.predictedPrice : 0;
+  const lastForecastPoint = forecastOnlyData.length ? forecastOnlyData[forecastOnlyData.length-1] : undefined;
+  const projectedChange = basePrice && lastForecastPoint ? ((lastForecastPoint.predictedPrice-basePrice)/basePrice)*100 : 0;
+  const recommendedModel = comparisonData
+    .filter(item=>Number.isFinite(item.rmse) && item.rmse>0)
+    .sort((a,b)=>a.rmse-b.rmse)[0];
 
   const handleExportCSV = () => {
     if (!forecastOnlyData || forecastOnlyData.length === 0) return;
@@ -188,18 +201,17 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-      {error && <p role="alert" className={`p-4 rounded-xl border ${chartMode === 'history' || chartMode === 'periodic' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{error}</p>}
-      {selectedCommodityId > 0 && <Link className="inline-block text-brand underline" href={`/history?commodity_id=${selectedCommodityId}`}>Xem / thu thập lịch sử giá →</Link>}
-      {training && <TrainingSummary training={training} commodityId={selectedCommodityId} rmse={metrics.rmse}/>}
       {/* Header */}
       <Header
         title="Mô hình & Dự báo Giá Nông sản"
-        subtitle="Dự báo từ lịch sử có nguồn, kèm dải ước lượng và đánh giá sai số theo thời gian"
+        subtitle="Chọn nông sản, so sánh mô hình và xem xu hướng giá tương lai từ dữ liệu lịch sử có nguồn"
         showLiveBadge={false}
       />
 
+      {error && <p role="alert" className={`p-4 rounded-xl border ${chartMode === 'history' || chartMode === 'periodic' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{error}</p>}
+
       {/* Control Bar: Filters */}
-      <div className="bg-card rounded-2xl border border-border-subtle p-4 sm:p-5 shadow-card flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-card rounded-2xl border border-border-subtle p-4 sm:p-5 shadow-card flex flex-wrap items-center justify-between gap-4 lg:sticky lg:top-3 z-20">
         <div className="flex flex-wrap items-center gap-4">
           {/* Commodity Select */}
           <div className="flex flex-col">
@@ -271,6 +283,15 @@ export default function ForecastPage() {
         </div>
       </div>
 
+      {chartMode === 'forecast' && forecastData.length > 0 && <section className="grid grid-cols-2 xl:grid-cols-4 gap-3" aria-label="Tóm tắt kết quả dự báo">
+        <div className="rounded-2xl border border-border-subtle bg-white p-4 shadow-card"><div className="flex items-center justify-between"><p className="text-[11px] font-bold uppercase tracking-wider text-secondary-text">Giá gần nhất</p><CircleDollarSign className="w-4 h-4 text-brand"/></div><p className="mt-2 text-xl font-extrabold font-mono text-primary-text">{basePrice.toLocaleString('vi-VN')}</p><p className="text-[11px] text-secondary-text">{currentCommodity.unit}</p></div>
+        <div className="rounded-2xl border border-border-subtle bg-white p-4 shadow-card"><div className="flex items-center justify-between"><p className="text-[11px] font-bold uppercase tracking-wider text-secondary-text">Cuối kỳ dự báo</p><CalendarDays className="w-4 h-4 text-amber-600"/></div><p className="mt-2 text-xl font-extrabold font-mono text-primary-text">{lastForecastPoint?.predictedPrice.toLocaleString('vi-VN') || '—'}</p><p className="text-[11px] text-secondary-text">{lastForecastPoint?.date || 'Chưa có mốc dự báo'}</p></div>
+        <div className={`rounded-2xl border p-4 shadow-card ${projectedChange>=0?'border-emerald-200 bg-emerald-50/60':'border-rose-200 bg-rose-50/60'}`}><div className="flex items-center justify-between"><p className="text-[11px] font-bold uppercase tracking-wider text-secondary-text">Xu hướng dự kiến</p>{projectedChange>=0?<TrendingUp className="w-4 h-4 text-emerald-700"/>:<TrendingDown className="w-4 h-4 text-rose-700"/>}</div><p className={`mt-2 text-xl font-extrabold font-mono ${projectedChange>=0?'text-emerald-800':'text-rose-700'}`}>{projectedChange>=0?'+':''}{projectedChange.toFixed(2)}%</p><p className="text-[11px] text-secondary-text">so với giá gần nhất</p></div>
+        <div className="rounded-2xl border border-brand/20 bg-brand/10 p-4 shadow-card"><div className="flex items-center justify-between"><p className="text-[11px] font-bold uppercase tracking-wider text-brand">Mô hình gợi ý</p><Sparkles className="w-4 h-4 text-brand"/></div><p className="mt-2 text-base font-extrabold text-primary-text">{recommendedModel?.modelName || selectedModel}</p>{recommendedModel&&<button onClick={()=>setSelectedModel(normalizeModelName(recommendedModel.modelName))} className="mt-1 text-[11px] font-bold text-brand underline">Dùng mô hình này</button>}</div>
+      </section>}
+
+      {training && <TrainingSummary training={training} commodityId={selectedCommodityId} rmse={metrics.rmse}/>}
+
       {/* Metric Cards Row */}
       {chartMode === 'forecast' && forecastData.length > 0 && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* MAE */}
@@ -282,7 +303,7 @@ export default function ForecastPage() {
           <div className="text-2xl font-extrabold text-primary-text font-mono">
             {metrics.mae ? Math.round(metrics.mae).toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text font-sans">{currentCommodity.unit}</span>
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Error (Kiểm thử)</span>
+          <span className="text-[11px] text-secondary-text mt-1 block">Sai số trung bình · càng thấp càng tốt</span>
         </div>
 
         {/* RMSE */}
@@ -294,7 +315,7 @@ export default function ForecastPage() {
           <div className="text-2xl font-extrabold text-primary-text font-mono">
             {metrics.rmse ? Math.round(metrics.rmse).toLocaleString('vi-VN') : '0'} <span className="text-xs font-semibold text-secondary-text font-sans">{currentCommodity.unit}</span>
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">Root Mean Squared Error</span>
+          <span className="text-[11px] text-secondary-text mt-1 block">Phạt mạnh sai số lớn · càng thấp càng tốt</span>
         </div>
 
         {/* MAPE */}
@@ -308,7 +329,7 @@ export default function ForecastPage() {
           <div className="text-2xl font-extrabold text-brand font-mono">
             {Number(metrics.mape || 0).toFixed(2)}%
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">Mean Absolute Percentage Error</span>
+          <span className="text-[11px] text-secondary-text mt-1 block">Sai số theo phần trăm · càng thấp càng tốt</span>
         </div>
 
         {/* R-Squared */}
@@ -320,7 +341,7 @@ export default function ForecastPage() {
           <div className="text-2xl font-extrabold text-primary-text font-mono">
             {metrics.r2 ? Number(metrics.r2).toFixed(3) : '0.000'}
           </div>
-          <span className="text-[11px] text-secondary-text mt-1 block">Goodness of Fit (Tối đa 1.0)</span>
+          <span className="text-[11px] text-secondary-text mt-1 block">Mức độ phù hợp · càng gần 1 càng tốt</span>
         </div>
       </div>}
 

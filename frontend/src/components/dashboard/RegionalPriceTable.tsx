@@ -95,10 +95,10 @@ export const RegionalPriceTable: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-primary-text tracking-tight flex items-center gap-2">
             <Building2 className="w-5 h-5 text-brand" />
-            <span>Giá Niêm Yết Vùng Trọng Điểm</span>
+            <span>Giá theo vùng</span>
           </h2>
           <p className="text-xs text-secondary-text mt-0.5 font-medium">
-            Khảo sát giao dịch thực tế tại kho thu mua lớn
+            Giá mới nhất, nguồn và khu vực công bố
           </p>
         </div>
 
@@ -121,7 +121,7 @@ export const RegionalPriceTable: React.FC = () => {
       </div>
 
       {/* Items List */}
-      <div className="space-y-2.5 overflow-y-auto max-h-[300px] custom-scrollbar pr-1">
+      <div className="space-y-2.5 overflow-y-auto max-h-[340px] custom-scrollbar pr-1">
         {filteredData.map((item) => {
           const isPos = item.changePct >= 0;
           return (
@@ -142,6 +142,9 @@ export const RegionalPriceTable: React.FC = () => {
                   <MapPin className="w-3 h-3 text-brand shrink-0" />
                   <span className="truncate">{item.region}</span>
                 </div>
+                <p className="text-[10px] text-secondary-text truncate" title={item.source}>
+                  Nguồn: {item.source} · {item.updatedAt}
+                </p>
               </div>
 
               <div className="text-right shrink-0 space-y-1">

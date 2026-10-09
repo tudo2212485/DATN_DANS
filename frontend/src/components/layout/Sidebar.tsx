@@ -72,7 +72,7 @@ export const Sidebar: React.FC = () => {
     <aside 
       className={`${
         isCollapsed ? 'w-[72px] px-2.5 py-4' : 'w-64 p-5'
-      } h-screen sticky top-0 bg-sidebar border-r border-border-subtle flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-300 ease-in-out z-20`}
+      } h-screen sticky top-0 bg-sidebar border-r border-border-subtle hidden lg:flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-300 ease-in-out z-20`}
     >
       {/* Top section: Brand Logo & Navigation */}
       <div className="space-y-6">

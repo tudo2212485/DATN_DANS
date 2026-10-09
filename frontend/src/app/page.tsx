@@ -13,6 +13,7 @@ import {
 } from '@/lib/api';
 import { COMMODITIES_DATA, COMPARISON_SERIES } from '@/lib/mockData';
 import Link from 'next/link';
+import { ArrowRight, BarChart3, Database, History, TrendingDown, TrendingUp } from 'lucide-react';
 
 export default function OverviewPage() {
   const [commodities, setCommodities] = useState<CommoditySummary[]>(COMMODITIES_DATA);
@@ -69,6 +70,13 @@ export default function OverviewPage() {
     });
   }, [commodities, searchTerm, selectedRegion, selectedCategory]);
 
+  const marketStats = useMemo(() => {
+    const rising = commodities.filter((item) => item.changePct > 0).length;
+    const falling = commodities.filter((item) => item.changePct < 0).length;
+    const strongest = [...commodities].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))[0];
+    return { rising, falling, strongest };
+  }, [commodities]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -81,6 +89,32 @@ export default function OverviewPage() {
         }
         showLiveBadge={true}
       />
+
+      <section className="grid grid-cols-2 xl:grid-cols-4 gap-3" aria-label="Tóm tắt thị trường">
+        <div className="rounded-2xl border border-border-subtle bg-white p-4 shadow-card">
+          <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Đang theo dõi</p><Database className="w-4 h-4 text-brand" /></div>
+          <p className="mt-2 text-2xl font-extrabold text-primary-text">{commodities.length} <span className="text-xs font-semibold text-secondary-text">nông sản</span></p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-card">
+          <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Đang tăng</p><TrendingUp className="w-4 h-4 text-emerald-700" /></div>
+          <p className="mt-2 text-2xl font-extrabold text-emerald-800">{marketStats.rising} <span className="text-xs font-semibold">mặt hàng</span></p>
+        </div>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 shadow-card">
+          <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-rose-800">Đang giảm</p><TrendingDown className="w-4 h-4 text-rose-700" /></div>
+          <p className="mt-2 text-2xl font-extrabold text-rose-800">{marketStats.falling} <span className="text-xs font-semibold">mặt hàng</span></p>
+        </div>
+        <div className="rounded-2xl border border-border-subtle bg-brand/10 p-4 shadow-card">
+          <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-brand">Biến động mạnh nhất</p><BarChart3 className="w-4 h-4 text-brand" /></div>
+          <p className="mt-2 text-base font-extrabold text-primary-text truncate">{marketStats.strongest?.name || '—'}</p>
+          <p className="text-xs font-bold text-brand">{marketStats.strongest ? `${marketStats.strongest.changePct > 0 ? '+' : ''}${marketStats.strongest.changePct}%` : '—'}</p>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-subtle bg-white px-4 py-3 shadow-card">
+        <span className="text-xs font-bold text-secondary-text mr-auto">Truy cập nhanh</span>
+        <Link href="/history" className="inline-flex items-center gap-2 rounded-xl border border-border-subtle px-3 py-2 text-xs font-bold text-primary-text hover:border-brand/30 hover:bg-brand/5 transition-colors"><History className="w-4 h-4 text-brand" />Xem lịch sử giá</Link>
+        <Link href="/forecast" className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-xs font-bold text-white hover:bg-brand/90 transition-colors">Mở dự báo AI<ArrowRight className="w-4 h-4" /></Link>
+      </div>
 
       {/* Quick Search & Category/Region Filter Bar */}
       <QuickSearchBar
@@ -98,10 +132,10 @@ export default function OverviewPage() {
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-sm font-bold text-primary-text">
-            4 Nông Sản Trọng Điểm ({filteredCommodities.length})
+            Giá nông sản mới nhất ({filteredCommodities.length})
           </h2>
           <span className="text-[11px] text-secondary-text font-medium">
-            Nhấp vào từng thẻ để xem biểu đồ dự báo AI và phân tích chuyên sâu
+            Chọn một thẻ để xem lịch sử và dự báo chi tiết
           </span>
         </div>
 

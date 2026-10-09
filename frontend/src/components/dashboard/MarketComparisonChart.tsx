@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import { ComparisonDataPoint } from '@/types';
 import { TrendingUp, Layers } from 'lucide-react';
@@ -55,10 +56,10 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
         <div>
           <h2 className="text-base font-bold text-primary-text tracking-tight flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-brand" />
-            <span>Biểu Đồ Tương Quan Tăng Trưởng Thị Trường (Normalized Growth)</span>
+            <span>So sánh biến động giá</span>
           </h2>
           <p className="text-xs text-secondary-text mt-0.5 font-medium">
-            Tỷ lệ tăng/giảm so với mốc đầu kỳ chuẩn hóa (%) · Nhấp thẻ bên phải để bật/tắt từng mặt hàng
+            Mức tăng hoặc giảm so với đầu kỳ (%) · Chọn tên nông sản để ẩn/hiện đường giá
           </p>
         </div>
 
@@ -81,7 +82,7 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
                   className="w-2.5 h-2.5 rounded-full"
                   style={{ backgroundColor: isActive ? c.color : '#C4BDB2' }}
                 />
-                <span className="text-[11px]">{c.label.split(' ')[0]}</span>
+                <span className="text-[11px]">{c.label}</span>
               </button>
             );
           })}
@@ -89,7 +90,7 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
       </div>
 
       {/* Main Multi-Line Area Chart with smooth Gradients */}
-      <div className="h-[300px] w-full pt-1">
+      <div className="h-[340px] w-full pt-1">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 15, left: -10, bottom: 20 }}>
             <defs>
@@ -112,6 +113,7 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
             </defs>
 
             <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE4" vertical={false} />
+            <ReferenceLine y={0} stroke="#A89A8B" strokeDasharray="4 4" />
 
             <XAxis
               dataKey="date"
