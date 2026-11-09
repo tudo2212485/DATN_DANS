@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 587.5129,
+    "rmse": 731.4963,
+    "mape": 1.59,
+    "r2": 0.4017
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 2.01%)",
+  "trained_at": "2026-11-02 10:27:27",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\CASHEW_NUT\\lstm_model.pt"
+}

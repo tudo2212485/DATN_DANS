@@ -1,0 +1,17 @@
+{
+  "model_name": "Prophet",
+  "metrics": {
+    "mae": 2781.3577,
+    "rmse": 3189.2875,
+    "mape": 7.55,
+    "r2": 0.0
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 8.75%)",
+  "trained_at": "2026-11-02 10:27:25",
+  "exogenous_features": [
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\CASHEW_NUT\\prophet_model.pkl"
+}

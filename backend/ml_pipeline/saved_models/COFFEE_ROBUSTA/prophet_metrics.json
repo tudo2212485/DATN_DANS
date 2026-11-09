@@ -1,17 +1,17 @@
 {
   "model_name": "Prophet",
   "metrics": {
-    "mae": 1583.5318,
-    "rmse": 1848.5918,
-    "mape": 1.64,
-    "r2": 0.418
+    "mae": 13067.8799,
+    "rmse": 17612.0546,
+    "mape": 12.22,
+    "r2": 0.0
   },
   "passed_threshold": true,
-  "threshold_reason": "Passed Quality Check (RMSE/Mean = 3.13%)",
-  "trained_at": "2026-09-11 09:10:51",
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 16.81%)",
+  "trained_at": "2026-11-02 10:27:04",
   "exogenous_features": [
     "usd_vnd",
     "crude_oil"
   ],
-  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\COFFEE_ROBUSTA\\prophet_model.pkl"
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\COFFEE_ROBUSTA\\prophet_model.pkl"
 }

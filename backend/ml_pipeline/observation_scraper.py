@@ -154,6 +154,10 @@ def collect_domestic_history(db, http, commodity, start, end, progress=None):
                     "Bộ Công Thương/Khuyến nông Phú Yên, giá mua và bán riêng; mô hình dùng giá mua theo nhịp công bố, không biến thành quan sát ngày. "
                     f"Danh mục đã xác minh hiện có {len(SUGARCANE_REPORTS)} kỳ giai đoạn 2020–2025."
                     + (' Lỗi: '+'; '.join(errors) if errors else ''))
+    if commodity.code in ('STRAWBERRY', 'SWEET_POTATO', 'POTATO', 'CASHEW_NUT'):
+        from .specialized_scrapers import collect_specialized_portal_history
+        return collect_specialized_portal_history(db, http, commodity, config, start, end, progress)
+
     if commodity.unit.lower().replace('đ','d') != 'vnd/kg':
         raise ValueError("AGROINFO trả VNĐ/kg, đơn vị nông sản không khớp")
     count, skipped = collect_agro_history(db, http, commodity, config, start, end, progress)

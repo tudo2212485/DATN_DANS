@@ -1,0 +1,29 @@
+{
+  "model_name": "XGBoost",
+  "metrics": {
+    "mae": 179.593,
+    "rmse": 241.2081,
+    "mape": 1.15,
+    "r2": 0.6668
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 1.57%)",
+  "trained_at": "2026-11-02 10:27:20",
+  "features": [
+    "usd_vnd",
+    "crude_oil",
+    "day_of_week",
+    "month",
+    "quarter",
+    "price_lag_1",
+    "price_lag_2",
+    "price_lag_3",
+    "price_lag_7",
+    "price_lag_14",
+    "rolling_mean_7d",
+    "rolling_std_7d",
+    "rolling_mean_14d",
+    "rolling_std_14d"
+  ],
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\POTATO\\xgboost_model.pkl"
+}

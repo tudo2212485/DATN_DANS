@@ -1,19 +1,19 @@
 {
   "model_name": "LSTM",
   "metrics": {
-    "mae": 3655.3776,
-    "rmse": 4000.5143,
-    "mape": 3.82,
-    "r2": 0.0
+    "mae": 6033.5722,
+    "rmse": 8498.6135,
+    "mape": 5.77,
+    "r2": 0.4236
   },
   "passed_threshold": true,
-  "threshold_reason": "Passed Quality Check (RMSE/Mean = 6.77%)",
-  "trained_at": "2026-09-11 09:10:56",
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 8.11%)",
+  "trained_at": "2026-11-02 10:27:06",
   "seq_length": 14,
   "features": [
     "price",
     "usd_vnd",
     "crude_oil"
   ],
-  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\COFFEE_ROBUSTA\\lstm_model.pt"
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\COFFEE_ROBUSTA\\lstm_model.pt"
 }

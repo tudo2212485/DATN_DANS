@@ -13,10 +13,17 @@ def read_forecast(
     commodity_id: int = Query(2, description="ID nông sản (mặc định Cà phê Robusta = 2)"),
     model_name: Optional[str] = Query(None, description="Mô hình (LSTM, Prophet, ARIMA)"),
     days: int = Query(10, ge=1, le=30, description="Số ngày dự báo sau mốc lịch sử cuối (tối đa 30)"),
+    region: Optional[str] = Query(None, description="Mã khu vực/tỉnh thành cần dự báo (VD: daklak, lamdong, gialai)"),
     db: Session = Depends(get_db)
 ):
-    """Lấy dữ liệu dự báo giá, dải khoảng tin cậy 95% và các chỉ số sai số (MAE, RMSE, MAPE, R2)"""
-    return get_forecast_dashboard(db, commodity_id=commodity_id, model_name=model_name or active_model(db), days=days)
+    """Lấy dữ liệu dự báo giá theo từng vùng, dải khoảng tin cậy 95% và các chỉ số sai số"""
+    return get_forecast_dashboard(
+        db,
+        commodity_id=commodity_id,
+        model_name=model_name or active_model(db),
+        days=days,
+        region=region
+    )
 
 @router.get("/compare/{commodity_id}", response_model=List[ModelMetricsResponse])
 def compare_models(

@@ -120,10 +120,18 @@ export const fetchRegionalPricesApi = fetchRegionalPrices;
 export async function fetchForecastDashboard(
   commodityId: number = 2,
   modelName: string = 'LSTM',
-  days: number = 14
-): Promise<{ metrics: ModelMetrics; forecastData: ForecastPoint[]; training?: TrainingMetadata }> {
+  days: number = 14,
+  region?: string
+): Promise<{
+  metrics: ModelMetrics;
+  forecastData: ForecastPoint[];
+  training?: TrainingMetadata;
+  availableRegions?: import('@/types').RegionInfo[];
+  selectedRegion?: string;
+}> {
+  const regionParam = region ? `&region=${encodeURIComponent(region)}` : '';
   const res = await fetch(
-    `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}`,
+    `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}${regionParam}`,
     { cache: 'no-store' }
   );
   await assertApiOk(res);
@@ -132,6 +140,8 @@ export async function fetchForecastDashboard(
     metrics: data.metrics,
     forecastData: data.forecastData,
     training: data.training,
+    availableRegions: data.availableRegions,
+    selectedRegion: data.selectedRegion,
   };
 }
 

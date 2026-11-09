@@ -89,6 +89,10 @@ class MarketComparisonPoint(BaseModel):
     coffee: float
     pepper: float
     sugar: float
+    strawberry: Optional[float] = 0.0
+    sweet_potato: Optional[float] = 0.0
+    potato: Optional[float] = 0.0
+    cashew: Optional[float] = 0.0
 
 class SpotlightSummaryResponse(BaseModel):
     commodityCode: str
@@ -145,12 +149,20 @@ class ModelMetricsResponse(BaseModel):
     r2: float
     trainDate: str
 
+class RegionInfo(BaseModel):
+    id: str
+    name: str
+    basisSpread: float
+    description: Optional[str] = None
+
 class ForecastDashboardResponse(BaseModel):
     commodity: CommodityResponse
     modelName: str
     metrics: ModelMetricsResponse
     forecastData: List[ForecastPointResponse]
     training: Optional[dict] = None
+    availableRegions: Optional[List[RegionInfo]] = None
+    selectedRegion: Optional[str] = None
 
 # --- Alert Rules Schemas ---
 class AlertRuleCreate(BaseModel):

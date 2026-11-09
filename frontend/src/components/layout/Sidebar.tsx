@@ -10,9 +10,10 @@ import {
   Bell, 
   Database, 
   LogOut, 
-  ShieldCheck, 
   ChevronLeft, 
   ChevronRight,
+  GitCompare,
+  BarChart3,
 } from 'lucide-react';
 import { getUser, removeToken, User } from '@/lib/auth';
 
@@ -20,7 +21,6 @@ interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -30,18 +30,26 @@ const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Mô hình & Dự báo AI',
+    name: 'Phân tích & Dự báo',
     href: '/forecast',
     icon: TrendingUp,
+  },
+  {
+    name: 'Dữ liệu lịch sử',
+    href: '/history',
+    icon: BarChart3,
+  },
+  {
+    name: 'So sánh nông sản',
+    href: '/compare',
+    icon: GitCompare,
   },
   {
     name: 'Cảnh báo giá',
     href: '/alerts',
     icon: Bell,
-    badge: '4 Rules',
   },
 ];
-
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -71,62 +79,59 @@ export const Sidebar: React.FC = () => {
   return (
     <aside 
       className={`${
-        isCollapsed ? 'w-[72px] px-2.5 py-4' : 'w-64 p-5'
-      } h-screen sticky top-0 bg-sidebar border-r border-border-subtle hidden lg:flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-300 ease-in-out z-20`}
+        isCollapsed ? 'w-16 px-2.5 py-4' : 'w-60 px-3.5 py-4'
+      } h-screen sticky top-0 bg-[#FAFAFA] border-r border-zinc-200/80 hidden lg:flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-200 ease-in-out z-20 font-sans`}
     >
-      {/* Top section: Brand Logo & Navigation */}
+      {/* Top section: Brand & Nav */}
       <div className="space-y-6">
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-3 justify-center' : 'justify-between'} pb-4 border-b border-border-subtle/80 relative`}>
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between px-1.5'} pb-3.5 border-b border-zinc-200/70`}>
           {!isCollapsed ? (
-            <Link href="/" className="flex items-center gap-3 group overflow-hidden">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shadow-brand/20 group-hover:scale-105 transition-transform overflow-hidden bg-white p-1 shrink-0 border border-border-subtle">
-                <Image src="/logo.png" alt="AgroForecast Logo" width={40} height={40} className="w-full h-full object-contain" />
+            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 shrink-0 border border-zinc-200 shadow-2xs">
+                <Image src="/logo.png" alt="AgroForecast" width={28} height={28} className="w-full h-full object-contain" />
               </div>
               <div className="truncate">
-                <h1 className="text-base font-bold text-primary-text leading-tight tracking-tight group-hover:text-brand transition-colors truncate flex items-center gap-1.5">
+                <span className="text-[15px] font-bold text-zinc-900 tracking-tight block leading-none">
                   AgroForecast
-                </h1>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[11px] font-medium text-secondary-text tracking-wide truncate">
-                    Dự báo giá nông sản
-                  </span>
-                </div>
+                </span>
+                <span className="text-[11px] font-medium text-zinc-500 block mt-1 truncate">
+                  Dữ liệu Nông sản VN
+                </span>
               </div>
             </Link>
           ) : (
-            <Link href="/" title="AgroForecast" className="group">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shadow-brand/20 group-hover:scale-105 transition-transform overflow-hidden bg-white p-1 border border-border-subtle">
-                <Image src="/logo.png" alt="AgroForecast Logo" width={40} height={40} className="w-full h-full object-contain" />
+            <Link href="/" title="AgroForecast">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 border border-zinc-200 shadow-2xs">
+                <Image src="/logo.png" alt="AgroForecast" width={28} height={28} className="w-full h-full object-contain" />
               </div>
             </Link>
           )}
 
-          {/* Collapse / Expand Toggle Button with clear Arrow */}
           <button
             onClick={toggleCollapse}
-            title={isCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
-            className="flex items-center justify-center w-7 h-7 rounded-lg border border-border-subtle bg-white text-secondary-text hover:text-brand hover:border-brand/40 hover:bg-brand-badge shadow-xs transition-all cursor-pointer group"
+            title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 transition-colors cursor-pointer"
           >
             {isCollapsed ? (
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform text-primary-text hover:text-brand" />
+              <ChevronRight className="w-4 h-4" />
             ) : (
-              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform text-primary-text hover:text-brand" />
+              <ChevronLeft className="w-4 h-4" />
             )}
           </button>
         </div>
 
-        {/* Section: Navigation Links */}
-        <div>
+        {/* Navigation Links */}
+        <div className="space-y-1">
           {!isCollapsed && (
-            <div className="mb-2.5 px-2">
-              <span className="text-[10px] font-extrabold text-secondary-text/70 uppercase tracking-widest">
-                ĐIỀU HƯỚNG
+            <div className="px-2.5 pb-1.5">
+              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                Phân tích
               </span>
             </div>
           )}
 
-          <nav className="space-y-1.5">
+          <nav className="space-y-0.5">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
@@ -137,136 +142,85 @@ export const Sidebar: React.FC = () => {
                   href={item.href}
                   title={isCollapsed ? item.name : undefined}
                   className={`flex items-center ${
-                    isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3.5 py-2.5'
-                  } rounded-xl text-xs font-bold transition-all duration-200 group relative ${
+                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2'
+                  } rounded-lg text-[13.5px] transition-colors group relative ${
                     isActive
-                      ? 'bg-brand-light text-brand shadow-xs border border-brand/25'
-                      : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
+                      ? 'bg-zinc-900 text-white font-medium shadow-2xs'
+                      : 'text-zinc-600 font-medium hover:text-zinc-900 hover:bg-zinc-200/50'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <Icon
-                      className={`w-4 h-4 transition-transform group-hover:scale-110 shrink-0 ${
-                        isActive ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
+                      className={`w-4 h-4 shrink-0 ${
+                        isActive ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-700'
                       }`}
                     />
-                    {!isCollapsed && <span className="tracking-tight truncate">{item.name}</span>}
+                    {!isCollapsed && <span className="truncate">{item.name}</span>}
                   </div>
-
-                  {!isCollapsed && item.badge && (
-                    <span
-                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ${
-                        isActive
-                          ? 'bg-brand text-white shadow-xs'
-                          : 'bg-canvas border border-border-subtle text-secondary-text'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-
-                  {/* Active dot indicator when collapsed */}
-                  {isCollapsed && isActive && (
-                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
-                  )}
                 </Link>
               );
             })}
             
             {(user?.role === 'admin' || user?.role === 'analyst') && (
-              <Link
-                href="/dashboard"
-                title={isCollapsed ? 'Admin Control Panel' : undefined}
-                className={`flex items-center ${
-                  isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3.5 py-2.5'
-                } rounded-xl text-xs font-bold transition-all duration-200 group relative ${
-                  pathname.startsWith('/dashboard') || pathname === '/admin'
-                    ? 'bg-brand-light text-brand shadow-xs border border-brand/25'
-                    : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Database
-                    className={`w-4 h-4 transition-transform group-hover:scale-110 shrink-0 ${
-                      pathname.startsWith('/dashboard') || pathname === '/admin' ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
-                    }`}
-                  />
-                  {!isCollapsed && <span className="tracking-tight truncate">Admin Dashboard</span>}
-                </div>
+              <>
                 {!isCollapsed && (
-                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-brand/10 text-brand">
-                    CTRL
-                  </span>
+                  <div className="px-2.5 pt-4 pb-1.5">
+                    <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Hệ thống
+                    </span>
+                  </div>
                 )}
-                {isCollapsed && (pathname.startsWith('/dashboard') || pathname === '/admin') && (
-                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
-                )}
-              </Link>
-            )}
-
-            <Link
-              href="/history"
-              title={isCollapsed ? 'Lịch sử giá' : undefined}
-              className={`flex items-center ${
-                isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3.5 py-2.5'
-              } rounded-xl text-xs font-bold transition-all duration-200 group relative ${
-                pathname === '/history'
-                  ? 'bg-brand-light text-brand shadow-xs border border-brand/25'
-                  : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Database
-                  className={`w-4 h-4 transition-transform group-hover:scale-110 shrink-0 ${
-                    pathname === '/history' ? 'text-brand stroke-[2.4]' : 'text-secondary-text stroke-[1.8]'
+                <Link
+                  href="/dashboard"
+                  title={isCollapsed ? 'Quản trị dữ liệu' : undefined}
+                  className={`flex items-center ${
+                    isCollapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-2'
+                  } rounded-lg text-[13.5px] transition-colors group relative ${
+                    pathname.startsWith('/dashboard') || pathname === '/admin'
+                      ? 'bg-zinc-900 text-white font-medium shadow-2xs'
+                      : 'text-zinc-600 font-medium hover:text-zinc-900 hover:bg-zinc-200/50'
                   }`}
-                />
-                {!isCollapsed && <span className="tracking-tight truncate">Lịch sử giá</span>}
-              </div>
-              {isCollapsed && pathname === '/history' && (
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
-              )}
-            </Link>
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Database
+                      className={`w-4 h-4 shrink-0 ${
+                        pathname.startsWith('/dashboard') || pathname === '/admin' ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-700'
+                      }`}
+                    />
+                    {!isCollapsed && <span className="truncate">Quản trị dữ liệu</span>}
+                  </div>
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </div>
 
-
       {/* Bottom User Profile Section */}
-      <div className={`pt-3.5 border-t border-border-subtle flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between'}`}>
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-[#EAE5DF] text-primary-text flex items-center justify-center font-extrabold text-xs shadow-inner uppercase border border-border-subtle">
-              {user?.full_name?.substring(0, 2) || 'AD'}
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand border-2 border-sidebar" />
+      <div className={`pt-3 border-t border-zinc-200/70 flex items-center ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between px-1'}`}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-zinc-200/80 text-zinc-700 flex items-center justify-center font-semibold text-xs shrink-0 uppercase border border-zinc-300/60">
+            {user?.full_name?.substring(0, 2) || 'KH'}
           </div>
           {!isCollapsed && (
             <div className="flex flex-col truncate">
-              <span className="text-xs font-bold text-primary-text leading-tight flex items-center gap-1 truncate max-w-[105px]">
+              <span className="text-[13px] font-semibold text-zinc-800 leading-tight truncate">
                 {user?.full_name || 'Khách'}
               </span>
-              <span className="text-[11px] text-secondary-text font-medium truncate">
-                {!user ? 'Chưa đăng nhập' : user.role === 'admin' ? 'Quản trị viên' : user.role === 'analyst' ? 'Nhà phân tích' : 'Người dùng'}
+              <span className="text-[11px] text-zinc-500 truncate">
+                {!user ? 'Chế độ xem' : user.role === 'admin' ? 'Quản trị viên' : user.role === 'analyst' ? 'Phân tích viên' : 'Thành viên'}
               </span>
             </div>
           )}
         </div>
 
-        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-1' : 'gap-1'}`}>
-          {!isCollapsed && user && (
-            <div title="Tài khoản đã xác thực" className="text-brand p-1">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          )}
-          <button 
-            onClick={handleLogout}
-            title={user ? 'Đăng xuất' : 'Đăng nhập'}
-            className="text-secondary-text hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
+        <button 
+          onClick={handleLogout}
+          title={user ? 'Đăng xuất' : 'Đăng nhập'}
+          className="text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/60 p-1.5 rounded-md transition-colors cursor-pointer shrink-0"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </aside>
   );

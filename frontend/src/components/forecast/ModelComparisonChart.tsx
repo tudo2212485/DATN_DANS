@@ -12,7 +12,6 @@ import {
   Cell,
 } from 'recharts';
 import { ModelComparisonMetrics } from '@/types';
-import { Award, BarChart3 } from 'lucide-react';
 
 interface ModelComparisonChartProps {
   data: ModelComparisonMetrics[];
@@ -22,23 +21,23 @@ interface ModelComparisonChartProps {
 
 const METRIC_CONFIG = {
   mae: {
-    title: 'MAE (Mean Absolute Error)',
-    desc: 'Sai số tuyệt đối trung bình (Càng thấp càng tốt)',
-    unit: 'VNĐ',
+    title: 'Sai số tuyệt đối trung bình (MAE)',
+    desc: 'Giá trị càng thấp càng chính xác',
+    unit: 'đ',
   },
   rmse: {
-    title: 'RMSE (Root Mean Squared Error)',
-    desc: 'Căn bậc hai sai số toàn phương (Càng thấp càng tốt)',
-    unit: 'VNĐ',
+    title: 'Căn bậc hai sai số toàn phương (RMSE)',
+    desc: 'Phản ánh độ lệch chuẩn sai số dự báo',
+    unit: 'đ',
   },
   mape: {
-    title: 'MAPE (% Sai số trung bình)',
-    desc: 'Tỷ lệ phần trăm sai số dự báo (Càng thấp càng chuẩn xác)',
+    title: 'Tỷ lệ phần trăm sai số (MAPE)',
+    desc: 'Sai số tương đối trên tập kiểm thử',
     unit: '%',
   },
   r2: {
-    title: 'R² (R-Squared Score)',
-    desc: 'Hệ số xác định độ phù hợp xu hướng (Càng cao càng tốt, tối đa 1.0)',
+    title: 'Hệ số xác định (R²)',
+    desc: 'Mức độ khớp xu hướng (tối đa 1.0)',
     unit: '',
   },
 };
@@ -55,37 +54,33 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
     if (onMetricChange) onMetricChange(m);
   };
 
-  // Find best model based on metric
   const sortedData = [...data].sort((a, b) => {
-    if (activeMetric === 'r2') return (b.r2 || 0) - (a.r2 || 0); // Higher is better
-    return (a[activeMetric] || 0) - (b[activeMetric] || 0); // Lower is better
+    if (activeMetric === 'r2') return (b.r2 || 0) - (a.r2 || 0);
+    return (a[activeMetric] || 0) - (b[activeMetric] || 0);
   });
   const bestModelName = sortedData.length > 0 ? sortedData[0].modelName : 'LSTM';
 
   return (
-    <div className="bg-card rounded-2xl border border-border-subtle p-5 sm:p-6 shadow-card space-y-4">
-      {/* Top Header & Horizontal Segmented Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-border-subtle">
+    <div className="bg-white rounded-xl border border-zinc-200/90 p-5 space-y-4 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-zinc-100">
         <div>
-          <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-brand" />
-            <span>Đối Sánh Hiệu Năng 5 Thuật Toán Machine Learning</span>
+          <h3 className="text-[15px] font-semibold text-zinc-900">
+            So sánh sai số giữa các mô hình
           </h3>
-          <p className="text-xs text-secondary-text mt-0.5">
+          <p className="text-[12.5px] text-zinc-500 mt-0.5">
             {METRIC_CONFIG[activeMetric].title} · {METRIC_CONFIG[activeMetric].desc}
           </p>
         </div>
 
-        {/* Horizontal Segmented Tabs */}
-        <div className="flex items-center gap-1 bg-canvas p-1 rounded-xl border border-border-subtle shrink-0">
+        <div className="flex items-center gap-0.5 bg-zinc-100 p-0.5 rounded-lg border border-zinc-200/60 shrink-0 w-fit">
           {(['mae', 'rmse', 'mape', 'r2'] as const).map((metric) => (
             <button
               key={metric}
               onClick={() => handleSelectMetric(metric)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
                 activeMetric === metric
-                  ? 'bg-brand text-white shadow-xs'
-                  : 'text-secondary-text hover:text-primary-text hover:bg-black/[0.03]'
+                  ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
               {metric.toUpperCase()}
@@ -94,30 +89,30 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
         </div>
       </div>
 
-      {/* Chart Canvas */}
-      <div className="h-[280px] w-full pt-2">
+      <div className="h-[240px] w-full pt-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ top: 10, right: 15, left: -10, bottom: 25 }}
-            barSize={44}
+            margin={{ top: 8, right: 12, left: -12, bottom: 8 }}
+            barSize={34}
           >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0ECE4" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F4F4F5" />
             <XAxis
               dataKey="modelName"
-              axisLine={{ stroke: '#EFECE6' }}
+              axisLine={{ stroke: '#E4E4E7' }}
               tickLine={false}
-              tick={{ fill: '#4A3E3D', fontSize: 11, fontWeight: 700 }}
-              dy={8}
+              tick={{ fill: '#52525B', fontSize: 12, fontWeight: 500 }}
+              dy={6}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#8D7B68', fontSize: 11, fontWeight: 500 }}
+              tick={{ fill: '#71717A', fontSize: 11, fontWeight: 400 }}
               domain={activeMetric === 'r2' ? [0, 1] : ['auto', 'auto']}
               tickFormatter={(v) => {
                 if (activeMetric === 'r2') return Number(v).toFixed(2);
                 if (activeMetric === 'mape') return `${Number(v).toFixed(1)}%`;
+                if (Number(v) >= 1000) return `${(Number(v) / 1000).toFixed(1)}k`;
                 return Number(v).toLocaleString('vi-VN');
               }}
             />
@@ -127,20 +122,19 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
                   const val = Number(payload[0].value || 0);
                   const isBest = label === bestModelName;
                   return (
-                    <div className="bg-white/95 backdrop-blur-md border border-border-subtle p-3 rounded-xl shadow-xl text-xs space-y-1 min-w-[170px]">
-                      <div className="font-bold text-primary-text border-b border-border-subtle pb-1 flex items-center justify-between">
-                        <span>{label}</span>
+                    <div className="bg-zinc-900 text-white px-3 py-2.5 rounded-lg shadow-lg text-xs space-y-1 min-w-[165px]">
+                      <div className="font-medium border-b border-zinc-800 pb-1 flex items-center justify-between gap-3">
+                        <span className="text-zinc-200">{label}</span>
                         {isBest && (
-                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-brand/10 text-brand flex items-center gap-1">
-                            <Award className="w-3 h-3 text-brand" />
-                            Tối ưu
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                            Sai số thấp nhất
                           </span>
                         )}
                       </div>
-                      <div className="flex justify-between items-center text-secondary-text pt-1">
-                        <span>Chỉ số {activeMetric.toUpperCase()}:</span>
-                        <span className="font-extrabold text-brand font-mono text-sm">
-                          {activeMetric === 'r2' ? val.toFixed(3) : val.toLocaleString('vi-VN')} {METRIC_CONFIG[activeMetric].unit}
+                      <div className="flex justify-between items-center pt-0.5">
+                        <span className="text-zinc-400">{activeMetric.toUpperCase()}:</span>
+                        <span className="font-semibold text-white font-mono">
+                          {activeMetric === 'r2' ? val.toFixed(3) : Math.round(val).toLocaleString('vi-VN')} {METRIC_CONFIG[activeMetric].unit}
                         </span>
                       </div>
                     </div>
@@ -148,20 +142,19 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
                 }
                 return null;
               }}
-              cursor={{ fill: '#F5EFE6', opacity: 0.5 }}
+              cursor={{ fill: '#F4F4F5', opacity: 0.6 }}
             />
             <Bar
               dataKey={activeMetric}
-              radius={[6, 6, 0, 0]}
-              animationDuration={800}
+              radius={[4, 4, 0, 0]}
+              animationDuration={500}
             >
               {data.map((entry, index) => {
                 const isBest = entry.modelName === bestModelName;
                 return (
                   <Cell
                     key={`cell-${index}`}
-                    fill={isBest ? '#527853' : '#D4CEBE'}
-                    className="hover:opacity-90 transition-opacity"
+                    fill={isBest ? '#18181B' : '#D4D4D8'}
                   />
                 );
               })}

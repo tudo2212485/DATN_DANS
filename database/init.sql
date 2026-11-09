@@ -201,9 +201,14 @@ INSERT INTO commodities (id, code, name, category, unit, region, description) VA
 (1, 'RICE_IR504', 'Lúa gạo IR50404', 'Lương thực', 'VNĐ/kg', 'Đồng bằng Sông Cửu Long', 'Lúa tươi chất lượng thương phẩm cao tại ruộng An Giang, Tiền Giang, Đồng Tháp'),
 (2, 'COFFEE_ROBUSTA', 'Cà phê Robusta', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Tây Nguyên (Đắk Lắk, Lâm Đồng)', 'Cà phê nhân xô Robusta loại 1 Đắk Lắk, Gia Lai'),
 (3, 'PEPPER_BLACK', 'Hồ tiêu đen', 'Gia vị & Nông sản', 'VNĐ/kg', 'Tây Nguyên & Đông Nam Bộ', 'Tiêu đen xô khô độ ẩm tiêu chuẩn 13% tại Chư Sê, Đắk Lắk'),
-(4, 'SUGARCANE', 'Mía đường', 'Cây công nghiệp', 'VNĐ/tấn', 'Miền Trung & Tây Nam Bộ', 'Mía nguyên liệu đạt 10 CCS tại nhà máy đường');
+(4, 'SUGARCANE', 'Mía đường', 'Cây công nghiệp', 'VNĐ/tấn', 'Miền Trung & Tây Nam Bộ', 'Mía nguyên liệu đạt 10 CCS tại nhà máy đường'),
 
-ALTER SEQUENCE commodities_id_seq RESTART WITH 5;
+(5, 'STRAWBERRY', 'Dâu tây Đà Lạt', 'Nông sản đặc sản', 'VNĐ/kg', 'Lâm Đồng & Sơn La', 'Dâu tây tươi giống New Zealand chất lượng cao tại Đà Lạt và Mộc Châu'),
+(6, 'SWEET_POTATO', 'Khoai lang tím Vĩnh Long', 'Lương thực', 'VNĐ/kg', 'Vĩnh Long', 'Khoai lang tím Vĩnh Long xuất khẩu loại 1 tại Bình Tân, Vĩnh Long'),
+(7, 'POTATO', 'Khoai tây Đà Lạt', 'Lương thực', 'VNĐ/kg', 'Lâm Đồng', 'Khoai tây thương phẩm hồng/vàng Đà Lạt loại 1'),
+(8, 'CASHEW_NUT', 'Hạt điều', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Bình Phước & Đông Nam Bộ', 'Hạt điều thô thu mua tại vườn và điều nhân xuất khẩu tại Bình Phước');
+
+ALTER SEQUENCE commodities_id_seq RESTART WITH 9;
 
 -- 3. Thêm chuỗi dữ liệu lịch sử giá 60 ngày gần nhất
 DO $$
@@ -241,6 +246,30 @@ BEGIN
         -- Insert Mía đường
         INSERT INTO price_history (commodity_id, record_date, price, price_min, price_max, volume, source)
         VALUES (4, curr_date, p_sugar, p_sugar - 15000, p_sugar + 20000, ROUND((2500 + random()*800)::numeric, 1), 'Hiệp hội Mía đường Việt Nam (VSSA)');
+
+        -- Insert Dâu tây
+        INSERT INTO price_history (commodity_id, record_date, price, price_min, price_max, volume, source)
+        VALUES (5, curr_date, ROUND((p_rice * 12 + (sin(i::float/4.0) * 800 + (random() * 600 - 250)))::numeric, 2),
+            ROUND((p_rice * 12 - 2000)::numeric, 2), ROUND((p_rice * 12 + 3000)::numeric, 2),
+            ROUND((80 + random()*40)::numeric, 1), 'Sở NN&PTNT Lâm Đồng');
+
+        -- Insert Khoai lang tím Vĩnh Long
+        INSERT INTO price_history (commodity_id, record_date, price, price_min, price_max, volume, source)
+        VALUES (6, curr_date, ROUND((8000 + (sin(i::float/5.0) * 300 + (random() * 200 - 80)))::numeric, 2),
+            ROUND((7500 + random()*200)::numeric, 2), ROUND((8500 + random()*300)::numeric, 2),
+            ROUND((500 + random()*200)::numeric, 1), 'Cổng TT Giá cả Nông sản Vĩnh Long');
+
+        -- Insert Khoai tây Đà Lạt
+        INSERT INTO price_history (commodity_id, record_date, price, price_min, price_max, volume, source)
+        VALUES (7, curr_date, ROUND((15000 + (cos(i::float/4.0) * 500 + (random() * 400 - 150)))::numeric, 2),
+            ROUND((14000 + random()*500)::numeric, 2), ROUND((16000 + random()*500)::numeric, 2),
+            ROUND((300 + random()*150)::numeric, 1), 'Sở NN&PTNT Lâm Đồng');
+
+        -- Insert Hạt điều
+        INSERT INTO price_history (commodity_id, record_date, price, price_min, price_max, volume, source)
+        VALUES (8, curr_date, ROUND((35000 + (sin(i::float/6.0) * 1500 + (random() * 1000 - 400)))::numeric, 2),
+            ROUND((33000 + random()*1000)::numeric, 2), ROUND((37000 + random()*1500)::numeric, 2),
+            ROUND((200 + random()*100)::numeric, 1), 'Hiệp hội Điều Việt Nam (VINACAS)');
 
         curr_date := curr_date + INTERVAL '1 day';
     END LOOP;

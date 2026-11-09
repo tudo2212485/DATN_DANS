@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 191.7642,
+    "rmse": 227.5716,
+    "mape": 1.23,
+    "r2": 0.7034
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 1.48%)",
+  "trained_at": "2026-11-02 10:27:21",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\POTATO\\lstm_model.pt"
+}

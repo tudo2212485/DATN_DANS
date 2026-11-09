@@ -1,14 +1,14 @@
 {
   "model_name": "XGBoost",
   "metrics": {
-    "mae": 207.5109,
-    "rmse": 278.6184,
-    "mape": 0.15,
-    "r2": 0.7141
+    "mae": 2115.0202,
+    "rmse": 3880.1131,
+    "mape": 1.49,
+    "r2": 0.3337
   },
   "passed_threshold": true,
-  "threshold_reason": "Passed Quality Check (RMSE/Mean = 0.31%)",
-  "trained_at": "2026-09-11 09:10:59",
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 2.64%)",
+  "trained_at": "2026-11-02 10:27:08",
   "features": [
     "usd_vnd",
     "crude_oil",
@@ -25,5 +25,5 @@
     "rolling_mean_14d",
     "rolling_std_14d"
   ],
-  "saved_model_path": "D:\\DA_TN\\backend\\ml_pipeline\\saved_models\\PEPPER_BLACK\\xgboost_model.pkl"
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\PEPPER_BLACK\\xgboost_model.pkl"
 }

@@ -23,6 +23,10 @@ export interface ComparisonDataPoint {
   coffee: number;
   pepper: number;
   sugar: number;
+  strawberry?: number;
+  sweet_potato?: number;
+  potato?: number;
+  cashew?: number;
 }
 
 export interface SpotlightSummary {
@@ -167,3 +171,10 @@ export interface ActiveModelSetting {
 
 
 
+
+export interface RegionInfo {
+  id: string;
+  name: string;
+  basisSpread: number;
+  description?: string;
+}

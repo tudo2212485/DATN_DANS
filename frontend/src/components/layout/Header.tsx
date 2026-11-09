@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Clock } from 'lucide-react';
 
 interface HeaderProps {
   title?: string;
@@ -11,35 +10,30 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   title = 'Tổng quan thị trường',
-  subtitle = 'Cập nhật lần cuối: 28/08/2026 · 14:30',
+  subtitle = 'Dữ liệu giá thu mua nội địa cập nhật từ các vùng chuyên canh',
   showLiveBadge = true,
 }) => {
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7 pb-2">
+    <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-4 border-b border-zinc-200/80">
       <div>
-        <h1 className="text-2xl font-extrabold text-primary-text tracking-tight">
+        <h1 className="text-xl sm:text-[22px] font-bold text-zinc-900 tracking-tight leading-snug">
           {title}
         </h1>
-        <div className="flex items-center gap-2 mt-1 text-xs text-secondary-text font-medium">
-          <Clock className="w-3.5 h-3.5 text-secondary-text/80" />
-          <span>{subtitle}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canvas border border-border-subtle text-xs font-semibold text-secondary-text">
-          <Calendar className="w-3.5 h-3.5 text-brand" />
-          <span>Q3/2026</span>
-        </div>
-
-        {showLiveBadge && (
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-badge text-brand text-xs font-bold border border-brand/20 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-brand animate-pulse-live" />
-            <span className="tracking-wide font-extrabold">LIVE</span>
-          </div>
+        {subtitle && (
+          <p className="mt-0.5 text-[13px] text-zinc-500 font-normal">
+            {subtitle}
+          </p>
         )}
       </div>
+
+      {showLiveBadge && (
+        <div className="flex items-center gap-2 text-[12px] text-zinc-500 font-medium shrink-0">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600" />
+          <span>Thị trường nội địa Việt Nam</span>
+        </div>
+      )}
     </header>
   );
 };
+
 export default Header;

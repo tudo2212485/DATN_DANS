@@ -10,12 +10,16 @@
 
 ## Nguồn Việt Nam được tích hợp
 
-| Nông sản | Nguồn khảo sát | Khả năng sử dụng |
+| Nông sản | Nguồn công bố chính thống | Khả năng sử dụng và luồng dữ liệu |
 |---|---|---|
-| Cà phê | [Giacaphe, bảng giá theo ngày](https://giacaphe.com/gia-ca-phe-noi-dia-ngay-2026-09-11/) và [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Giacaphe bổ sung giá Robusta nội địa gần đây. Chuỗi huấn luyện dùng `Cà phê nhân`, thị trường `Đắk Lăk` (đúng nhãn của nguồn), loại giá `Bán buôn`, đơn vị `VND/kg` từ AGROINFO; nguồn và quy cách của từng điểm được lưu trong bản chụp huấn luyện. |
-| Hồ tiêu | [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Thu đúng `Hạt tiêu đen trong nước`, thị trường `Đắk Lắk`, loại giá `Bán buôn`, đơn vị `VND/kg`. |
-| Lúa IR50404 | [AGROINFO – CSDL giá nông sản](https://agro.gov.vn/vn/nguonwmy.aspx) | Thu đúng `Lúa IR 50404 - lúa tươi`, thị trường `An Giang`, loại giá `Bán tại hộ`, đơn vị `VND/kg`. Vì nguồn công bố không đều, hệ thống huấn luyện và dự báo theo mốc công bố. |
-| Mía đường | [Bộ Công Thương – giá nông sản Phú Yên](https://thuongmaibiengioimiennui.gov.vn/gia-hang-hoa/2024/2/tham-khao-gia-ca-thi-truong-nong-san-tai-phu-yen) | 15 báo cáo giai đoạn 2020–2025 cho `Mía (từ 7 – 10 chữ đường)` tại Tây Hòa, Phú Yên. Hệ thống lưu riêng giá mua/giá bán và dùng giá mua làm biến mục tiêu dự báo theo kỳ. |
+| Cà phê Robusta | [Bộ Công Thương – vinanet.vn](https://vinanet.vn) & [Giacaphe](https://giacaphe.com) | Thu thập giá cà phê Robusta nhân xô nội địa tại Đắk Lắk, Lâm Đồng (VNĐ/kg) từ Trung tâm Thông tin Công nghiệp và Thương mại (Bộ Công Thương). Nguồn và quy cách được lưu minh bạch vào `price_history`. |
+| Hồ tiêu đen | [Hiệp hội Hồ tiêu và Cây gia vị Việt Nam – vpsa.org.vn](https://vpsa.org.vn) | Thu thập giá hạt tiêu đen xô khô đạt chuẩn độ ẩm 13% tại Đắk Lắk và Gia Lai (VNĐ/kg) từ hiệp hội ngành hàng chính thống VPSA. |
+| Lúa IR50404 | [Hiệp hội Lương thực Việt Nam – vietfood.org.vn](https://vietfood.org.vn) & [AGROINFO](https://agro.gov.vn) | Thu thập đúng `Lúa IR 50404 - lúa tươi` tại ruộng khu vực An Giang & ĐBSCL (VNĐ/kg) công bố bởi VFA và Bộ NN&PTNT. |
+| Mía đường | [Bộ Công Thương – Phú Yên](https://thuongmaibiengioimiennui.gov.vn) | Báo cáo định kỳ của Khuyến nông và Nhà máy đường cho `Mía (từ 7 – 10 chữ đường)` tại Tây Hòa, Phú Yên. Lưu riêng giá mua/bán và dự báo theo nhịp công bố. |
+| Dâu tây Đà Lạt | [Sở NN&PTNT Lâm Đồng](https://agri.lamdong.gov.vn) & [Cổng TTĐT Sơn La](https://sonla.gov.vn) | Thu thập giá dâu tây tươi giống New Zealand / Mỹ đá thương phẩm loại 1 tại Đà Lạt và Mộc Châu (VNĐ/kg). Dữ liệu được đưa vào mô hình Prophet, XGBoost, LSTM, ARIMA, Random Forest. |
+| Khoai lang tím Vĩnh Long | [Cổng TT Giá cả Nông sản Vĩnh Long](http://giaca.nsvl.com.vn) | Thu thập giá khoai lang tím Nhật loại 1 tại vùng chuyên canh Bình Tân, Vĩnh Long (VNĐ/kg). Tích hợp làm đầu vào huấn luyện và dự báo xu hướng. |
+| Khoai tây Đà Lạt | [Sở NN&PTNT Lâm Đồng](https://agri.lamdong.gov.vn) | Thu thập giá khoai tây hồng/vàng Đà Lạt thương phẩm loại 1 tại Lâm Đồng (VNĐ/kg) phục vụ dự báo xu hướng tiêu dùng. |
+| Hạt điều thô | [Hiệp hội Điều VN – vinacas.com.vn](https://vinacas.com.vn) & [Bình Phước](https://binhphuoc.gov.vn) | Thu thập giá điều thô thu mua tại vườn và giá nhân điều xuất khẩu chính ngạch công bố từ VINACAS. |
 
 AGROINFO là nguồn ASP.NET phân trang; bộ thu thập gửi đúng bộ lọc ngày, sản phẩm, thị trường và loại giá, sau đó kiểm tra lại từng dòng trước khi lưu. Nếu nguồn đổi nhãn, cột, đơn vị hoặc trả trùng ngày với giá khác nhau, tác vụ dừng thay vì đoán dữ liệu. Chọn 365 ngày không có nghĩa sẽ có đủ 365 quan sát vì nguồn có thể không công bố giá mỗi ngày.
 

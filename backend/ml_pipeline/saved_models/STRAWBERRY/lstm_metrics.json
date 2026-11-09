@@ -1,0 +1,19 @@
+{
+  "model_name": "LSTM",
+  "metrics": {
+    "mae": 1947.2815,
+    "rmse": 2317.8089,
+    "mape": 1.83,
+    "r2": 0.183
+  },
+  "passed_threshold": true,
+  "threshold_reason": "Passed Quality Check (RMSE/Mean = 2.21%)",
+  "trained_at": "2026-11-02 10:27:14",
+  "seq_length": 14,
+  "features": [
+    "price",
+    "usd_vnd",
+    "crude_oil"
+  ],
+  "saved_model_path": "D:\\DATN_DDNS\\DATN_DANS\\backend\\ml_pipeline\\saved_models\\STRAWBERRY\\lstm_model.pt"
+}

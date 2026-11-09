@@ -160,14 +160,14 @@ export default function HistoryPage() {
             <div><p className="text-xs text-secondary-text">Thay đổi từ đầu đến cuối kỳ</p><p className={`text-xl font-bold font-mono ${chartStats.change>0?'text-emerald-700':chartStats.change<0?'text-rose-600':'text-secondary-text'}`}>{chartStats.change>0?'+':''}{chartStats.change.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2})}%</p></div>
             <div className="flex items-center gap-2 text-xs text-secondary-text"><span className="w-6 h-0.5 rounded bg-brand"/>Giá công bố<span className="ml-2 w-2 h-2 rounded-full border-2 border-brand bg-white"/>Điểm dữ liệu</div>
           </div>
-          <div className="mt-3 h-[360px] rounded-2xl bg-gradient-to-b from-brand-light/65 via-white to-white px-1 py-4 sm:px-3">
+          <div className="mt-3 h-[360px] rounded-xl bg-white px-1 py-4 sm:px-3">
             <ResponsiveContainer width="100%" height="100%"><AreaChart data={chart} margin={{top:8,right:12,left:8,bottom:0}}>
-              <defs><linearGradient id="historyPriceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4E7152" stopOpacity={0.3}/><stop offset="70%" stopColor="#4E7152" stopOpacity={0.05}/><stop offset="100%" stopColor="#4E7152" stopOpacity={0}/></linearGradient></defs>
-              <CartesianGrid vertical={false} stroke="#E5E0D8" strokeDasharray="4 6"/>
-              <XAxis dataKey="date" tickFormatter={formatChartDate} minTickGap={42} axisLine={false} tickLine={false} tick={{fill:'#8D7B68',fontSize:11}} dy={10}/>
-              <YAxis domain={['auto','auto']} tickFormatter={(value:number)=>formatCompactPrice(value)} axisLine={false} tickLine={false} tick={{fill:'#8D7B68',fontSize:11}} width={58}/>
-              <Tooltip cursor={{stroke:'#9C6644',strokeWidth:1,strokeDasharray:'4 4'}} labelFormatter={(label)=>`Ngày ${formatFullDate(String(label))}`} formatter={(value)=>[`${formatPrice(Number(value))} ${source?.unit}`,'Giá']} contentStyle={{border:'1px solid #E5E0D8',borderRadius:14,boxShadow:'0 10px 30px rgba(45,35,30,.12)',fontSize:12}} labelStyle={{color:'#2D231E',fontWeight:700,marginBottom:4}}/>
-              <Area type="monotone" dataKey="price" name="Giá" stroke="#4E7152" strokeWidth={3} fill="url(#historyPriceFill)" dot={data.records.length<=60?{r:2.5,fill:'#fff',stroke:'#4E7152',strokeWidth:2}:false} activeDot={{r:5,fill:'#4E7152',stroke:'#fff',strokeWidth:3}} connectNulls={false} isAnimationActive={false}/>
+              <defs><linearGradient id="historyPriceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#059669" stopOpacity={0.18}/><stop offset="100%" stopColor="#059669" stopOpacity={0}/></linearGradient></defs>
+              <CartesianGrid vertical={false} stroke="#F4F4F5" strokeDasharray="3 3"/>
+              <XAxis dataKey="date" tickFormatter={formatChartDate} minTickGap={42} axisLine={{stroke:'#E4E4E7'}} tickLine={false} tick={{fill:'#71717A',fontSize:11.5}} dy={8}/>
+              <YAxis domain={['auto','auto']} tickFormatter={(value:number)=>formatCompactPrice(value)} axisLine={false} tickLine={false} tick={{fill:'#71717A',fontSize:11.5}} width={58}/>
+              <Tooltip cursor={{stroke:'#D4D4D8',strokeWidth:1,strokeDasharray:'3 3'}} labelFormatter={(label)=>`Ngày ${formatFullDate(String(label))}`} formatter={(value)=>[`${formatPrice(Number(value))} ${source?.unit}`,'Giá thực tế']} contentStyle={{backgroundColor:'#18181B',color:'#FFFFFF',border:'none',borderRadius:8,fontSize:12}} labelStyle={{color:'#D4D4D8',fontWeight:600,marginBottom:4}} itemStyle={{color:'#34D399',fontWeight:600}}/>
+              <Area type="monotone" dataKey="price" name="Giá" stroke="#059669" strokeWidth={2.25} fill="url(#historyPriceFill)" baseValue="dataMin" dot={data.records.length<=60?{r:2.5,fill:'#059669',strokeWidth:0}:false} activeDot={{r:4.5,fill:'#059669',stroke:'#fff',strokeWidth:2}} connectNulls={false} isAnimationActive={false}/>
             </AreaChart></ResponsiveContainer>
           </div>
           <p className="mt-3 text-xs text-secondary-text">Khoảng trống trên đường biểu diễn là ngày nguồn không công bố giá; hệ thống không tự tạo giá thay thế trên biểu đồ.</p>

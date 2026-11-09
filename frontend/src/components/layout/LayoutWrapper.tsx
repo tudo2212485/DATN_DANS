@@ -32,7 +32,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // Khi đang ở trang Login hoặc Admin Dashboard độc lập
   if (isLoginPage) {
     return (
-      <main className="w-full min-h-screen bg-[#F9F6F2] overflow-y-auto flex items-center justify-center">
+      <main className="w-full min-h-screen bg-canvas overflow-y-auto flex items-center justify-center">
         {children}
       </main>
     );
@@ -50,10 +50,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // Khi chưa có Token và đang chuyển hướng
   if (isAuthenticated === false && !isPublicPage) {
     return (
-      <div className="flex items-center justify-center min-h-screen w-full bg-[#F9F6F2]">
+      <div className="flex items-center justify-center min-h-screen w-full bg-canvas">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#527853] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-bold text-[#3E2723]/60 tracking-wide uppercase">Đang chuyển hướng đăng nhập...</p>
+          <div className="w-8 h-8 border-3 border-[#15803D] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-bold text-secondary-text tracking-wide uppercase">Đang chuyển hướng đăng nhập...</p>
         </div>
       </div>
     );

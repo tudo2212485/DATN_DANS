@@ -50,14 +50,18 @@ def get_commodities_overview(db: Session) -> List[CommodityOverviewCard]:
             "RICE_IR504": "Lúa gạo",
             "COFFEE_ROBUSTA": "Cà phê",
             "PEPPER_BLACK": "Hồ tiêu",
-            "SUGARCANE": "Mía đường"
+            "SUGARCANE": "Mía đường",
+            "STRAWBERRY": "Dâu tây",
+            "SWEET_POTATO": "Khoai lang",
+            "POTATO": "Khoai tây",
+            "CASHEW_NUT": "Hạt điều"
         }
         display_name = name_map.get(c.code, c.name.split(" ")[0] + (" " + c.name.split(" ")[1] if len(c.name.split(" ")) > 1 else ""))
 
         overview_cards.append(
             CommodityOverviewCard(
                 id=c.id,
-                code=c.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR"),
+                code=c.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR").replace("SWEET_POTATO", "SWEETPOTATO").replace("CASHEW_NUT", "CASHEW"),
                 name=display_name,
                 category=c.category,
                 unit=c.unit,
@@ -116,7 +120,7 @@ def get_market_comparison(db: Session) -> List[MarketComparisonPoint]:
 
     # Lấy mốc giá gốc đầu kỳ để tính % thay đổi
     base_prices = {}
-    for code in ["RICE_IR504", "COFFEE_ROBUSTA", "PEPPER_BLACK", "SUGARCANE"]:
+    for code in ["RICE_IR504", "COFFEE_ROBUSTA", "PEPPER_BLACK", "SUGARCANE", "STRAWBERRY", "SWEET_POTATO", "POTATO", "CASHEW_NUT"]:
         for d in sampled_dates:
             if code in date_map.get(d, {}):
                 base_prices[code] = date_map[d][code]
@@ -139,7 +143,11 @@ def get_market_comparison(db: Session) -> List[MarketComparisonPoint]:
                 rice=calc_pct("RICE_IR504"),
                 coffee=calc_pct("COFFEE_ROBUSTA"),
                 pepper=calc_pct("PEPPER_BLACK"),
-                sugar=calc_pct("SUGARCANE")
+                sugar=calc_pct("SUGARCANE"),
+                strawberry=calc_pct("STRAWBERRY"),
+                sweet_potato=calc_pct("SWEET_POTATO"),
+                potato=calc_pct("POTATO"),
+                cashew=calc_pct("CASHEW_NUT"),
             )
         )
 
@@ -203,7 +211,7 @@ def get_spotlight_commodity(db: Session, code: str = "COFFEE_ROBUSTA") -> Spotli
         for p in sampled
     ]
 
-    short_code = commodity.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR")
+    short_code = commodity.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR").replace("SWEET_POTATO", "SWEETPOTATO").replace("CASHEW_NUT", "CASHEW")
     
     return SpotlightSummaryResponse(
         commodityCode=short_code,
@@ -244,7 +252,7 @@ def get_regional_prices_list(db: Session):
         p_max = float(p_curr.price_max) if p_curr.price_max else price_val * 1.015
         vol = float(p_curr.volume) if p_curr.volume else 1250.0
 
-        short_code = c.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR")
+        short_code = c.code.replace("RICE_IR504", "RICE").replace("COFFEE_ROBUSTA", "COFFEE").replace("PEPPER_BLACK", "PEPPER").replace("SUGARCANE", "SUGAR").replace("SWEET_POTATO", "SWEETPOTATO").replace("CASHEW_NUT", "CASHEW")
 
         regional_list.append({
             "id": c.id,

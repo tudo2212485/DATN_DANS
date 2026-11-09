@@ -3,7 +3,7 @@
 import React from 'react';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { CommoditySummary } from '@/types';
-import { ArrowRight, MapPin, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
 
 interface CommodityCardProps {
   commodity: CommoditySummary;
@@ -11,77 +11,113 @@ interface CommodityCardProps {
 
 export const CommodityCard: React.FC<CommodityCardProps> = ({ commodity }) => {
   const isPos = commodity.isPositive;
-  const strokeColor = isPos ? '#4E7152' : '#D97757';
+  const strokeColor = isPos ? '#059669' : '#E11D48';
   const gradientId = `grad-${commodity.code}`;
 
-  return (
-    <article className="h-full bg-card rounded-2xl border border-border-subtle p-5 shadow-card hover:shadow-hover hover:-translate-y-0.5 hover:border-brand/35 transition-all duration-300 flex flex-col justify-between group/card">
-      {/* Top row: Code & Change % */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-bold text-secondary-text tracking-wider uppercase">
-          {commodity.code}
-        </span>
-        <span
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight ${
-            isPos
-              ? 'bg-brand-badge text-brand border border-brand/15'
-              : 'bg-accent-coralLight text-accent-coral border border-accent-coral/20'
-          }`}
-        >
-          {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {isPos ? `+${commodity.changePct}%` : `${commodity.changePct}%`}
-        </span>
-      </div>
+  const sparkValues =
+    commodity.sparkline && commodity.sparkline.length > 0
+      ? commodity.sparkline.map((s) => s.value)
+      : [commodity.currentPrice];
+  const minPrice = Math.min(...sparkValues);
+  const maxPrice = Math.max(...sparkValues);
+  const current = commodity.currentPrice || sparkValues[sparkValues.length - 1] || 0;
 
-      {/* Commodity Name & Price */}
-      <div className="mb-4">
-        <h3 className="text-sm font-bold text-primary-text mb-2">
-          {commodity.name}
-        </h3>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[30px] font-extrabold text-primary-text tracking-tight leading-none font-mono">
-            {commodity.formattedPrice}
+  const previousPrice =
+    sparkValues.length > 1
+      ? sparkValues[sparkValues.length - 2]
+      : current * (1 - commodity.changePct / 100);
+  const diffVnd = current - previousPrice;
+
+  return (
+    <article className="h-full bg-white rounded-xl border border-zinc-200/90 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-zinc-300 hover:shadow-sm transition-all duration-200 flex flex-col justify-between group font-sans">
+      <div>
+        {/* Header: Name, Region & Change Badge */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold text-zinc-900 group-hover:text-emerald-700 transition-colors truncate">
+              {commodity.name}
+            </h3>
+            <p className="text-[12px] text-zinc-500 truncate mt-0.5">
+              {commodity.region} · {commodity.category}
+            </p>
+          </div>
+
+          <span
+            className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[12px] font-semibold font-mono shrink-0 ${
+              isPos
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-rose-50 text-rose-700'
+            }`}
+          >
+            {isPos ? (
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            ) : (
+              <ArrowDownRight className="w-3.5 h-3.5" />
+            )}
+            <span>{isPos ? `+${commodity.changePct}%` : `${commodity.changePct}%`}</span>
           </span>
-          <span className="text-xs font-semibold text-secondary-text">
-            {commodity.unit}
-          </span>
+        </div>
+
+        {/* Price & Sparkline Row */}
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-zinc-900 tracking-tight font-mono leading-none">
+                {commodity.formattedPrice}
+              </span>
+              <span className="text-[12px] font-medium text-zinc-500">
+                {commodity.unit}
+              </span>
+            </div>
+            <span
+              className={`block mt-1.5 text-[12px] font-medium font-mono ${
+                isPos ? 'text-emerald-700' : 'text-rose-600'
+              }`}
+            >
+              {diffVnd >= 0
+                ? `+${Math.round(diffVnd).toLocaleString('vi-VN')} đ`
+                : `${Math.round(diffVnd).toLocaleString('vi-VN')} đ`}{' '}
+              <span className="text-zinc-400 font-sans">so với kỳ trước</span>
+            </span>
+          </div>
+
+          {/* Mini Sparkline */}
+          <div className="h-11 w-24 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={commodity.sparkline}>
+                <defs>
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={strokeColor} stopOpacity={0.2} />
+                    <stop offset="100%" stopColor={strokeColor} stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <YAxis hide domain={['dataMin', 'dataMax']} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke={strokeColor}
+                  strokeWidth={1.75}
+                  fill={`url(#${gradientId})`}
+                  baseValue="dataMin"
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 text-[11px] text-secondary-text mb-2">
-        <span className="inline-flex items-center gap-1 min-w-0">
-          <MapPin className="w-3 h-3 text-brand shrink-0" />
-          <span className="truncate">{commodity.region}</span>
+      {/* Footer: Min/Max & Action */}
+      <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-[12px] text-zinc-500">
+        <span className="font-mono text-[11.5px]">
+          Biên độ: {minPrice.toLocaleString('vi-VN')} – {maxPrice.toLocaleString('vi-VN')}
         </span>
-        <span className="inline-flex items-center gap-1 font-bold text-brand shrink-0">
-          Chi tiết <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+        <span className="inline-flex items-center gap-0.5 font-medium text-zinc-700 group-hover:text-emerald-700 transition-colors">
+          Chi tiết <ChevronRight className="w-3.5 h-3.5" />
         </span>
-      </div>
-
-      {/* Sparkline Chart */}
-      <div className="h-10 w-full mt-auto -mb-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={commodity.sparkline} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={strokeColor} stopOpacity={0.25} />
-                <stop offset="95%" stopColor={strokeColor} stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-            <YAxis hide domain={['dataMin - 10', 'dataMax + 10']} />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke={strokeColor}
-              strokeWidth={2}
-              fillOpacity={1}
-              fill={`url(#${gradientId})`}
-              isAnimationActive={true}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
       </div>
     </article>
   );
 };
+
 export default CommodityCard;
