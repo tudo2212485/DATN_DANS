@@ -11,52 +11,52 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
     id: 1,
     commodityName: 'Lúa gạo IR504',
     code: 'RICE',
-    region: 'Đồng bằng Sông Cửu Long',
+    region: 'Huyện Châu Phú, An Giang (Tại ruộng)',
     price: '8.065',
     unit: 'VNĐ/kg',
     minMax: '7.944 - 8.186',
     volume: '28.500 tấn',
     changePct: 1.2,
-    source: 'VFA Hiệp hội Lương thực',
+    source: 'Khảo sát giá bán tại ruộng Châu Phú',
     updatedAt: 'Hôm nay',
   },
   {
     id: 2,
     commodityName: 'Cà phê Robusta',
     code: 'COFFEE',
-    region: 'Tây Nguyên (Đắk Lắk, Lâm Đồng)',
+    region: 'Huyện Cư M\'gar, Đắk Lắk (Tại vườn)',
     price: '117.500',
     unit: 'VNĐ/kg',
     minMax: '116.700 - 117.700',
     volume: '12.400 tấn',
     changePct: 2.5,
-    source: 'Vinanet & VICOFA',
+    source: 'Khảo sát giá bán tại vườn Cư M\'gar',
     updatedAt: 'Hôm nay',
   },
   {
     id: 3,
     commodityName: 'Hồ tiêu đen',
     code: 'PEPPER',
-    region: 'Tây Nguyên & Đông Nam Bộ',
+    region: 'Huyện Chư Sê, Gia Lai (Tại vườn)',
     price: '143.360',
     unit: 'VNĐ/kg',
     minMax: '142.800 - 144.800',
     volume: '4.800 tấn',
     changePct: -0.8,
-    source: 'VPSA Hiệp hội Hồ tiêu',
+    source: 'Khảo sát giá bán tại vườn Chư Sê',
     updatedAt: 'Hôm nay',
   },
   {
     id: 4,
     commodityName: 'Mía đường 10 CCS',
     code: 'SUGAR',
-    region: 'Miền Trung & Tây Nam Bộ',
+    region: 'Huyện Tây Hòa, Phú Yên (Tại ruộng)',
     price: '1.246.588',
     unit: 'VNĐ/tấn',
     minMax: '1.236.000 - 1.250.000',
     volume: '35.000 tấn',
     changePct: 0.5,
-    source: 'VSSA Hiệp hội Mía đường',
+    source: 'Khảo sát giá bán tại ruộng Tây Hòa',
     updatedAt: 'Hôm nay',
   },
 ];
@@ -94,10 +94,10 @@ export const RegionalPriceTable: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b border-zinc-100">
           <div>
             <h2 className="text-[15px] font-semibold text-zinc-900">
-              Giá giao dịch theo vùng
+              Giá bán tại vườn theo địa phương
             </h2>
             <p className="text-[12.5px] text-zinc-500 mt-0.5">
-              Khảo sát tại kho thu mua và vùng chuyên canh
+              Khảo sát giá nông hộ bán trực tiếp tại vườn và ruộng sản xuất
             </p>
           </div>
 
@@ -106,7 +106,7 @@ export const RegionalPriceTable: React.FC = () => {
             onChange={(e) => setSelectedRegion(e.target.value)}
             className="bg-zinc-50 border border-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium focus:outline-none cursor-pointer w-fit"
           >
-            <option value="ALL">Tất cả vùng ({data.length})</option>
+            <option value="ALL">Tất cả địa phương ({data.length})</option>
             {regions.map((r) => (
               <option key={r} value={r}>
                 {r}

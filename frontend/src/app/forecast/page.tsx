@@ -334,8 +334,8 @@ export default function ForecastPage() {
   return (
     <div className="space-y-5 max-w-[1440px] mx-auto pb-12 font-sans">
       <Header
-        title="Phân tích & Dự báo giá nông sản"
-        subtitle="Mô hình dự báo chuỗi thời gian kết hợp chênh lệch giá theo vùng thu mua"
+        title="Phân tích & Dự báo giá nông sản tại vườn"
+        subtitle="Mô hình dự báo chuỗi thời gian kết hợp chênh lệch giá nông hộ bán ra tại vườn / ruộng từng địa phương"
         showLiveBadge={true}
       />
 
@@ -433,7 +433,7 @@ export default function ForecastPage() {
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[12px] font-medium text-zinc-500 flex items-center gap-1 mr-1">
                 <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Khu vực thu mua:</span>
+                <span>Địa phương (Bán tại vườn/ruộng):</span>
               </span>
               {availableRegions.map((r) => {
                 const isSelected = selectedRegion === r.id;
@@ -483,7 +483,7 @@ export default function ForecastPage() {
         >
           {/* Col 1: Current Price */}
           <div className="p-4 sm:p-5">
-            <p className="text-[12.5px] font-medium text-zinc-500">Giá thu mua hiện tại</p>
+            <p className="text-[12.5px] font-medium text-zinc-500">Giá bán tại vườn / ruộng</p>
             <div className="mt-2 flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-mono text-zinc-900 tracking-tight">
                 {Math.round(basePrice).toLocaleString('vi-VN')}
@@ -491,7 +491,7 @@ export default function ForecastPage() {
               <span className="text-[12px] font-medium text-zinc-500">{currentCommodity.unit}</span>
             </div>
             <p className="mt-1.5 text-[12px] text-zinc-500 truncate">
-              {activeRegionObj?.name || 'Mức giá tham chiếu chuẩn'}
+              {activeRegionObj?.name || 'Giá bán trực tiếp tại địa phương'}
             </p>
           </div>
 

@@ -196,17 +196,17 @@ INSERT INTO users (id, email, password_hash, full_name, role) VALUES
 
 ALTER SEQUENCE users_id_seq RESTART WITH 3;
 
--- 2. Thêm 4 loại nông sản chủ lực
+-- 2. Thêm các loại nông sản chủ lực (Giá nông hộ bán tại vườn / tại ruộng ở địa phương)
 INSERT INTO commodities (id, code, name, category, unit, region, description) VALUES
-(1, 'RICE_IR504', 'Lúa gạo IR50404', 'Lương thực', 'VNĐ/kg', 'Đồng bằng Sông Cửu Long', 'Lúa tươi chất lượng thương phẩm cao tại ruộng An Giang, Tiền Giang, Đồng Tháp'),
-(2, 'COFFEE_ROBUSTA', 'Cà phê Robusta', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Tây Nguyên (Đắk Lắk, Lâm Đồng)', 'Cà phê nhân xô Robusta loại 1 Đắk Lắk, Gia Lai'),
-(3, 'PEPPER_BLACK', 'Hồ tiêu đen', 'Gia vị & Nông sản', 'VNĐ/kg', 'Tây Nguyên & Đông Nam Bộ', 'Tiêu đen xô khô độ ẩm tiêu chuẩn 13% tại Chư Sê, Đắk Lắk'),
-(4, 'SUGARCANE', 'Mía đường', 'Cây công nghiệp', 'VNĐ/tấn', 'Miền Trung & Tây Nam Bộ', 'Mía nguyên liệu đạt 10 CCS tại nhà máy đường'),
+(1, 'RICE_IR504', 'Lúa gạo IR50404', 'Lương thực', 'VNĐ/kg', 'Huyện Châu Phú, An Giang (Tại ruộng)', 'Lúa tươi IR50404 nông hộ bán trực tiếp tại ruộng ở Châu Phú, Thoại Sơn (An Giang), Tháp Mười (Đồng Tháp)'),
+(2, 'COFFEE_ROBUSTA', 'Cà phê Robusta', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Huyện Cư M''gar, Đắk Lắk (Tại vườn)', 'Cà phê nhân xô Robusta nông hộ bán tại vườn/sân phơi ở Cư M''gar, Buôn Hồ (Đắk Lắk), Di Linh (Lâm Đồng)'),
+(3, 'PEPPER_BLACK', 'Hồ tiêu đen', 'Gia vị & Nông sản', 'VNĐ/kg', 'Huyện Chư Sê, Gia Lai (Tại vườn)', 'Tiêu đen xô phơi khô tại hộ nông dân ở Chư Sê (Gia Lai), Châu Đức (Bà Rịa - Vũng Tàu), Lộc Ninh (Bình Phước)'),
+(4, 'SUGARCANE', 'Mía đường', 'Cây công nghiệp', 'VNĐ/tấn', 'Huyện Tây Hòa, Phú Yên (Tại ruộng)', 'Mía nguyên liệu 10 CCS cân tại ruộng ở Tây Hòa (Phú Yên), Tân Châu (Tây Ninh), An Khê (Gia Lai)'),
 
-(5, 'STRAWBERRY', 'Dâu tây Đà Lạt', 'Nông sản đặc sản', 'VNĐ/kg', 'Lâm Đồng & Sơn La', 'Dâu tây tươi giống New Zealand chất lượng cao tại Đà Lạt và Mộc Châu'),
-(6, 'SWEET_POTATO', 'Khoai lang tím Vĩnh Long', 'Lương thực', 'VNĐ/kg', 'Vĩnh Long', 'Khoai lang tím Vĩnh Long xuất khẩu loại 1 tại Bình Tân, Vĩnh Long'),
-(7, 'POTATO', 'Khoai tây Đà Lạt', 'Lương thực', 'VNĐ/kg', 'Lâm Đồng', 'Khoai tây thương phẩm hồng/vàng Đà Lạt loại 1'),
-(8, 'CASHEW_NUT', 'Hạt điều', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Bình Phước & Đông Nam Bộ', 'Hạt điều thô thu mua tại vườn và điều nhân xuất khẩu tại Bình Phước');
+(5, 'STRAWBERRY', 'Dâu tây Đà Lạt', 'Nông sản đặc sản', 'VNĐ/kg', 'Phường 8, Đà Lạt (Tại vườn)', 'Dâu tây tươi cắt tại nhà vườn Phường 8 - Đà Lạt, Lạc Dương (Lâm Đồng) và Mộc Châu (Sơn La)'),
+(6, 'SWEET_POTATO', 'Khoai lang tím Vĩnh Long', 'Lương thực', 'VNĐ/kg', 'Huyện Bình Tân, Vĩnh Long (Tại ruộng)', 'Khoai lang tím Nhật dỡ tại ruộng ở Bình Tân (Vĩnh Long), Châu Thành (Đồng Tháp)'),
+(7, 'POTATO', 'Khoai tây Đà Lạt', 'Lương thực', 'VNĐ/kg', 'Phường 7, Đà Lạt (Tại vườn)', 'Khoai tây hồng/vàng thu hoạch tại vườn Phường 7 (Thái Phiên) - Đà Lạt, Đức Trọng, Đơn Dương'),
+(8, 'CASHEW_NUT', 'Hạt điều', 'Nông sản xuất khẩu', 'VNĐ/kg', 'Huyện Bù Đăng, Bình Phước (Tại vườn)', 'Hạt điều tươi/phơi ráo nông hộ bán tại vườn ở Bù Đăng, Phú Riềng (Bình Phước), Định Quán (Đồng Nai)');
 
 ALTER SEQUENCE commodities_id_seq RESTART WITH 9;
 

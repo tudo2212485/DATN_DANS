@@ -58,6 +58,16 @@ def sanitize_text(input_str: Optional[str]) -> str:
     cleaned = re.sub(r'<[^>]*?>', '', input_str)
     return html.escape(cleaned.strip())
 
+def sanitize_csv_cell(input_str: Optional[str]) -> str:
+    """
+    Neutralize CSV Formula Injection (DDE / Excel macro execution)
+    by stripping or prefixing leading '=', '+', '-', '@', TAB, CR characters.
+    """
+    cleaned = sanitize_text(input_str)
+    if cleaned and cleaned[0] in ('=', '+', '-', '@', '\t', '\r'):
+        cleaned = "'" + cleaned
+    return cleaned
+
 class RateLimiter:
     """
     Thread-safe In-Memory Sliding Window Rate Limiter
@@ -118,5 +128,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         
         # 6. Hạn chế quyền phần cứng trình duyệt
         response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+        
+        # 7. Content Security Policy (Chống XSS và thực thi script ngoại lai)
+        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'; object-src 'none'"
         
         return response

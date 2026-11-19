@@ -84,11 +84,11 @@ export default function OverviewPage() {
   return (
     <div className="space-y-5 max-w-[1440px] mx-auto pb-12 font-sans">
       <Header
-        title="Tổng quan thị trường nông sản"
+        title="Tổng quan giá nông sản bán tại vườn"
         subtitle={
           isLoading
             ? 'Đang đồng bộ dữ liệu giao dịch...'
-            : 'Tổng hợp giá thu mua nội địa từ Sở NN&PTNT các tỉnh và Hiệp hội ngành hàng (VPSA, VINACAS, Vinanet)'
+            : 'Tổng hợp giá nông hộ bán ra trực tiếp tại vườn / tại ruộng ở các huyện, thị xã chuyên canh'
         }
         showLiveBadge={true}
       />
@@ -105,7 +105,7 @@ export default function OverviewPage() {
             <span className="text-[12.5px] text-zinc-500">nông sản chủ lực</span>
           </div>
           <p className="mt-1 text-[12px] text-zinc-500 truncate">
-            Tây Nguyên, ĐBSCL & Đông Nam Bộ
+            Giá bán tại vườn / ruộng địa phương
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export default function OverviewPage() {
           <div>
             <p className="text-[12.5px] font-medium text-zinc-500">Phân tích & Dự báo</p>
             <p className="mt-1 text-[12.5px] text-zinc-600">
-              Tra cứu dự báo ngắn hạn 7–30 ngày theo từng vùng thu mua
+              Tra cứu dự báo ngắn hạn 7–30 ngày theo giá bán tại vườn từng huyện
             </p>
           </div>
           <div className="mt-2 flex items-center gap-4 text-[12.5px] font-semibold">

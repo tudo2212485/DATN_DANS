@@ -40,6 +40,8 @@ backend/response.json
 *.docx
 *.pdf
 ~$*
+!docs/KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU*
+!THESIS/KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU*
 .artifacts/
 coverage/
 .coverage

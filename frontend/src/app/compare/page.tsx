@@ -74,8 +74,8 @@ export default function ComparePage() {
   return (
     <div className="space-y-6">
       <Header
-        title="So Sánh Thị Trường & Giá Vùng Miền"
-        subtitle="Đối sánh tương quan biến động giá và mức chênh lệch giữa các vùng trọng điểm"
+        title="So Sánh Thị Trường & Giá Bán Tại Vườn"
+        subtitle="Đối sánh tương quan biến động giá và mức chênh lệch giá bán tại vườn/ruộng giữa các địa phương"
         showLiveBadge={true}
       />
 
@@ -228,10 +228,10 @@ export default function ComparePage() {
           <div>
             <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
               <MapPin className="w-5 h-5 text-brand" />
-              Bảng Khảo Sát Giá Chênh Lệch Các Vùng Miền
+              Bảng Khảo Sát Giá Bán Tại Vườn Các Địa Phương
             </h3>
             <p className="text-xs text-secondary-text mt-0.5">
-              So sánh biên độ giá sàn/trần và khối lượng giao dịch tại từng địa phương
+              So sánh biên độ giá nông hộ bán tại vườn/ruộng và khối lượng thu hoạch tại từng huyện, thị xã
             </p>
           </div>
 
@@ -242,7 +242,7 @@ export default function ComparePage() {
               onChange={(e) => setSelectedRegionFilter(e.target.value)}
               className="bg-canvas border border-border-subtle text-primary-text px-3 py-1.5 rounded-xl font-semibold focus:outline-none"
             >
-              <option value="ALL">Toàn bộ khu vực</option>
+              <option value="ALL">Toàn bộ địa phương</option>
               {uniqueRegions.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -257,8 +257,8 @@ export default function ComparePage() {
             <thead className="bg-canvas text-secondary-text uppercase text-[11px] font-extrabold border-b border-border-subtle">
               <tr>
                 <th className="py-3 px-4">Mặt Hàng Nông Sản</th>
-                <th className="py-3 px-4">Khu Vực / Tỉnh Thành</th>
-                <th className="py-3 px-4">Giá Hiện Tại</th>
+                <th className="py-3 px-4">Địa Phương (Tại Vườn/Ruộng)</th>
+                <th className="py-3 px-4">Giá Bán Tại Vườn</th>
                 <th className="py-3 px-4">Biên Độ Sàn / Trần</th>
                 <th className="py-3 px-4">Biến Động</th>
                 <th className="py-3 px-4">Nguồn Báo Giá</th>

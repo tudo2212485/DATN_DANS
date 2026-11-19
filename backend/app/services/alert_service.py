@@ -8,6 +8,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.core.config import settings
+from app.core.security import sanitize_text
 from app.models.models import AlertRule, AlertLog, Commodity, PriceHistory
 from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse, AlertLogResponse
 
@@ -68,10 +69,10 @@ def create_alert_rule(db: Session, rule_in: AlertRuleCreate) -> AlertRuleRespons
 
     new_rule = AlertRule(
         commodity_id=rule_in.commodity_id,
-        rule_name=rule_in.rule_name,
+        rule_name=sanitize_text(rule_in.rule_name),
         condition_type=rule_in.condition_type,
         threshold_value=rule_in.threshold_value,
-        email=rule_in.email,
+        email=rule_in.email.strip(),
         is_active=True
     )
     db.add(new_rule)

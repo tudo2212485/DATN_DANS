@@ -1,0 +1,37 @@
+================================================================================
+TRƯỜNG ĐẠI HỌC ĐÀ LẠT - KHOA CÔNG NGHỆ THÔNG TIN
+HƯỚNG DẪN SỬ DỤNG ĐĨA DVD KHÓA LUẬN TỐT NGHIỆP KỸ SƯ CÔNG NGHỆ THÔNG TIN
+================================================================================
+
+1. THÔNG TIN ĐỀ TÀI VÀ TÁC GIẢ
+- Tên đề tài: Nghiên cứu và xây dựng hệ thống dự đoán biến động giá nông sản Việt Nam bằng mô hình học máy (AgroForecast)
+- Sinh viên thực hiện: <HỌ VÀ TÊN SINH VIÊN> - MSSV: <MÃ SỐ SINH VIÊN>
+- Giáo viên hướng dẫn: <TÊN GV HƯỚNG DẪN>
+- Thông tin liên hệ tác giả:
+  + Email: <email_sinh_vien>@dlu.edu.vn
+  + Điện thoại: <Số điện thoại liên hệ>
+
+2. CẤU TRÚC THƯ MỤC TRÊN ĐĨA DVD (Tuân thủ Mục 4.3 Quy định KLTN Khoa CNTT)
+Đĩa DVD bao gồm các thư mục chuẩn sau:
+├── HUONG_DAN_SU_DUNG_DIA_DVD.txt          (Tập tin hướng dẫn sử dụng đĩa DVD này)
+├── THESIS/                                (Chứa tài liệu văn bản của khóa luận & bài trình bày)
+│   ├── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.docx   (Báo cáo KLTN định dạng Word chuẩn Times New Roman 13pt, 1.5 lines)
+│   └── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.md     (Bản toàn văn định dạng Markdown)
+└── AgroForecast/                          (Thư mục phần mềm chính)
+    ├── SETUP/                             (Hướng dẫn cài đặt, requirements.txt, dữ liệu thử nghiệm CSV)
+    ├── SOURCE/                            (Mã nguồn chương trình backend/ FastAPI + ML và frontend/ Next.js)
+    └── DATABASE/                          (Tập tin khởi tạo CSDL PostgreSQL init.sql và sơ đồ ERD)
+
+3. HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY CHƯƠNG TRÌNH NHANH
+- Bước 1: Khởi tạo cơ sở dữ liệu PostgreSQL tên 'agroforecast_db' và chạy file database/init.sql.
+- Bước 2: Khởi động Backend API (cổng 8000):
+  cd backend
+  .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+- Bước 3: Khởi động Frontend UI (cổng 3000):
+  cd frontend
+  npm run dev
+  -> Mở trình duyệt tại: http://localhost:3000
+- Bước 4: Chạy kiểm chứng 72/72 kịch bản Kiểm thử & Bảo mật OWASP Top 10:
+  cd backend
+  .\venv\Scripts\pytest.exe -v
+================================================================================
