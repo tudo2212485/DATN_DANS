@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@syncfusion/ej2-base": "35.2.12",
+    "@syncfusion/ej2-react-charts": "35.2.12",
+    "@syncfusion/ej2-react-grids": "35.2.12",
+    "@syncfusion/ej2-tailwind3-theme": "35.2.12",
     "clsx": "^2.1.1",
     "lucide-react": "^1.34.0",
     "next": "14.2.35",
@@ -16,6 +20,9 @@
     "react-dom": "^18",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0"
+  },
+  "overrides": {
+    "@syncfusion/ej2-base": "35.2.12"
   },
   "devDependencies": {
     "@types/node": "^20",

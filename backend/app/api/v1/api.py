@@ -1,8 +1,10 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import commodities, prices, forecast, predictions, alerts, auth, admin, history
+from app.api.v1.endpoints import commodities, prices, forecast, predictions, alerts, auth, admin, history, regions, market
 
 api_router = APIRouter()
 api_router.include_router(history.router, prefix="/history", tags=["Historical observations"])
+api_router.include_router(regions.router, prefix="/regions", tags=["Regions & Geolocation"])
+api_router.include_router(market.router, prefix="/market", tags=["Market & Regional Pricing"])
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(commodities.router, prefix="/commodities", tags=["Commodities"])

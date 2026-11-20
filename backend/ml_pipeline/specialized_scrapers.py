@@ -1,101 +1,124 @@
 # -*- coding: utf-8 -*-
 """
-Specialized historical and daily observation collectors from authoritative Vietnamese agricultural portals:
-- vinanet.vn: Bộ Công Thương - Trung tâm Thông tin Công nghiệp và Thương mại (Cà phê, lúa gạo, nông sản)
-- vpsa.org.vn: Hiệp hội Hồ tiêu và Cây gia vị Việt Nam (Hồ tiêu Đắk Lắk, Gia Lai, Bà Rịa - Vũng Tàu)
-- vietfood.org.vn: Hiệp hội Lương thực Việt Nam (VFA) (Lúa gạo IR50404, gạo xuất khẩu ĐBSCL)
-- giaca.nsvl.com.vn: Cổng Thông tin Giá cả Nông sản Vĩnh Long (Khoai lang tím Nhật Bình Tân)
-- agri.lamdong.gov.vn: Sở Nông nghiệp & PTNT tỉnh Lâm Đồng (Dâu tây, Khoai tây Đà Lạt)
-- vinacas.com.vn: Hiệp hội Điều Việt Nam (Hạt điều thô & nhân)
+Specialized daily observation collectors from official Vietnamese agricultural portals.
+STRICT NO-SYNTHETIC POLICY:
+- Only stores real prices successfully parsed from live portals with explicit source URL provenance.
+- Never generates random/synthetic fallback prices when a portal is unavailable or blocks requests.
+- Reports FAILED / PARTIAL status with transparent error details if live collection fails.
 """
+import ipaddress
 import re
 import json
-import time
-import urllib3
-from datetime import date, datetime, timedelta
-import requests
+from datetime import date, datetime
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from app.models.models import PriceHistory
 from app.services.history_service import archive_price
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+ALLOWED_PORTAL_DOMAINS = (
+    "giacaphe.com",
+    "chogia.vn",
+    "vietnambiz.vn",
+    "vietfood.org.vn",
+    "giatieu.com",
+    "agri.lamdong.gov.vn",
+    "sonla.gov.vn",
+    "chodaumoithuduc.com.vn",
+    "giaca.nsvl.com.vn",
+    "vinacas.com.vn",
+    "binhphuoc.gov.vn",
+    "vinanet.vn",
+)
+
+
+def _is_safe_portal_url(url: str) -> bool:
+    if not url or not isinstance(url, str):
+        return False
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
+    if parsed.scheme.lower() not in ("https", "http") or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower().rstrip(".")
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    if host in ("localhost", "localhost.localdomain"):
+        return False
+    return any(host == dom or host.endswith(f".{dom}") for dom in ALLOWED_PORTAL_DOMAINS)
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 AgroForecast/2.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 AgroForecast/2.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 
 PORTAL_CONFIGS = {
     "COFFEE_ROBUSTA": {
-        "primary_url": "https://vinanet.vn",
-        "fallback_urls": ["https://giacaphe.com/gia-ca-phe-noi-dia/"],
+        "primary_url": "https://giacaphe.com/gia-ca-phe-noi-dia/",
+        "fallback_urls": ["https://chogia.vn/gia-ca-phe/", "https://vietnambiz.vn/gia-ca-phe.html"],
         "keywords": ["cà phê", "robusta", "đắk lắk", "dak lak", "nhân xô"],
         "unit": "VNĐ/kg",
-        "default_price": 93500.0,
-        "price_range": (70000.0, 140000.0),
-        "market": "Tây Nguyên (Đắk Lắk, Lâm Đồng)"
+        "price_range": (40000.0, 200000.0),
+        "market": "Tây Nguyên (Đắk Lắk, Lâm Đồng)",
     },
     "RICE_IR504": {
-        "primary_url": "https://vietfood.org.vn",
-        "fallback_urls": ["https://vinanet.vn"],
-        "keywords": ["lúa ir 50404", "lúa tươi", "ir50404", "an giang", "đbscl"],
+        "primary_url": "https://vietfood.org.vn/thi-truong/gia-noi-dia/",
+        "fallback_urls": ["https://vietnambiz.vn/gia-lua-gao.html"],
+        "keywords": ["lúa ir 504", "lúa tươi", "lúa thường", "ir50404", "an giang"],
         "unit": "VNĐ/kg",
-        "default_price": 8200.0,
-        "price_range": (5000.0, 12000.0),
-        "market": "An Giang & ĐBSCL"
+        "price_range": (4000.0, 12000.0),
+        "market": "An Giang & ĐBSCL",
     },
     "PEPPER_BLACK": {
-        "primary_url": "https://vpsa.org.vn",
-        "fallback_urls": ["https://vinanet.vn"],
+        "primary_url": "https://giatieu.com/gia-tieu-hom-nay/",
+        "fallback_urls": ["https://giacaphe.com/gia-tieu-noi-dia/", "https://vietnambiz.vn/gia-tieu.html"],
         "keywords": ["hồ tiêu", "tiêu đen", "tiêu xô", "chư sê", "đắk lắk"],
         "unit": "VNĐ/kg",
-        "default_price": 142000.0,
-        "price_range": (100000.0, 180000.0),
-        "market": "Đắk Lắk & Tây Nguyên"
+        "price_range": (60000.0, 250000.0),
+        "market": "Đắk Lắk & Tây Nguyên",
     },
     "STRAWBERRY": {
         "primary_url": "https://agri.lamdong.gov.vn",
         "fallback_urls": ["https://sonla.gov.vn", "http://www.chodaumoithuduc.com.vn"],
         "keywords": ["dâu tây", "dau tay", "new zealand", "mỹ đá"],
         "unit": "VNĐ/kg",
-        "default_price": 105000.0,
         "price_range": (70000.0, 200000.0),
-        "market": "Lâm Đồng & Sơn La"
+        "market": "Lâm Đồng & Sơn La",
     },
     "SWEET_POTATO": {
         "primary_url": "http://giaca.nsvl.com.vn",
         "fallback_urls": ["http://www.chodaumoithuduc.com.vn"],
         "keywords": ["khoai lang", "khoai lang tím", "bình tân"],
         "unit": "VNĐ/kg",
-        "default_price": 8200.0,
         "price_range": (5000.0, 15000.0),
-        "market": "Bình Tân, Vĩnh Long"
+        "market": "Bình Tân, Vĩnh Long",
     },
     "POTATO": {
         "primary_url": "https://agri.lamdong.gov.vn",
         "fallback_urls": ["http://www.chodaumoithuduc.com.vn"],
         "keywords": ["khoai tây", "khoai tay", "đà lạt"],
         "unit": "VNĐ/kg",
-        "default_price": 15400.0,
         "price_range": (10000.0, 30000.0),
-        "market": "Đà Lạt, Lâm Đồng"
+        "market": "Đà Lạt, Lâm Đồng",
     },
     "CASHEW_NUT": {
         "primary_url": "https://vinacas.com.vn",
-        "fallback_urls": ["https://binhphuoc.gov.vn", "https://www.customs.gov.vn"],
+        "fallback_urls": ["https://binhphuoc.gov.vn"],
         "keywords": ["hạt điều", "điều thô", "cashew", "hạt điều nhân"],
         "unit": "VNĐ/kg",
-        "default_price": 36500.0,
         "price_range": (25000.0, 55000.0),
-        "market": "Bình Phước & Đông Nam Bộ"
-    }
+        "market": "Bình Phước & Đông Nam Bộ",
+    },
 }
 
 
 def parse_portal_html(html: str, keywords: list, price_range: tuple = (1000.0, 500000.0)) -> float:
-    """Parse HTML from agricultural portals to extract matching commodity prices within expected bounds."""
+    """Parse HTML from agricultural portals to extract matching real commodity prices within expected bounds."""
     min_val, max_val = price_range
     soup = BeautifulSoup(html, "html.parser")
     for el in soup.find_all(["tr", "li", "div", "p"]):
@@ -115,8 +138,8 @@ def parse_portal_html(html: str, keywords: list, price_range: tuple = (1000.0, 5
 
 def collect_specialized_portal_history(db, http, commodity, config, start, end, progress=None):
     """
-    Collect observations from official Vietnamese portals:
-    vinanet.vn, vpsa.org.vn, vietfood.org.vn, giaca.nsvl.com.vn, agri.lamdong.gov.vn, vinacas.com.vn
+    Collect real live observation from official Vietnamese portals.
+    NEVER fabricates or randomizes missing historical days.
     """
     code = commodity.code
     portal_info = PORTAL_CONFIGS.get(code, {})
@@ -124,18 +147,18 @@ def collect_specialized_portal_history(db, http, commodity, config, start, end, 
     fallback_urls = portal_info.get("fallback_urls", [])
     all_urls = [primary_url] + fallback_urls
     keywords = portal_info.get("keywords", [commodity.name.lower()])
-
-    created, skipped = 0, 0
-    errors = []
-    days = (end - start).days + 1
-
-    # Try connecting to the official portal to get recent live observations
-    live_price = None
-    successful_url = primary_url
     price_bounds = portal_info.get("price_range", (1000.0, 500000.0))
-    for url in all_urls:
+
+    live_price = None
+    successful_url = None
+    errors = []
+
+    for idx, url in enumerate(all_urls, start=1):
+        if not _is_safe_portal_url(url):
+            errors.append(f"{url}: URL bị từ chối bởi danh sách tên miền cho phép")
+            continue
         try:
-            resp = http.get(url, headers=HEADERS, timeout=(5, 12), verify=False)
+            resp = http.get(url, headers=HEADERS, timeout=(5, 12))
             if resp.status_code == 200:
                 resp.encoding = "utf-8"
                 parsed = parse_portal_html(resp.text, keywords, price_bounds)
@@ -143,92 +166,74 @@ def collect_specialized_portal_history(db, http, commodity, config, start, end, 
                     live_price = parsed
                     successful_url = url
                     break
-        except Exception as e:
-            errors.append(f"{url}: {type(e).__name__}")
+                errors.append(f"{url}: không tìm thấy bảng giá hợp lệ")
+            else:
+                errors.append(f"{url}: HTTP {resp.status_code}")
+        except Exception as exc:
+            errors.append(f"{url}: {type(exc).__name__}")
+        if progress:
+            progress(idx, len(all_urls))
 
-    # Process dates in range
-    cur_date = start
-    index = 0
-    running_price = None
+    if not live_price or not successful_url:
+        return {
+            "count": 0,
+            "status": "FAILED",
+            "message": (
+                f"Không thu thập được dữ liệu thật cho [{commodity.name}] từ các cổng nguồn "
+                f"(không sinh dữ liệu giả). Chi tiết: {'; '.join(errors[:3])}"
+            ),
+        }
 
-    # Get last known price prior to start date if any
-    prior = (
+    obs_date = min(end, date.today())
+    existing = (
         db.query(PriceHistory)
-        .filter(PriceHistory.commodity_id == commodity.id, PriceHistory.record_date < start)
-        .order_by(PriceHistory.record_date.desc())
+        .filter(PriceHistory.commodity_id == commodity.id, PriceHistory.record_date == obs_date)
         .first()
     )
-    if prior:
-        running_price = float(prior.price)
 
-    while cur_date <= end:
-        existing = db.query(PriceHistory).filter(
-            PriceHistory.commodity_id == commodity.id,
-            PriceHistory.record_date == cur_date
-        ).first()
+    if existing and existing.provenance in ("collected", "reviewed"):
+        return {
+            "count": 0,
+            "status": "SUCCESS",
+            "message": f"[{commodity.name}] Đã có bản ghi xác minh ngày {obs_date} từ {successful_url} (giữ nguyên).",
+        }
 
-        if existing and existing.provenance in ("collected", "reviewed"):
-            skipped += 1
-            running_price = float(existing.price)
-        else:
-            if cur_date >= end - timedelta(days=2) and live_price:
-                price = live_price
-                src = successful_url
-            else:
-                target_base = live_price if live_price else portal_info.get("default_price", 10000.0)
-                if running_price is None:
-                    running_price = target_base
+    details = json.dumps(
+        {
+            "provider": successful_url,
+            "source_url": successful_url,
+            "market": portal_info.get("market", commodity.region),
+            "unit": commodity.unit,
+            "cadence": "daily",
+            "queried_at": datetime.now().isoformat(),
+        },
+        ensure_ascii=False,
+    )
 
-                import random
-                drift = (target_base - running_price) * 0.05
-                volatility = running_price * 0.007 * (random.uniform(-1.0, 1.0))
-                running_price = round(running_price + drift + volatility, 0 if commodity.unit == 'VNĐ/kg' and running_price > 10000 else 2)
-                price = running_price
-                src = primary_url
-
-            if existing:
-                archive_price(db, existing)
-                existing.price = price
-                existing.source = src
-                existing.provenance = "collected"
-            else:
-                db.add(
-                    PriceHistory(
-                        commodity_id=commodity.id,
-                        record_date=cur_date,
-                        price=price,
-                        price_min=round(price * 0.97, 0),
-                        price_max=round(price * 1.03, 0),
-                        volume=100.0,
-                        source=src,
-                        provenance="collected",
-                        source_details=json.dumps({
-                            "provider": src,
-                            "market": portal_info.get("market", commodity.region),
-                            "unit": commodity.unit,
-                            "cadence": "daily",
-                            "queried_at": str(datetime.now())
-                        }, ensure_ascii=False)
-                    )
-                )
-            created += 1
-
-        cur_date += timedelta(days=1)
-        index += 1
-        if progress:
-            progress(index, days)
-
+    if existing:
+        archive_price(db, existing, actor="Scraper tự động", new_price=live_price, reason=f"Cập nhật từ {successful_url}")
+        existing.price = live_price
+        existing.source = successful_url[:100]
+        existing.provenance = "collected"
+        existing.source_details = details
+    else:
+        db.add(
+            PriceHistory(
+                commodity_id=commodity.id,
+                record_date=obs_date,
+                price=live_price,
+                price_min=None,
+                price_max=None,
+                volume=None,
+                source=successful_url[:100],
+                provenance="collected",
+                source_details=details,
+            )
+        )
     db.commit()
 
-    message = (
-        f"Thu thập [{commodity.name}]: ghi nhận {created} bản ghi mới, giữ nguyên {skipped} bản ghi. "
-        f"Nguồn chính thống liên kết: {primary_url}."
-    )
-    if errors and not live_price:
-        message += f" (Kiểm tra kết nối: {errors[0]})"
-
     return {
-        "count": created,
-        "status": "SUCCESS" if (created or skipped) else "PARTIAL",
-        "message": message
+        "count": 1,
+        "status": "SUCCESS",
+        "message": f"[{commodity.name}] Ghi nhận 1 bản ghi thật ngày {obs_date}: {live_price:,.0f} {commodity.unit} từ {successful_url}.",
     }

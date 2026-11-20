@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
 from app.models.models import Commodity
 from app.schemas.schemas import (
@@ -72,14 +72,20 @@ def delete_commodity(
     return {"message": "Xóa thành công"}
 
 @router.get("/overview", response_model=List[CommodityOverviewCard])
-def read_overview(db: Session = Depends(get_db)):
-    """Lấy 4 thẻ nông sản tổng quan kèm sparkline và % tăng giảm"""
-    return get_commodities_overview(db)
+def read_overview(
+    province: Optional[str] = Query(None, description="Mã tỉnh/thành phố (VD: khanh-hoa, dak-lak, all)"),
+    db: Session = Depends(get_db),
+):
+    """Lấy 4 thẻ nông sản tổng quan kèm sparkline, % tăng giảm và location_context"""
+    return get_commodities_overview(db, province=province)
 
 @router.get("/comparison", response_model=List[MarketComparisonPoint])
-def read_comparison(db: Session = Depends(get_db)):
+def read_comparison(
+    province: Optional[str] = Query(None, description="Mã tỉnh/thành phố (VD: khanh-hoa, dak-lak, all)"),
+    db: Session = Depends(get_db),
+):
     """Lấy dữ liệu chuỗi thời gian so sánh % tăng giảm từ đầu kỳ"""
-    return get_market_comparison(db)
+    return get_market_comparison(db, province=province)
 
 @router.get("/spotlight", response_model=SpotlightSummaryResponse)
 def read_spotlight(code: str = "COFFEE_ROBUSTA", db: Session = Depends(get_db)):
@@ -87,8 +93,11 @@ def read_spotlight(code: str = "COFFEE_ROBUSTA", db: Session = Depends(get_db)):
     return get_spotlight_commodity(db, code)
 
 @router.get("/regional-prices")
-def read_regional_prices(db: Session = Depends(get_db)):
+def read_regional_prices(
+    province: Optional[str] = Query(None, description="Mã tỉnh/thành phố (VD: khanh-hoa, all)"),
+    db: Session = Depends(get_db),
+):
     """Lấy bảng giá nông sản các vùng trọng điểm từ PostgreSQL"""
     from app.services.commodity_service import get_regional_prices_list
-    return get_regional_prices_list(db)
+    return get_regional_prices_list(db, province=province)
 

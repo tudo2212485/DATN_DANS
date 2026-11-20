@@ -222,7 +222,7 @@ class PricePredictor:
             try:
                 scaler = joblib.load(scaler_path)
                 model = LSTMModel(input_size=len(features), hidden_size=64, num_layers=2)
-                model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+                model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu"), weights_only=True))
                 model.eval()
             except Exception:
                 model = None
@@ -235,7 +235,9 @@ class PricePredictor:
             trainer.train_lstm(df, epochs=30, seq_length=seq_length)
             scaler = joblib.load(os.path.join(self.model_dir, "lstm_scaler.pkl"))
             model = LSTMModel(input_size=len(features), hidden_size=64, num_layers=2)
-            model.load_state_dict(torch.load(os.path.join(self.model_dir, "lstm_model.pt"), map_location=torch.device("cpu")))
+            model.load_state_dict(
+                torch.load(os.path.join(self.model_dir, "lstm_model.pt"), map_location=torch.device("cpu"), weights_only=True)
+            )
             model.eval()
 
         scaled_data = scaler.transform(data)

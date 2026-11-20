@@ -27,6 +27,9 @@ export const CommodityCard: React.FC<CommodityCardProps> = ({ commodity }) => {
       ? sparkValues[sparkValues.length - 2]
       : current * (1 - commodity.changePct / 100);
   const diffVnd = current - previousPrice;
+  const loc = commodity.location_context;
+  const showProvinceBadge =
+    loc && loc.province_code && loc.province_code !== 'all' && loc.pricing_mode !== 'national_benchmark';
 
   return (
     <article className="h-full bg-white rounded-xl border border-zinc-200/90 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-zinc-300 hover:shadow-sm transition-all duration-200 flex flex-col justify-between group font-sans">
@@ -58,6 +61,27 @@ export const CommodityCard: React.FC<CommodityCardProps> = ({ commodity }) => {
           </span>
         </div>
 
+        {/* Transparent Location Pricing Mode Badge (Direct Survey vs Regional Benchmark) */}
+        {showProvinceBadge && loc && (
+          <div className="mt-2">
+            {loc.pricing_mode === 'direct' ? (
+              <span
+                title={loc.explanation || undefined}
+                className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#F0F7F4] text-[#15803D] border border-[#15803D]/20 text-[11px] font-semibold max-w-full truncate"
+              >
+                Khảo sát tại {loc.province_name}
+              </span>
+            ) : (
+              <span
+                title={loc.explanation || undefined}
+                className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-medium max-w-full truncate"
+              >
+                Tham chiếu {loc.reference_province} (+cước ~{Math.round(loc.distance_km)} km)
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Price & Sparkline Row */}
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
@@ -70,13 +94,13 @@ export const CommodityCard: React.FC<CommodityCardProps> = ({ commodity }) => {
               </span>
             </div>
             <span
-              className={`block mt-1.5 text-[12px] font-medium font-mono ${
-                isPos ? 'text-emerald-700' : 'text-rose-600'
+              className={`block mt-1.5 text-[12px] font-medium font-mono tabular-nums ${
+                isPos ? 'text-[#15803D]' : 'text-[#DC2626]'
               }`}
             >
               {diffVnd >= 0
-                ? `+${Math.round(diffVnd).toLocaleString('vi-VN')} đ`
-                : `${Math.round(diffVnd).toLocaleString('vi-VN')} đ`}{' '}
+                ? `+${Math.round(diffVnd).toLocaleString('vi-VN')} ${commodity.unit}`
+                : `${Math.round(diffVnd).toLocaleString('vi-VN')} ${commodity.unit}`}{' '}
               <span className="text-zinc-400 font-sans">so với kỳ trước</span>
             </span>
           </div>
@@ -108,12 +132,12 @@ export const CommodityCard: React.FC<CommodityCardProps> = ({ commodity }) => {
       </div>
 
       {/* Footer: Min/Max & Action */}
-      <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-[12px] text-zinc-500">
-        <span className="font-mono text-[11.5px]">
-          Biên độ: {minPrice.toLocaleString('vi-VN')} – {maxPrice.toLocaleString('vi-VN')}
+      <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between gap-2 text-[12px] text-zinc-500">
+        <span className="font-mono tabular-nums text-[11.5px] truncate">
+          Biên độ: {Math.round(minPrice).toLocaleString('vi-VN')} – {Math.round(maxPrice).toLocaleString('vi-VN')}
         </span>
-        <span className="inline-flex items-center gap-0.5 font-medium text-zinc-700 group-hover:text-emerald-700 transition-colors">
-          Chi tiết <ChevronRight className="w-3.5 h-3.5" />
+        <span className="inline-flex items-center gap-0.5 font-medium text-zinc-700 group-hover:text-emerald-700 transition-colors whitespace-nowrap shrink-0">
+          Chi tiết <ChevronRight className="w-3.5 h-3.5 shrink-0" />
         </span>
       </div>
     </article>

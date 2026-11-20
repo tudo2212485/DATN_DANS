@@ -1,97 +1,97 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '@/components/layout/Header';
-import { INITIAL_ALERT_RULES, COMMODITIES_DATA } from '@/lib/mockData';
+import AgroGrid, { AgroColumn } from '@/components/ui/AgroGrid';
+import { COMMODITIES_DATA } from '@/lib/mockData';
 import { AlertRuleItem, AlertLogItem } from '@/types';
 import {
   fetchAlertRules,
   createAlertRuleApi,
+  updateAlertRuleApi,
   toggleAlertRuleApi,
   deleteAlertRuleApi,
   testAlertApi,
   fetchAlertLogsApi,
+  fetchCommoditiesOverview,
 } from '@/lib/api';
 import {
-  BellRing,
+  formatDateVN,
+  formatDateTimeVN,
+  formatNumberVN,
+  getCommodityUnit,
+} from '@/lib/formatters';
+import {
   Plus,
+  Pencil,
   Trash2,
   CheckCircle2,
   Send,
   Mail,
-  Activity,
-  ShieldCheck,
   TrendingUp,
   TrendingDown,
-  History,
   Eye,
   RefreshCw,
-  Clock,
-  Sparkles,
-  Layers,
-  AlertTriangle,
-  Zap,
 } from 'lucide-react';
 
+interface CommodityOption {
+  id: number;
+  name: string;
+  unit: string;
+}
+
 export default function AlertsPage() {
-  const [rules, setRules] = useState<AlertRuleItem[]>(INITIAL_ALERT_RULES);
+  const [commodities, setCommodities] = useState<CommodityOption[]>(
+    COMMODITIES_DATA.map((c) => ({ id: c.id, name: c.name, unit: c.unit }))
+  );
+  const [rules, setRules] = useState<AlertRuleItem[]>([]);
   const [logs, setLogs] = useState<AlertLogItem[]>([]);
   const [activeTab, setActiveTab] = useState<'rules' | 'logs'>('rules');
   const [showModal, setShowModal] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [testNotificationMsg, setTestNotificationMsg] = useState<string | null>(null);
   const [emailPreviewRule, setEmailPreviewRule] = useState<AlertRuleItem | null>(null);
-  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Commodity filter
+  const [commodityFilter, setCommodityFilter] = useState<string>('ALL');
 
   // Form State
   const [formCommodityId, setFormCommodityId] = useState(2);
   const [formRuleName, setFormRuleName] = useState('');
   const [formCondition, setFormCondition] = useState<AlertRuleItem['conditionType']>('PRICE_ABOVE');
   const [formThreshold, setFormThreshold] = useState('');
-  const [formEmail, setFormEmail] = useState('anhnguyen.analyst@agroforecast.vn');
-
-  // Load rules & logs from API
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [formEmail, setFormEmail] = useState('anhnguyen@agroforecast.vn');
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      const [liveRules, liveLogs] = await Promise.all([
+      const [liveRules, liveLogs, liveComms] = await Promise.all([
         fetchAlertRules(),
         fetchAlertLogsApi(),
+        fetchCommoditiesOverview().catch(() => []),
       ]);
-      if (liveRules && liveRules.length > 0) {
-        setRules(liveRules);
-      }
-      if (liveLogs && liveLogs.length > 0) {
-        setLogs(liveLogs);
+      if (liveRules) setRules(liveRules);
+      if (liveLogs) setLogs(liveLogs);
+      if (liveComms && liveComms.length > 0) {
+        setCommodities(liveComms.map((c) => ({ id: c.id, name: c.name, unit: c.unit })));
       }
     } catch (err) {
       console.error('Error loading alert data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRefreshLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      const liveLogs = await fetchAlertLogsApi();
-      setLogs(liveLogs);
-    } catch (err) {
-      console.error('Error refreshing logs:', err);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
+  useEffect(() => {
+    void loadData();
+  }, []);
 
   const handleToggle = async (id: number) => {
     const target = rules.find((r) => r.id === id);
     if (!target) return;
     const nextState = !target.isActive;
-
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, isActive: nextState } : r))
-    );
-
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, isActive: nextState } : r)));
     await toggleAlertRuleApi(id, nextState);
   };
 
@@ -101,513 +101,564 @@ export default function AlertsPage() {
     await deleteAlertRuleApi(id);
   };
 
-  const handleCreateRule = async (e: React.FormEvent) => {
+  const openCreateModal = () => {
+    setEditingRuleId(null);
+    setFormCommodityId(commodities[0]?.id || 2);
+    setFormRuleName('');
+    setFormCondition('PRICE_ABOVE');
+    setFormThreshold('');
+    setFormEmail('anhnguyen@agroforecast.vn');
+    setShowModal(true);
+  };
+
+  const openEditModal = (rule: AlertRuleItem) => {
+    setEditingRuleId(rule.id);
+    setFormCommodityId(rule.commodityId);
+    setFormRuleName(rule.ruleName);
+    setFormCondition(rule.conditionType);
+    setFormThreshold(String(rule.thresholdValue));
+    setFormEmail(rule.email);
+    setShowModal(true);
+  };
+
+  const handleSaveRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    const commodity = COMMODITIES_DATA.find((c) => c.id === formCommodityId);
-    if (!commodity) return;
+    const commodity = commodities.find((c) => c.id === formCommodityId);
+    const commName = commodity?.name || 'Nông sản';
 
     const payload = {
       commodity_id: formCommodityId,
-      rule_name: formRuleName || `Cảnh báo ${commodity.name}`,
+      rule_name: formRuleName || `Cảnh báo ${commName}`,
       condition_type: formCondition,
       threshold_value: Number(formThreshold) || 0,
       email: formEmail,
     };
 
-    const created = await createAlertRuleApi(payload);
-    if (created) {
-      setRules([created, ...rules]);
+    if (editingRuleId !== null) {
+      const updated = await updateAlertRuleApi(editingRuleId, payload);
+      if (updated) {
+        setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)));
+      } else {
+        setRules((prev) =>
+          prev.map((r) =>
+            r.id === editingRuleId
+              ? {
+                  ...r,
+                  commodityId: formCommodityId,
+                  commodityName: commName,
+                  ruleName: payload.rule_name,
+                  conditionType: formCondition,
+                  thresholdValue: payload.threshold_value,
+                  email: formEmail,
+                }
+              : r
+          )
+        );
+      }
+      setTestNotificationMsg('Đã cập nhật quy tắc cảnh báo thành công.');
     } else {
-      // Local fallback
-      const localRule: AlertRuleItem = {
-        id: Date.now(),
-        commodityId: formCommodityId,
-        commodityName: commodity.name,
-        ruleName: payload.rule_name,
-        conditionType: formCondition,
-        thresholdValue: payload.threshold_value,
-        email: formEmail,
-        isActive: true,
-        createdAt: new Date().toLocaleDateString('vi-VN'),
-      };
-      setRules([localRule, ...rules]);
+      const created = await createAlertRuleApi(payload);
+      if (created) {
+        setRules((prev) => [created, ...prev]);
+      }
+      setTestNotificationMsg('Đã tạo và kích hoạt quy tắc cảnh báo mới thành công.');
     }
 
     setShowModal(false);
+    setEditingRuleId(null);
     setFormRuleName('');
     setFormThreshold('');
-    setTestNotificationMsg('Đã tạo và kích hoạt quy tắc cảnh báo mới thành công!');
     setTimeout(() => setTestNotificationMsg(null), 4000);
   };
 
   const handleTestAlert = async (rule: AlertRuleItem) => {
     const res = await testAlertApi(rule.id);
-    setTestNotificationMsg(res?.message || `Đã kích hoạt cảnh báo thử nghiệm cho "${rule.ruleName}" đến ${rule.email}!`);
+    setTestNotificationMsg(
+      res?.message || `Đã gửi thông báo cảnh báo thử nghiệm "${rule.ruleName}" tới ${rule.email}.`
+    );
     setTimeout(() => setTestNotificationMsg(null), 4500);
-
-    // Append a log entry to local logs
-    const newLog: AlertLogItem = {
-      id: Date.now(),
-      ruleId: rule.id,
-      ruleName: rule.ruleName,
-      commodityName: rule.commodityName,
-      triggeredPrice: rule.thresholdValue,
-      message: `[Thử nghiệm] Giá thị trường chạm ngưỡng ${Number(rule.thresholdValue).toLocaleString('vi-VN')} đ - Gửi tới ${rule.email}`,
-      status: 'SENT',
-      triggeredAt: new Date().toLocaleTimeString('vi-VN') + ' Hôm nay',
-      email: rule.email,
-    };
-    setLogs([newLog, ...logs]);
+    const liveLogs = await fetchAlertLogsApi();
+    if (liveLogs && liveLogs.length > 0) {
+      setLogs(liveLogs);
+    }
   };
 
-  // Compute stats
+  const filteredRules = useMemo(() => {
+    return rules.filter(
+      (r) =>
+        commodityFilter === 'ALL' ||
+        String(r.commodityId) === commodityFilter ||
+        r.commodityName === commodityFilter
+    );
+  }, [rules, commodityFilter]);
+
+  const ruleRows = useMemo(() => {
+    return filteredRules.map((rule) => {
+      const val = Number(rule.thresholdValue ?? 0);
+      const unit = getCommodityUnit(rule.commodityName);
+      const formattedVal = formatNumberVN(val);
+      const condType = rule.conditionType || 'PRICE_ABOVE';
+
+      let conditionLabel = `Giá > ${formattedVal} ${unit}`;
+      if (condType === 'PRICE_ABOVE') {
+        conditionLabel = `Giá > ${formattedVal} ${unit} (Vượt trần)`;
+      } else if (condType === 'PRICE_BELOW') {
+        conditionLabel = `Giá < ${formattedVal} ${unit} (Chạm sàn)`;
+      } else if (condType === 'PCT_INC_7D') {
+        conditionLabel = `Tăng > +${formattedVal}% / 7 ngày`;
+      } else if (condType === 'PCT_DEC_7D') {
+        conditionLabel = `Giảm > -${formattedVal}% / 7 ngày`;
+      }
+
+      return {
+        id: rule.id,
+        ruleName: rule.ruleName,
+        commodityName: rule.commodityName,
+        conditionType: condType,
+        thresholdValue: val,
+        conditionLabel,
+        email: rule.email,
+        isActive: rule.isActive,
+        statusLabel: rule.isActive ? 'Đang bật' : 'Đã tắt',
+        createdAt: rule.createdAt,
+        _raw: rule,
+      };
+    });
+  }, [filteredRules]);
+
   const activeCount = rules.filter((r) => r.isActive).length;
-  const totalCount = rules.length;
-  const totalLogsCount = logs.length;
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
+    <div className="space-y-5 pb-10 font-sans">
       <Header
-        title="Quản lý Cảnh báo Thị trường"
-        subtitle="Hệ thống giám sát biến động giá, phát hiện bất thường AI & kích hoạt thông báo tự động"
+        title="Cảnh báo ngưỡng giá nông sản"
+        subtitle="Thiết lập quy tắc kiểm tra ngưỡng giá trần/sàn và gửi thông báo tự động qua giao thức SMTP"
         showLiveBadge={true}
       />
 
-      {/* Toast Banner */}
+      {/* Notification Banner */}
       {testNotificationMsg && (
-        <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 text-brand flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-brand shrink-0" />
-            <span className="text-xs font-bold text-primary-text">{testNotificationMsg}</span>
+        <div className="p-3.5 rounded-md bg-[#F0FDF4] border border-[#15803D]/30 text-[#15803D] flex items-center justify-between gap-3 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#15803D] shrink-0" />
+            <span>{testNotificationMsg}</span>
           </div>
           <button
+            type="button"
             onClick={() => setTestNotificationMsg(null)}
-            className="text-secondary-text hover:text-primary-text text-xs font-bold"
+            className="text-[#475569] hover:text-[#0F172A]"
           >
             Đóng
           </button>
         </div>
       )}
 
-      {/* 4 Professional KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card relative overflow-hidden group hover:border-brand/40 transition-all">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Tổng số Quy tắc</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-primary-text">{totalCount}</span>
-            <span className="text-xs font-semibold text-secondary-text">quy tắc</span>
-          </div>
-          <p className="text-[11px] text-secondary-text mt-2 flex items-center gap-1">
-            Lúa gạo, Cà phê, Tiêu, Mía đường
-          </p>
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card relative overflow-hidden group hover:border-brand/40 transition-all">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Đang Giám sát</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-emerald-600">{activeCount}</span>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-              Kích hoạt
+      {/* Unified Financial Metric Strip */}
+      <section
+        aria-label="Thống kê quy tắc cảnh báo"
+        className="bg-white rounded-lg border border-[#E5E7EB] grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E5E7EB]"
+      >
+        <div className="p-4">
+          <p className="text-xs font-medium text-[#64748B]">Tổng quy tắc</p>
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-[#1E293B] tabular-nums">
+              {rules.length}
             </span>
+            <span className="text-xs text-[#64748B]">quy tắc</span>
           </div>
-          <p className="text-[11px] text-secondary-text mt-2 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Đang theo dõi theo từng phiên
-          </p>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card relative overflow-hidden group hover:border-brand/40 transition-all">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Cảnh báo Đã kích hoạt</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
-              <Zap className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-purple-700">{totalLogsCount}</span>
-            <span className="text-xs font-semibold text-secondary-text">thông báo</span>
-          </div>
-          <p className="text-[11px] text-secondary-text mt-2 flex items-center gap-1">
-            <Clock className="w-3 h-3 text-secondary-text/70" /> Ghi nhận vào CSDL PostgreSQL
-          </p>
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border-subtle p-5 shadow-card relative overflow-hidden group hover:border-brand/40 transition-all">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-bold text-secondary-text uppercase tracking-wider">Cổng Gửi Mail (SMTP)</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-primary-text">Sẵn sàng</span>
-            <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-              Hoạt động
+        <div className="p-4">
+          <p className="text-xs font-medium text-[#64748B]">Đang bật</p>
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-[#15803D] tabular-nums">
+              {activeCount}
             </span>
-          </div>
-          <p className="text-[11px] text-secondary-text mt-2 flex items-center gap-1">
-            Giao thức SMTP TLS & Webhook Trigger
-          </p>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex items-center justify-between border-b border-border-subtle pb-px">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('rules')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
-              activeTab === 'rules'
-                ? 'border-brand text-brand bg-brand/5'
-                : 'border-transparent text-secondary-text hover:text-primary-text hover:bg-black/[0.02]'
-            }`}
-          >
-            <BellRing className="w-4 h-4" />
-            Danh sách Quy tắc Cảnh báo ({rules.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
-              activeTab === 'logs'
-                ? 'border-brand text-brand bg-brand/5'
-                : 'border-transparent text-secondary-text hover:text-primary-text hover:bg-black/[0.02]'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            Lịch sử Kích hoạt & Audit Logs ({logs.length})
-          </button>
-        </div>
-
-        {activeTab === 'rules' && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm quy tắc mới</span>
-          </button>
-        )}
-
-        {activeTab === 'logs' && (
-          <button
-            onClick={handleRefreshLogs}
-            disabled={loadingLogs}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border-subtle bg-canvas text-secondary-text hover:text-brand text-xs font-bold transition-all"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? 'animate-spin' : ''}`} />
-            <span>Làm mới nhật ký</span>
-          </button>
-        )}
-      </div>
-
-      {/* TAB 1: RULES TABLE */}
-      {activeTab === 'rules' && (
-        <div className="space-y-4">
-          <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border-subtle text-secondary-text font-bold uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-4">Tên quy tắc</th>
-                    <th className="py-3 px-4">Nông sản</th>
-                    <th className="py-3 px-4">Điều kiện kích hoạt</th>
-                    <th className="py-3 px-4">Email nhận</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle/60">
-                  {rules.map((rule) => {
-                    const val = Number(rule.thresholdValue ?? 0);
-                    const formattedVal = val.toLocaleString('vi-VN');
-                    const condType = rule.conditionType || 'PRICE_ABOVE';
-
-                    let badgeColor = 'bg-canvas border-border-subtle text-primary-text';
-                    let conditionLabel = `Giá > ${formattedVal} đ/kg`;
-                    let IconComponent = TrendingUp;
-
-                    if (condType === 'PRICE_ABOVE') {
-                      badgeColor = 'bg-rose-500/10 border-rose-200 text-rose-700';
-                      conditionLabel = `Giá > ${formattedVal} đ/kg (Vượt trần)`;
-                      IconComponent = TrendingUp;
-                    } else if (condType === 'PRICE_BELOW') {
-                      badgeColor = 'bg-blue-500/10 border-blue-200 text-blue-700';
-                      conditionLabel = `Giá < ${formattedVal} đ/kg (Chạm sàn)`;
-                      IconComponent = TrendingDown;
-                    } else if (condType === 'PCT_INC_7D') {
-                      badgeColor = 'bg-amber-500/10 border-amber-200 text-amber-700';
-                      conditionLabel = `Tăng > +${formattedVal}% trong 7 ngày`;
-                      IconComponent = TrendingUp;
-                    } else if (condType === 'PCT_DEC_7D') {
-                      badgeColor = 'bg-orange-500/10 border-orange-200 text-orange-700';
-                      conditionLabel = `Giảm sâu > -${formattedVal}% trong 7 ngày`;
-                      IconComponent = TrendingDown;
-                    } else if (condType === 'OUT_OF_CI_95') {
-                      badgeColor = 'bg-purple-500/10 border-purple-200 text-purple-700 font-bold';
-                      conditionLabel = `Lệch Dải tin cậy 95% mô hình AI`;
-                      IconComponent = Sparkles;
-                    }
-
-                    return (
-                      <tr key={rule.id} className="hover:bg-black/[0.01] transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-primary-text max-w-xs">
-                          {rule.ruleName}
-                          <span className="text-[10px] text-secondary-text/70 block mt-0.5">
-                            Ngày tạo: {rule.createdAt || 'Hôm nay'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-brand text-xs">
-                            {rule.commodityName}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono font-semibold text-xs ${badgeColor}`}>
-                            <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                            {conditionLabel}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-secondary-text">
-                          <div className="flex items-center gap-1.5">
-                            <Mail className="w-3.5 h-3.5 text-secondary-text/80 shrink-0" />
-                            <span className="truncate max-w-[200px]" title={rule.email}>
-                              {rule.email}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <button
-                            onClick={() => handleToggle(rule.id)}
-                            className={`w-11 h-6 rounded-full transition-colors relative p-0.5 inline-block ${
-                              rule.isActive ? 'bg-brand' : 'bg-[#D4CEBE]'
-                            }`}
-                            title={rule.isActive ? 'Đang bật - Nhấp để tắt' : 'Đang tắt - Nhấp để bật'}
-                          >
-                            <div
-                              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                                rule.isActive ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setEmailPreviewRule(rule)}
-                              title="Xem trước nội dung Email"
-                              className="p-1.5 rounded-lg border border-border-subtle bg-canvas hover:bg-black/5 text-secondary-text hover:text-brand transition-all"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleTestAlert(rule)}
-                              title="Gửi thử nghiệm cảnh báo ngay"
-                              className="p-1.5 rounded-lg border border-border-subtle bg-canvas hover:bg-brand/10 text-brand transition-all"
-                            >
-                              <Send className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDelete(rule.id)}
-                              title="Xóa quy tắc này"
-                              className="p-1.5 rounded-lg border border-border-subtle bg-canvas hover:bg-rose-500/10 text-secondary-text hover:text-rose-600 transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <span className="text-xs text-[#15803D] font-semibold">đang theo dõi</span>
           </div>
         </div>
-      )}
 
-      {/* TAB 2: AUDIT LOGS (LỊCH SỬ KÍCH HOẠT CẢNH BÁO) */}
-      {activeTab === 'logs' && (
-        <div className="bg-card rounded-2xl border border-border-subtle p-6 shadow-card space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
-                <History className="w-4 h-4 text-brand" /> Nhật ký Kích hoạt Cảnh báo (Audit Trail)
-              </h3>
-              <p className="text-xs text-secondary-text mt-0.5">
-                Lịch sử các sự kiện chạm ngưỡng giá và gửi thông báo qua giao thức SMTP tới người dùng
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 font-bold text-xs border border-emerald-200">
-              ● Đồng bộ bảng alert_logs (PostgreSQL)
+        <div className="p-4">
+          <p className="text-xs font-medium text-[#64748B]">Đã kích hoạt</p>
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-[#1E293B] tabular-nums">
+              {logs.length}
             </span>
+            <span className="text-xs text-[#64748B]">lượt cảnh báo</span>
+          </div>
+        </div>
+
+        <div className="p-4">
+          <p className="text-xs font-medium text-[#64748B]">Kênh gửi</p>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#15803D]" />
+            <span className="text-sm font-bold text-[#1E293B]">Kênh gửi: Email SMTP</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Syncfusion Enterprise DataGrid Container */}
+      <section className="bg-white rounded-lg border border-[#E2E8F0] overflow-hidden">
+        {/* Integrated Single-Row DataGrid Toolbar */}
+        <div className="px-4 py-3 bg-[#F8FAFC] border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
+          {/* Left: Tabs */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('rules')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                activeTab === 'rules'
+                  ? 'bg-[#166534] text-white'
+                  : 'bg-white text-[#475569] hover:text-[#0F172A] border border-[#E2E8F0]'
+              }`}
+            >
+              Danh sách Quy tắc Cảnh báo ({rules.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('logs')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                activeTab === 'logs'
+                  ? 'bg-[#166534] text-white'
+                  : 'bg-white text-[#475569] hover:text-[#0F172A] border border-[#E2E8F0]'
+              }`}
+            >
+              Lịch sử Kích hoạt & Audit Logs ({logs.length})
+            </button>
           </div>
 
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border-subtle text-secondary-text font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">Thời gian</th>
-                  <th className="py-3 px-4">Quy tắc áp dụng</th>
-                  <th className="py-3 px-4">Nông sản</th>
-                  <th className="py-3 px-4">Mức giá vi phạm</th>
-                  <th className="py-3 px-4">Nội dung thông báo</th>
-                  <th className="py-3 px-4">Email nhận</th>
-                  <th className="py-3 px-4 text-center">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle/60">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-black/[0.01] transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-semibold text-secondary-text whitespace-nowrap">
-                      {log.triggeredAt}
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-primary-text">
-                      {log.ruleName}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-brand">
-                      {log.commodityName}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-primary-text">
-                      {log.triggeredPrice ? `${Number(log.triggeredPrice).toLocaleString('vi-VN')} đ` : '—'}
-                    </td>
-                    <td className="py-3.5 px-4 text-secondary-text max-w-sm line-clamp-1" title={log.message}>
-                      {log.message}
-                    </td>
-                    <td className="py-3.5 px-4 text-secondary-text text-[11px]">
-                      {log.email}
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-700 font-bold text-[10px] uppercase border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        {log.status}
-                      </span>
-                    </td>
-                  </tr>
+          {/* Right: Commodity Filter, Refresh, New Rule (Search/Excel/CSV handled cleanly inside Syncfusion AgroGrid Toolbar) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTab === 'rules' && (
+              <select
+                aria-label="Lọc nông sản"
+                value={commodityFilter}
+                onChange={(e) => setCommodityFilter(e.target.value)}
+                className="bg-white border border-[#E5E7EB] text-[#1E293B] px-2.5 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:border-[#2F6F4E]"
+              >
+                <option value="ALL">Tất cả nông sản</option>
+                {commodities.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-[#F8FAF9] text-[#475569] hover:text-[#1E293B] border border-[#E5E7EB] text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+
+            {activeTab === 'rules' && (
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2F6F4E] hover:bg-[#24583D] text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm quy tắc mới</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* CREATE RULE MODAL */}
+        {/* TAB 1: RULES TABLE (Syncfusion GridComponent) */}
+        {activeTab === 'rules' && (
+          <div className="p-4">
+            <AgroGrid
+              fileName="quy-tac-canh-bao-gia"
+              pageSize={15}
+              height={420}
+              data={ruleRows}
+              columns={[
+                {
+                  field: 'ruleName',
+                  headerText: 'Tên quy tắc',
+                  kind: 'text',
+                  width: 220,
+                  template: (row: Record<string, unknown>) => (
+                    <div className="leading-tight">
+                      <div className="font-semibold text-[#1E293B] truncate">{String(row.ruleName ?? '')}</div>
+                      <span className="text-[11px] tabular-nums text-[#64748B]">
+                        Tạo: {formatDateVN(String(row.createdAt ?? ''))}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  field: 'commodityName',
+                  headerText: 'Nông sản',
+                  kind: 'text',
+                  width: 145,
+                  template: (row: Record<string, unknown>) => (
+                    <span className="font-semibold text-[#2F6F4E]">{String(row.commodityName ?? '')}</span>
+                  ),
+                },
+                {
+                  field: 'thresholdValue',
+                  headerText: 'Điều kiện & Ngưỡng kích hoạt',
+                  kind: 'number',
+                  align: 'Right',
+                  width: 235,
+                  template: (row: Record<string, unknown>) => {
+                    const condType = String(row.conditionType ?? 'PRICE_ABOVE');
+                    const isUpAlert = condType === 'PRICE_ABOVE' || condType === 'PCT_INC_7D';
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border tabular-nums font-semibold text-xs ${
+                          isUpAlert
+                            ? 'bg-[#DC2626]/10 border-[#DC2626]/20 text-[#DC2626]'
+                            : 'bg-[#15803D]/10 border-[#15803D]/20 text-[#15803D]'
+                        }`}
+                      >
+                        {isUpAlert ? (
+                          <TrendingUp className="w-3 h-3 shrink-0" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3 shrink-0" />
+                        )}
+                        <span>{String(row.conditionLabel ?? '')}</span>
+                      </span>
+                    );
+                  },
+                },
+                {
+                  field: 'email',
+                  headerText: 'Email nhận',
+                  kind: 'text',
+                  width: 195,
+                  template: (row: Record<string, unknown>) => (
+                    <div className="flex items-center gap-1.5 text-xs text-[#475569]">
+                      <Mail className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
+                      <span className="truncate" title={String(row.email ?? '')}>
+                        {String(row.email ?? '')}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  field: 'statusLabel',
+                  headerText: 'Trạng thái',
+                  kind: 'text',
+                  align: 'Center',
+                  width: 105,
+                  template: (row: Record<string, unknown>) => {
+                    const isActive = Boolean(row.isActive);
+                    const id = Number(row.id);
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleToggle(id)}
+                        aria-label={isActive ? 'Tắt quy tắc' : 'Bật quy tắc'}
+                        className={`w-10 h-5 rounded-full transition-colors relative p-0.5 inline-block cursor-pointer ${
+                          isActive ? 'bg-[#2F6F4E]' : 'bg-[#CBD5E1]'
+                        }`}
+                        title={isActive ? 'Đang bật - Nhấp để tắt' : 'Đang tắt - Nhấp để bật'}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                            isActive ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    );
+                  },
+                },
+                {
+                  field: 'actions',
+                  headerText: 'Thao tác',
+                  kind: 'text',
+                  align: 'Right',
+                  width: 155,
+                  allowSorting: false,
+                  allowFiltering: false,
+                  allowSearching: false,
+                  exportable: false,
+                  template: (row: Record<string, unknown>) => {
+                    const rule = row._raw as AlertRuleItem | undefined;
+                    if (!rule) return null;
+                    return (
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(rule)}
+                          title="Chỉnh sửa quy tắc"
+                          className="p-1.5 rounded-md border border-[#E5E7EB] bg-white hover:bg-[#F8FAF9] text-[#475569] hover:text-[#2F6F4E] transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEmailPreviewRule(rule)}
+                          title="Xem trước nội dung Email"
+                          className="p-1.5 rounded-md border border-[#E5E7EB] bg-white hover:bg-[#F8FAF9] text-[#475569] hover:text-[#1E293B] transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTestAlert(rule)}
+                          title="Gửi thử nghiệm cảnh báo ngay"
+                          className="p-1.5 rounded-md border border-[#E5E7EB] bg-white hover:bg-[#F0F7F4] text-[#2F6F4E] transition-colors cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(rule.id)}
+                          title="Xóa quy tắc"
+                          className="p-1.5 rounded-md border border-[#E5E7EB] bg-white hover:bg-red-50 text-[#475569] hover:text-[#DC2626] transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  },
+                },
+              ] as AgroColumn[]}
+            />
+          </div>
+        )}
+
+        {/* TAB 2: AUDIT LOGS (Syncfusion GridComponent) */}
+        {activeTab === 'logs' && (
+          <div className="p-4">
+            <AgroGrid
+              fileName="lich-su-kich-hoat-canh-bao"
+              pageSize={15}
+              height={380}
+              data={logs.map((log) => {
+                const unit = getCommodityUnit(log.commodityName);
+                return {
+                  id: log.id,
+                  triggeredAt: formatDateTimeVN(log.triggeredAt),
+                  ruleName: log.ruleName,
+                  commodityName: log.commodityName,
+                  triggeredPrice: log.triggeredPrice,
+                  unit,
+                  message: log.message,
+                  email: log.email,
+                  statusLabel: log.status === 'SENT' ? 'Đã gửi' : log.status,
+                };
+              })}
+              columns={[
+                { field: 'triggeredAt', headerText: 'Thời điểm kích hoạt', kind: 'text', width: 155 },
+                { field: 'ruleName', headerText: 'Quy tắc áp dụng', kind: 'text', width: 210 },
+                { field: 'commodityName', headerText: 'Nông sản', kind: 'text', width: 140 },
+                { field: 'triggeredPrice', headerText: 'Mức giá ghi nhận', kind: 'money', unitField: 'unit', width: 165 },
+                { field: 'message', headerText: 'Nội dung thông báo', kind: 'text', width: 260 },
+                { field: 'email', headerText: 'Email nhận', kind: 'text', width: 185 },
+                { field: 'statusLabel', headerText: 'Trạng thái', kind: 'text', width: 110, align: 'Center' },
+              ] as AgroColumn[]}
+            />
+          </div>
+        )}
+      </section>
+
+      {/* CREATE / EDIT RULE MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card rounded-3xl border border-border-subtle p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
-                <BellRing className="w-5 h-5 text-brand" /> Thiết lập quy tắc cảnh báo mới
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-[#E2E8F0] p-5 max-w-lg w-full shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+              <h3 className="text-base font-bold text-[#0F172A]">
+                {editingRuleId !== null ? 'Chỉnh sửa quy tắc cảnh báo' : 'Thiết lập quy tắc cảnh báo mới'}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="text-secondary-text hover:text-primary-text font-bold text-sm"
+                className="text-[#64748B] hover:text-[#0F172A] font-bold text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateRule} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveRule} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-secondary-text uppercase tracking-wider block mb-1">
-                  Nông sản theo dõi
-                </label>
+                <label className="font-semibold text-[#475569] block mb-1">Nông sản theo dõi</label>
                 <select
                   value={formCommodityId}
                   onChange={(e) => setFormCommodityId(Number(e.target.value))}
-                  className="w-full bg-canvas border border-border-subtle rounded-xl p-2.5 text-primary-text font-semibold focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#E2E8F0] rounded-md p-2 text-[#0F172A] font-semibold focus:outline-none focus:border-[#166534]"
                 >
-                  {COMMODITIES_DATA.map((c) => (
+                  {commodities.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.unit})
+                      {c.name} ({getCommodityUnit(c.name, c.unit)})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-secondary-text uppercase tracking-wider block mb-1">
-                  Tên gợi nhớ quy tắc
-                </label>
+                <label className="font-semibold text-[#475569] block mb-1">Tên quy tắc</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: Cảnh báo giá cà phê chạm đỉnh 125,000..."
+                  placeholder="VD: Cảnh báo Cà phê Robusta vượt 125.000 VNĐ/kg"
                   value={formRuleName}
                   onChange={(e) => setFormRuleName(e.target.value)}
-                  className="w-full bg-canvas border border-border-subtle rounded-xl p-2.5 text-primary-text font-medium focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#E2E8F0] rounded-md p-2 text-[#0F172A] focus:outline-none focus:border-[#166534]"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-secondary-text uppercase tracking-wider block mb-1">
-                  Điều kiện kích hoạt thông minh
-                </label>
+                <label className="font-semibold text-[#475569] block mb-1">Điều kiện kích hoạt</label>
                 <select
                   value={formCondition}
                   onChange={(e) => setFormCondition(e.target.value as AlertRuleItem['conditionType'])}
-                  className="w-full bg-canvas border border-border-subtle rounded-xl p-2.5 text-primary-text font-semibold focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#E2E8F0] rounded-md p-2 text-[#0F172A] font-semibold focus:outline-none focus:border-[#166534]"
                 >
                   <option value="PRICE_ABOVE">Vượt mức giá trần (Giá &gt; Ngưỡng)</option>
                   <option value="PRICE_BELOW">Sụt giảm dưới mức sàn (Giá &lt; Ngưỡng)</option>
-                  <option value="PCT_INC_7D">Tăng đột biến trong 7 ngày (&gt; %)</option>
-                  <option value="PCT_DEC_7D">Giảm sâu liên tiếp 7 ngày (&gt; %)</option>
-                  <option value="OUT_OF_CI_95">Bất thường: Lệch khỏi dải tin cậy 95% mô hình AI</option>
+                  <option value="PCT_INC_7D">Tăng mạnh trong 7 ngày (&gt; %)</option>
+                  <option value="PCT_DEC_7D">Giảm sâu trong 7 ngày (&gt; %)</option>
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-secondary-text uppercase tracking-wider block mb-1">
+                <label className="font-semibold text-[#475569] block mb-1">
                   Giá trị ngưỡng kích hoạt (VNĐ hoặc %)
                 </label>
                 <input
                   type="number"
                   required
-                  placeholder="VD: 65000 (cho giá) hoặc 5 (cho %)"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="VD: 125000 (cho giá) hoặc 5 (cho %)"
                   value={formThreshold}
                   onChange={(e) => setFormThreshold(e.target.value)}
-                  className="w-full bg-canvas border border-border-subtle rounded-xl p-2.5 text-primary-text font-semibold focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#E2E8F0] rounded-md p-2 text-[#0F172A] font-mono tabular-nums font-semibold focus:outline-none focus:border-[#166534]"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-secondary-text uppercase tracking-wider block mb-1">
-                  Email nhận thông báo
-                </label>
+                <label className="font-semibold text-[#475569] block mb-1">Email nhận thông báo</label>
                 <input
                   type="email"
                   required
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
-                  className="w-full bg-canvas border border-border-subtle rounded-xl p-2.5 text-primary-text font-medium focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#E2E8F0] rounded-md p-2 text-[#0F172A] font-mono focus:outline-none focus:border-[#166534]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-secondary-text hover:bg-black/5 font-bold"
+                  className="px-3.5 py-1.5 rounded-md bg-white border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] font-semibold"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-brand text-white font-bold transition-all shadow-sm hover:bg-brand/90"
+                  className="px-4 py-1.5 rounded-md bg-[#166534] hover:bg-[#15803D] text-white font-semibold"
                 >
-                  Lưu & Kích hoạt
+                  {editingRuleId !== null ? 'Lưu Thay Đổi' : 'Lưu & Kích Hoạt'}
                 </button>
               </div>
             </form>
@@ -617,89 +668,70 @@ export default function AlertsPage() {
 
       {/* EMAIL PREVIEW MODAL */}
       {emailPreviewRule && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card rounded-3xl border border-border-subtle p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h3 className="text-base font-bold text-primary-text flex items-center gap-2">
-                <Mail className="w-5 h-5 text-brand" /> Xem trước Email Thông báo
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-[#E2E8F0] p-5 max-w-lg w-full shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+              <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                <Mail className="w-4 h-4 text-[#166534]" />
+                <span>Xem trước nội dung Email cảnh báo</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setEmailPreviewRule(null)}
-                className="text-secondary-text hover:text-primary-text font-bold text-sm"
+                className="text-[#64748B] hover:text-[#0F172A] font-bold text-sm"
               >
                 ✕
               </button>
             </div>
 
-            {/* Email Shell Simulation */}
-            <div className="rounded-2xl border border-border-subtle bg-white text-gray-800 p-5 shadow-sm space-y-4 text-xs">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <div className="flex items-center gap-2 font-bold text-sm text-gray-900">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-800 text-white flex items-center justify-center font-black text-xs">
-                    AF
-                  </div>
-                  <span>AgroForecast Alert Engine</span>
-                </div>
-                <span className="text-[11px] text-gray-400">Gửi qua SMTP TLS</span>
+            <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-3 text-xs">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5">
+                <span className="font-bold text-[#0F172A]">AgroForecast SMTP Notification</span>
+                <span className="text-[11px] text-[#64748B]">TLS Port 587</span>
               </div>
 
               <div>
-                <p className="text-gray-500 text-[11px]">Người nhận: <strong className="text-gray-900">{emailPreviewRule.email}</strong></p>
-                <h4 className="text-base font-extrabold text-red-600 mt-2">
-                  [CẢNH BÁO THỊ TRƯỜNG] {emailPreviewRule.ruleName}
+                <p className="text-[#475569]">
+                  Người nhận: <strong className="text-[#0F172A] font-mono">{emailPreviewRule.email}</strong>
+                </p>
+                <h4 className="text-sm font-bold text-[#DC2626] mt-1.5">
+                  [CẢNH BÁO GIÁ NÔNG SẢN] {emailPreviewRule.ruleName}
                 </h4>
               </div>
 
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+              <div className="p-3 rounded-md bg-white border border-[#E2E8F0] space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Mặt hàng:</span>
-                  <strong className="text-gray-900 font-bold">{emailPreviewRule.commodityName}</strong>
+                  <span className="text-[#475569]">Mặt hàng:</span>
+                  <strong className="text-[#0F172A]">{emailPreviewRule.commodityName}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Ngưỡng kích hoạt:</span>
-                  <strong className="text-gray-900 font-mono">
-                    {Number(emailPreviewRule.thresholdValue).toLocaleString('vi-VN')} VNĐ
+                  <span className="text-[#475569]">Ngưỡng thiết lập:</span>
+                  <strong className="text-[#0F172A] font-mono tabular-nums">
+                    {formatNumberVN(emailPreviewRule.thresholdValue)}{' '}
+                    {getCommodityUnit(emailPreviewRule.commodityName)}
                   </strong>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Mức giá thị trường:</span>
-                  <strong className="text-red-600 font-mono font-bold text-sm">
-                    {Number(emailPreviewRule.thresholdValue * 1.02).toLocaleString('vi-VN')} VNĐ
-                  </strong>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-1">
-                <div className="flex items-center gap-1 font-bold">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Khuyến nghị từ Hệ thống Phân tích AgroForecast:</span>
-                </div>
-                <p>
-                  Mức giá đang có xu hướng vượt ngưỡng rủi ro. Các nhà phân tích và thương lái nên cân nhắc chốt hợp đồng tương lai hoặc điều chỉnh kế hoạch thu mua kho bãi.
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-400 flex items-center justify-between">
-                <span>Dự án Tốt nghiệp AgroForecast 2026</span>
-                <span>Hệ thống Tự động hóa Cảnh báo Nông sản</span>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
+                type="button"
                 onClick={() => setEmailPreviewRule(null)}
-                className="px-4 py-2 rounded-xl text-secondary-text hover:bg-black/5 font-bold text-xs"
+                className="px-3.5 py-1.5 rounded-md bg-white border border-[#E2E8F0] text-[#475569] font-semibold text-xs"
               >
                 Đóng
               </button>
               <button
+                type="button"
                 onClick={() => {
-                  handleTestAlert(emailPreviewRule);
+                  void handleTestAlert(emailPreviewRule);
                   setEmailPreviewRule(null);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-white font-bold text-xs hover:bg-brand/90 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-[#166534] hover:bg-[#15803D] text-white font-semibold text-xs"
               >
-                <Send className="w-3.5 h-3.5" /> Gửi thử Email này
+                <Send className="w-3.5 h-3.5" />
+                <span>Gửi thử Email này</span>
               </button>
             </div>
           </div>

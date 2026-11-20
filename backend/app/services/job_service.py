@@ -51,7 +51,12 @@ def sync_forecast_after_scrape(job_id, options):
         if commodity_id:
             commodities = db.query(Commodity).filter(Commodity.id == commodity_id).all()
         else:
-            commodities = db.query(Commodity).filter(Commodity.code == "COFFEE_ROBUSTA").all()
+            commodities = (
+                db.query(Commodity)
+                .filter(Commodity.code.in_(("RICE_IR504", "COFFEE_ROBUSTA", "PEPPER_BLACK", "SUGARCANE")))
+                .order_by(Commodity.id)
+                .all()
+            )
 
         pending = []
         messages = []

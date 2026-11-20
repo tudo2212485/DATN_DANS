@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
+import SyncfusionProvider from "@/components/layout/SyncfusionProvider";
+import { LocationProvider } from "@/contexts/LocationContext";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["vietnamese", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-  variable: "--font-plus-jakarta",
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
-  title: "AgroForecast - Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường",
-  description: "Dashboard dự báo giá nông sản ứng dụng Machine Learning (ARIMA, Prophet, LSTM) và cảnh báo thị trường thông minh.",
+  title: "AgroForecast - Phân tích & Dự báo Giá Nông sản",
+  description: "Dự báo giá nông sản Việt Nam bằng ARIMA, Prophet, Random Forest, XGBoost và LSTM; cảnh báo ngưỡng giá tự động.",
 };
 
 export default function RootLayout({
@@ -21,11 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`min-h-full ${plusJakartaSans.className}`}>
-      <body className="bg-canvas text-primary-text min-h-screen flex antialiased selection:bg-brand/20">
-        <LayoutWrapper>
-          {children}
-        </LayoutWrapper>
+    <html lang="vi" className={`min-h-full ${beVietnamPro.variable}`}>
+      <body className="font-sans bg-canvas text-primary-text min-h-screen flex antialiased selection:bg-brand/20">
+        <SyncfusionProvider>
+          <LocationProvider>
+            <LayoutWrapper>{children}</LayoutWrapper>
+          </LocationProvider>
+        </SyncfusionProvider>
       </body>
     </html>
   );

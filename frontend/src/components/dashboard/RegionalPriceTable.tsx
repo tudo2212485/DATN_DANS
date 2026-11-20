@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { RegionalPriceItem } from '@/types';
 import { fetchRegionalPrices } from '@/lib/api';
+import { formatPct, getCommodityUnit } from '@/lib/formatters';
+import { useLocation } from '@/contexts/LocationContext';
 import Link from 'next/link';
 
 const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
   {
     id: 1,
-    commodityName: 'Lúa gạo IR504',
+    commodityName: 'Lúa gạo IR50404',
     code: 'RICE',
     region: 'Huyện Châu Phú, An Giang (Tại ruộng)',
     price: '8.065',
@@ -48,7 +50,7 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
   },
   {
     id: 4,
-    commodityName: 'Mía đường 10 CCS',
+    commodityName: 'Mía đường',
     code: 'SUGAR',
     region: 'Huyện Tây Hòa, Phú Yên (Tại ruộng)',
     price: '1.246.588',
@@ -62,22 +64,28 @@ const FALLBACK_REGIONAL_PRICES: RegionalPriceItem[] = [
 ];
 
 export const RegionalPriceTable: React.FC = () => {
+  const { provinceCode } = useLocation();
   const [data, setData] = useState<RegionalPriceItem[]>(FALLBACK_REGIONAL_PRICES);
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
 
   useEffect(() => {
+    let active = true;
     async function loadData() {
       try {
-        const res = await fetchRegionalPrices();
-        if (res && res.length > 0) {
+        const res = await fetchRegionalPrices(provinceCode);
+        if (active && res && res.length > 0) {
           setData(res);
+          setSelectedRegion('ALL');
         }
       } catch (err) {
         console.error('Error fetching regional prices:', err);
       }
     }
-    loadData();
-  }, []);
+    void loadData();
+    return () => {
+      active = false;
+    };
+  }, [provinceCode]);
 
   const regions = Array.from(
     new Set(data.map((item) => item.region.split('(')[0].trim()))
@@ -89,22 +97,18 @@ export const RegionalPriceTable: React.FC = () => {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200/90 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full font-sans">
+    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 shadow-card flex flex-col justify-between h-full font-sans">
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 border-b border-zinc-100">
-          <div>
-            <h2 className="text-[15px] font-semibold text-zinc-900">
-              Giá bán tại vườn theo địa phương
-            </h2>
-            <p className="text-[12.5px] text-zinc-500 mt-0.5">
-              Khảo sát giá nông hộ bán trực tiếp tại vườn và ruộng sản xuất
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-2.5 pb-3 border-b border-[#E5E7EB]">
+          <h2 className="text-[15px] font-bold text-[#1E293B]">
+            Giá nông sản hiện tại
+          </h2>
 
           <select
+            aria-label="Chọn địa phương"
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
-            className="bg-zinc-50 border border-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium focus:outline-none cursor-pointer w-fit"
+            className="bg-[#F8FAF9] border border-[#E5E7EB] text-[#1E293B] px-2.5 py-1.5 rounded-lg text-xs font-medium focus:outline-none cursor-pointer w-fit"
           >
             <option value="ALL">Tất cả địa phương ({data.length})</option>
             {regions.map((r) => (
@@ -115,47 +119,45 @@ export const RegionalPriceTable: React.FC = () => {
           </select>
         </div>
 
-        <div className="divide-y divide-zinc-100 overflow-y-auto max-h-[380px] custom-scrollbar">
+        <div className="divide-y divide-[#E5E7EB] overflow-y-auto max-h-[380px] custom-scrollbar">
           {filteredData.map((item) => {
             const isPos = item.changePct >= 0;
+            const unit = getCommodityUnit(item.commodityName, item.unit);
+            const shortRegion = item.region.split('(')[0].trim();
+
             return (
               <div
                 key={item.id}
-                className="py-3.5 first:pt-4 last:pb-1 flex items-center justify-between gap-3 group"
+                title={`Nguồn: ${item.source} · Biên độ: ${item.minMax} ${unit}`}
+                className="py-3 first:pt-3.5 last:pb-1 space-y-1 group"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[14px] text-zinc-900 truncate">
-                      {item.commodityName}
+                {/* Line 1: Commodity Name + Bold Price with clear unit */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold text-[14px] text-[#1E293B] truncate">
+                    {item.commodityName}
+                  </span>
+                  <div className="text-[14.5px] font-bold text-[#1E293B] tabular-nums shrink-0">
+                    {item.price}{' '}
+                    <span className="text-[11.5px] font-normal text-[#64748B]">
+                      {unit}
                     </span>
                   </div>
-                  <p className="text-[12px] text-zinc-500 truncate mt-0.5">
-                    {item.region}
-                  </p>
-                  <p className="text-[11px] text-zinc-400 truncate mt-0.5" title={item.source}>
-                    Nguồn: {item.source}
-                  </p>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <div className="text-[14.5px] font-bold text-zinc-900 font-mono">
-                    {item.price}{' '}
-                    <span className="text-[11.5px] font-normal text-zinc-500 font-sans">
-                      {item.unit}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-end gap-2.5">
+                {/* Line 2: Short Region + % Change + Forecast link */}
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-[#64748B] truncate">{shortRegion}</span>
+                  <div className="flex items-center gap-3 shrink-0">
                     <span
-                      className={`text-[11.5px] font-semibold font-mono ${
-                        isPos ? 'text-emerald-700' : 'text-rose-600'
+                      className={`font-semibold tabular-nums ${
+                        isPos ? 'text-[#15803D]' : 'text-[#DC2626]'
                       }`}
                     >
-                      {isPos ? '+' : ''}
-                      {item.changePct}%
+                      {formatPct(item.changePct, 1)}
                     </span>
                     <Link
                       href={`/forecast?commodity_id=${item.id}`}
-                      className="text-[12px] font-medium text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-0.5"
+                      className="text-xs font-semibold text-[#2F6F4E] hover:underline inline-flex items-center gap-0.5"
                     >
                       <span>Dự báo</span>
                       <ArrowRight className="w-3 h-3" />

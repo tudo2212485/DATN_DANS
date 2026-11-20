@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { TrainingMetadata } from '@/lib/api';
+import { formatDateVN } from '@/lib/formatters';
 import { ExternalLink } from 'lucide-react';
 
 export default function TrainingSummary({
@@ -20,25 +21,25 @@ export default function TrainingSummary({
   const beatsBaseline = rmse < training.baseline.rmse;
 
   return (
-    <section className="rounded-xl border border-zinc-200/90 bg-white p-5">
+    <section className="rounded-lg border border-[#E2E8F0] bg-white p-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-[14px] font-semibold text-zinc-900">
-              Dữ liệu huấn luyện: {training.observation_count} {unit} ({training.start_date} – {training.end_date})
+            <h3 className="text-[14px] font-semibold text-[#0F172A] tabular-nums">
+              Dữ liệu huấn luyện: {training.observation_count} {unit} ({formatDateVN(training.start_date)} – {formatDateVN(training.end_date)})
             </h3>
             <span
               className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${
                 beatsBaseline
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                  : 'bg-zinc-100 text-zinc-600'
+                  ? 'bg-[#15803D]/10 text-[#15803D] border border-[#15803D]/20'
+                  : 'bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0]'
               }`}
             >
               {beatsBaseline ? 'Tốt hơn chuẩn cơ sở (Baseline)' : 'Tương đương chuẩn cơ sở'}
             </span>
           </div>
-          <p className="mt-1 text-[12.5px] text-zinc-500">
-            Mục tiêu: {training.target || 'Giá công bố'} · Tập kiểm thử: {training.test_count} {unit} ({training.test_start} → {training.test_end}) · Cập nhật mô hình: {new Date(training.trained_at).toLocaleDateString('vi-VN')}
+          <p className="mt-1 text-[12.5px] text-[#475569] tabular-nums">
+            Mục tiêu: {training.target || 'Giá công bố'} · Tập kiểm thử: {training.test_count} {unit} ({formatDateVN(training.test_start)} → {formatDateVN(training.test_end)}) · Cập nhật mô hình: {formatDateVN(training.trained_at)}
           </p>
         </div>
 

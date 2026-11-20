@@ -1,183 +1,368 @@
 'use client';
 
-import {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer} from 'recharts';
-import {fetchHistory, fetchHistorySources, HistoryResponse, HistorySource, triggerScrapeTaskApi, triggerRetrainTaskApi} from '@/lib/api';
-import {getUser} from '@/lib/auth';
-import JobStatus, {useBackgroundJob} from '@/components/dashboard/JobStatus';
-import {CalendarRange, CheckCircle2, Clock3, Database, Download, ExternalLink, Filter, Play, Settings2, Sparkles, TriangleAlert} from 'lucide-react';
+import {
+  fetchHistory,
+  fetchHistorySources,
+  HistoryResponse,
+  HistorySource,
+} from '@/lib/api';
+import Header from '@/components/layout/Header';
+import AgroGrid, { AgroColumn } from '@/components/ui/AgroGrid';
+import FinChart from '@/components/ui/FinChart';
+import {
+  formatDateVN,
+  formatNumberVN,
+  formatPct,
+  getCommodityUnit,
+} from '@/lib/formatters';
+import { useLocation } from '@/contexts/LocationContext';
+import { ArrowRight, MapPin } from 'lucide-react';
 
-function localDate(offset = 0) {
-  const day = new Date(); day.setDate(day.getDate() + offset);
-  return `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+function shiftIsoDate(baseIso: string, deltaDays: number): string {
+  const [y, m, d] = baseIso.split('-').map(Number);
+  const dt = new Date(y || 2026, (m || 9) - 1, d || 4);
+  dt.setDate(dt.getDate() + deltaDays);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
-const input = 'rounded-xl border border-border-subtle bg-white px-3 py-2 text-sm';
-const provenanceLabel: Record<string,string> = {collected:'Thu thập từ nguồn',reviewed:'Admin xác nhận',unverified:'Chưa xác minh'};
-const formatPrice = (value:number) => value.toLocaleString('vi-VN',{maximumFractionDigits:0});
-const formatCompactPrice = (value:number) => new Intl.NumberFormat('vi-VN',{notation:'compact',maximumFractionDigits:1}).format(value);
-const formatChartDate = (value:string) => {
-  const [year,month,day] = value.split('-');
-  return day && month && year ? `${day}/${month}` : value;
+
+const provenanceLabel: Record<string, string> = {
+  collected: 'Thu thập tự động',
+  reviewed: 'Đã xác minh',
+  unverified: 'Chưa xác minh',
 };
-const formatFullDate = (value:string) => {
-  const [year,month,day] = value.split('-');
-  return day && month && year ? `${day}/${month}/${year}` : value;
+
+const formatChartDate = (value: string) => {
+  const [year, month, day] = value.split('-');
+  return day && month && year ? `${day}/${month}` : value;
 };
 
 export default function HistoryPage() {
-  const [sources,setSources] = useState<HistorySource[]>([]);
-  const [commodityId,setCommodityId] = useState(2);
-  const [start,setStart] = useState(localDate(-89));
-  const [end,setEnd] = useState(localDate());
-  const [includeUnverified,setIncludeUnverified] = useState(false);
-  const [data,setData] = useState<HistoryResponse|null>(null);
-  const [error,setError] = useState('');
-  const [loading,setLoading] = useState(true);
-  const [busy,setBusy] = useState(false);
-  const [admin,setAdmin] = useState(false);
-  const [revision,setRevision] = useState(0);
-  const [page,setPage] = useState(0);
-  const [showAdminTools,setShowAdminTools] = useState(false);
-  const scrape = useBackgroundJob('scrape', () => setRevision(v=>v+1), admin);
-  const retrain = useBackgroundJob('retrain', () => setRevision(v=>v+1), admin);
-  const running = busy || scrape.running || retrain.running;
-  useEffect(()=>{
-    setAdmin(getUser()?.role === 'admin');
+  const { provinceCode, provinceName } = useLocation();
+  const [sources, setSources] = useState<HistorySource[]>([]);
+  const [commodityId, setCommodityId] = useState(2);
+  const [anchorEnd, setAnchorEnd] = useState<string>('2026-11-20');
+  const [start, setStart] = useState<string>('2026-08-23');
+  const [end, setEnd] = useState<string>('2026-11-20');
+  const [data, setData] = useState<HistoryResponse | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
     const id = Number(new URLSearchParams(window.location.search).get('commodity_id'));
-    if(id > 0) setCommodityId(id);
-    fetchHistorySources().then(setSources).catch(e=>setError(e.message));
-  },[]);
-  useEffect(()=>{
+    const initialCid = id > 0 ? id : 2;
+    if (id > 0) setCommodityId(id);
+
+    fetchHistorySources()
+      .then((list) => {
+        setSources(list);
+        const current = list.find((s) => s.id === initialCid) || list[0];
+        const latest = current?.latest_date || '2026-09-04';
+        setAnchorEnd(latest);
+        setEnd(latest);
+        setStart(shiftIsoDate(latest, -89));
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  const handleSelectCommodity = (newId: number) => {
+    setCommodityId(newId);
+    const target = sources.find((s) => s.id === newId);
+    if (target?.latest_date) {
+      setAnchorEnd(target.latest_date);
+      setEnd(target.latest_date);
+      setStart(shiftIsoDate(target.latest_date, -89));
+    }
+  };
+
+  useEffect(() => {
+    if (!start || !end) return;
     let cancelled = false;
-    setLoading(true); setData(null); setPage(0); setError('');
-    fetchHistory(commodityId,start,end,includeUnverified).then(d=>{if(!cancelled)setData(d);})
-      .catch(e=>{if(!cancelled)setError(e.message);}).finally(()=>{if(!cancelled)setLoading(false);});
-    return ()=>{cancelled=true;};
-  },[commodityId,start,end,includeUnverified,revision]);
-  const source = sources.find(s=>s.id===commodityId);
-  const chart = [...(data?.records.map(r=>({date:r.date,price:r.price})) || []),...(data?.missing_dates.map(date=>({date,price:null})) || [])].sort((a,b)=>a.date.localeCompare(b.date));
-  const chartStats = data?.records.length ? (()=>{
-    const first=data.records[0];
-    const last=data.records[data.records.length-1];
-    const prices=data.records.map(r=>r.price);
-    const change=first.price ? ((last.price-first.price)/first.price)*100 : 0;
-    return {first,last,min:Math.min(...prices),max:Math.max(...prices),change};
-  })() : null;
-  const rangeIs = (days:number) => {
+    setLoading(true);
+    setError('');
+    fetchHistory(commodityId, start, end, false, provinceCode)
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [commodityId, start, end, provinceCode]);
+
+  const source = sources.find((s) => s.id === commodityId);
+  const currentUnit = getCommodityUnit(source?.name, source?.unit);
+
+  // Only plot observed points from start to end so the chart stretches cleanly across 100% width
+  const chart = (data?.records || []).map((r) => ({
+    date: r.date,
+    price: r.price,
+  }));
+
+  const chartStats = data?.records.length
+    ? (() => {
+        const first = data.records[0];
+        const last = data.records[data.records.length - 1];
+        const prices = data.records.map((r) => r.price);
+        const change = first.price ? ((last.price - first.price) / first.price) * 100 : 0;
+        return {
+          first,
+          last,
+          min: Math.min(...prices),
+          max: Math.max(...prices),
+          change,
+        };
+      })()
+    : null;
+
+  const rangeIs = (days: number) => {
     const startDate = new Date(`${start}T00:00:00`);
     const endDate = new Date(`${end}T00:00:00`);
-    return Math.round((endDate.getTime()-startDate.getTime())/86400000)+1 === days;
+    return Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1 === days;
   };
-  const chooseRange = (days:number) => {setStart(localDate(1-days));setEnd(localDate());};
-  async function collect() {
-    setBusy(true); setError('');
-    try {scrape.begin(await triggerScrapeTaskApi(30,{commodity_id:commodityId,start_date:start,end_date:end}));}
-    catch(e){setError(e instanceof Error?e.message:'Không thu thập được dữ liệu');} finally{setBusy(false);}
-  }
-  async function train() {
-    setBusy(true); setError('');
-    try {retrain.begin(await triggerRetrainTaskApi(commodityId));}
-    catch(e){setError(e instanceof Error?e.message:'Không huấn luyện được');} finally{setBusy(false);}
-  }
-  function exportCsv() {
-    if(!data) return;
-    const escape = (value:unknown) => '"'+String(value??'').replace(/"/g,'""')+'"';
-    const rows = source?.kind === 'periodic'
-      ? [['period_start','period_end','published_date','buying_price','selling_price','unit','market','specification','source'],...data.periodic_records.map(r=>[r.start,r.end,r.published_date,r.buying_price,r.selling_price,r.unit,r.market,r.specification,r.source])]
-      : [['record_date','commodity_code','price','unit','source','provenance','market','price_type'],...data.records.map(r=>[r.date,source?.code,r.price,source?.unit,r.source,r.provenance,r.source_details?.market,r.source_details?.price_type])];
-    const csv = rows.map(row=>row.map(escape).join(',')).join('\r\n');
-    const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=`lich-su-${source?.code}-${start}-${end}.csv`;a.click();URL.revokeObjectURL(url);
-  }
-  return <div className="space-y-5">
-    <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
-      <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">Dữ liệu đầu vào cho AI</p><h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-primary-text">Lịch sử giá nông sản</h1><p className="mt-1 text-sm text-secondary-text">Chọn nông sản và thời gian để xem giá, kiểm tra nguồn rồi chuyển sang dự báo.</p></div>
-      <div className="flex items-center gap-1.5 text-[11px] font-bold text-secondary-text" aria-label="Quy trình dữ liệu">
-        {['Lịch sử','Kiểm tra','Huấn luyện','Dự báo'].map((step,index)=><span key={step} className={`rounded-lg px-2.5 py-1.5 ${index===0?'bg-brand text-white':'bg-white border border-border-subtle'}`}>{index+1}. {step}</span>)}
-      </div>
-    </div>
-    {error&&<p role="alert" className="p-4 bg-rose-50 text-rose-700 rounded-xl">{error}</p>}
-    <section className="bg-white border border-border-subtle rounded-2xl shadow-card overflow-hidden">
-      <div className="p-5 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2"><Filter className="w-4 h-4 text-brand"/><h2 className="font-bold text-primary-text">Bộ lọc dữ liệu</h2><span className="ml-auto text-[11px] text-secondary-text">Tự cập nhật khi thay đổi lựa chọn</span></div>
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <label className="text-xs font-bold uppercase tracking-wider text-secondary-text">Nông sản<select aria-label="Nông sản" className={`${input} mt-1.5 w-full min-h-11 font-semibold text-primary-text`} value={commodityId} onChange={e=>setCommodityId(Number(e.target.value))}>{sources.map(s=><option key={s.id} value={s.id}>{s.name} ({s.unit})</option>)}</select></label>
-          <label className="text-xs font-bold uppercase tracking-wider text-secondary-text">Từ ngày<input className={`${input} mt-1.5 w-full min-h-11 text-primary-text`} type="date" value={start} max={end} onChange={e=>setStart(e.target.value)}/></label>
-          <label className="text-xs font-bold uppercase tracking-wider text-secondary-text">Đến ngày<input className={`${input} mt-1.5 w-full min-h-11 text-primary-text`} type="date" value={end} min={start} max={localDate()} onChange={e=>setEnd(e.target.value)}/></label>
-          <div><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Khoảng xem nhanh</p><div className="mt-1.5 flex min-h-11 items-center gap-1 rounded-xl border border-border-subtle bg-canvas p-1">{[30,90,365].map(days=><button className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold transition-colors ${rangeIs(days)?'bg-brand text-white shadow-xs':'text-secondary-text hover:bg-white hover:text-primary-text'}`} key={days} onClick={()=>chooseRange(days)}>{days===365?'1 năm':`${days} ngày`}</button>)}</div></div>
-        </div>
-        <div className="grid lg:grid-cols-[1fr_auto] gap-3 items-center rounded-xl border border-brand/15 bg-brand/5 px-4 py-3">
-          <div className="min-w-0"><p className="text-xs font-bold text-brand">Nguồn dữ liệu: {source?.name || 'Đang tải...'}</p><p className="mt-1 text-xs leading-5 text-secondary-text">{source?.limitation || 'Hệ thống đang tải thông tin nguồn dữ liệu.'}</p></div>
-          <div className="flex flex-wrap gap-2">
-            {source?.source_url&&<a className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-white px-3 py-2 text-xs font-bold text-brand" href={source.source_url} target="_blank" rel="noreferrer">Kiểm tra nguồn<ExternalLink className="w-3.5 h-3.5"/></a>}
-            {source?.suggested_start && <button className="rounded-lg border border-border-subtle bg-white px-3 py-2 text-xs font-bold text-primary-text" onClick={()=>{setStart(source.suggested_start!);setEnd(localDate());}}>Xem toàn bộ lịch sử</button>}
+
+  const chooseRange = (days: number) => {
+    const refEnd = source?.latest_date || anchorEnd;
+    setEnd(refEnd);
+    setStart(shiftIsoDate(refEnd, 1 - days));
+  };
+
+  return (
+    <div className="space-y-4 max-w-[1440px] mx-auto pb-8 font-sans">
+      <Header
+        title="Dữ liệu lịch sử giá nông sản"
+        subtitle="Chuỗi giá thu mua thực tế tại vùng chuyên canh đã xác minh theo ngày"
+      />
+
+      {error && (
+        <p role="alert" className="p-3 bg-red-50 text-[#DC2626] border border-red-200 rounded-lg text-xs">
+          {error}
+        </p>
+      )}
+
+      {/* Single Compact Horizontal Filter Toolbar */}
+      <div className="bg-white border border-[#E5E7EB] rounded-xl p-3 shadow-card flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="history-commodity" className="text-xs font-medium text-[#64748B]">
+              Nông sản:
+            </label>
+            <select
+              id="history-commodity"
+              aria-label="Nông sản"
+              value={commodityId}
+              onChange={(e) => handleSelectCommodity(Number(e.target.value))}
+              className="rounded-lg border border-[#E5E7EB] bg-[#F8FAF9] px-2.5 py-1.5 text-xs font-semibold text-[#1E293B] focus:outline-none focus:border-[#2F6F4E]"
+            >
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({getCommodityUnit(s.name, s.unit)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-[#F8FAF9] px-2.5 py-1 rounded-lg border border-[#E5E7EB] text-xs">
+            <span className="text-[#64748B]">Từ:</span>
+            <input
+              aria-label="Từ ngày"
+              type="date"
+              value={start}
+              max={end}
+              onChange={(e) => setStart(e.target.value)}
+              className="bg-transparent text-xs tabular-nums text-[#1E293B] focus:outline-none"
+            />
+            <span className="text-[#CBD5E1]">|</span>
+            <span className="text-[#64748B]">Đến:</span>
+            <input
+              aria-label="Đến ngày"
+              type="date"
+              value={end}
+              min={start}
+              max={source?.latest_date || anchorEnd}
+              onChange={(e) => setEnd(e.target.value)}
+              className="bg-transparent text-xs tabular-nums text-[#1E293B] focus:outline-none"
+            />
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <label className="inline-flex items-center gap-2 text-xs text-secondary-text"><input className="w-4 h-4 accent-brand" type="checkbox" checked={includeUnverified} onChange={e=>setIncludeUnverified(e.target.checked)}/> Hiện cả bản ghi chưa xác minh</label>
-          <div className="sm:ml-auto flex flex-wrap gap-2">
-            <button className="inline-flex items-center gap-2 rounded-xl border border-border-subtle px-4 py-2.5 text-xs font-bold text-primary-text hover:bg-canvas disabled:opacity-40" disabled={source?.kind==='periodic'?!data?.periodic_records.length:!data?.records.length} onClick={exportCsv}><Download className="w-4 h-4"/>{source?.kind==='periodic'?'Xuất báo cáo CSV':'Xuất lịch sử CSV'}</button>
-            <Link className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white hover:bg-brand/90" href={`/forecast?commodity_id=${commodityId}`}><Sparkles className="w-4 h-4"/>Xem dự báo AI →</Link>
-          </div>
-        </div>
-      </div>
-      {admin&&<div className="border-t border-border-subtle bg-canvas/60 px-5 py-3 sm:px-6"><button onClick={()=>setShowAdminTools(v=>!v)} className="flex w-full items-center gap-2 text-left text-xs font-bold text-secondary-text"><Settings2 className="w-4 h-4 text-brand"/>Công cụ quản trị dữ liệu<span className="ml-auto">{showAdminTools?'Thu gọn':'Mở'}</span></button>{showAdminTools&&<div className="mt-3 flex flex-wrap items-center gap-2"><button disabled={running||!source?.automatic||loading||!data} onClick={collect} className="inline-flex items-center gap-2 bg-brand text-white rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40"><Play className="w-4 h-4"/>Thu thập khoảng đã chọn</button><button disabled={running||!data?.readiness.ready||loading} onClick={train} className="inline-flex items-center gap-2 bg-brand text-white rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40"><Sparkles className="w-4 h-4"/>Huấn luyện từ lịch sử đủ điều kiện</button><Link href="/dashboard/data-control" className="rounded-xl border border-border-subtle bg-white px-4 py-2.5 text-xs font-bold text-primary-text">Nhập CSV</Link><p className="w-full text-[11px] text-secondary-text">Chỉ dữ liệu có nguồn và đã xác minh mới được dùng để huấn luyện.</p></div>}</div>}
-    </section>
-    {admin&&<><JobStatus job={scrape.job} error={scrape.error}/><JobStatus job={retrain.job} error={retrain.error}/></>}
-    {loading&&<p role="status">Đang tải lịch sử…</p>}
-    {data&&<>
-      {source?.kind==='periodic'&&<section className="p-5 bg-white border border-border-subtle rounded-2xl space-y-3 overflow-x-auto">
-        <h2 className="font-bold">Lịch sử giá mía theo kỳ công bố</h2>
-        <p className="text-sm text-secondary-text">Giá mua và giá bán là hai loại giá riêng, không phải cận thấp/cao. Mỗi báo cáo giữ nguyên kỳ thời gian; không nhân thành quan sát từng ngày và không đưa vào mô hình dự báo ngày.</p>
-        {data.periodic_records.length===0?<p>Chưa có báo cáo trong khoảng đã chọn. Chọn mốc nguồn năm 2024 và thu thập để xem các kỳ đã tích hợp.</p>:<table className="w-full text-sm text-left"><thead><tr>{['Kỳ giá','Ngày công bố','Giá mua','Giá bán','Quy cách / địa bàn','Nguồn'].map(h=><th className="p-3" key={h}>{h}</th>)}</tr></thead><tbody>{data.periodic_records.map(r=><tr key={r.id} className="border-t border-border-subtle"><td className="p-3">{r.start} → {r.end}</td><td className="p-3">{r.published_date}</td><td className="p-3">{r.buying_price.toLocaleString('vi-VN')} {r.unit}</td><td className="p-3">{r.selling_price.toLocaleString('vi-VN')} {r.unit}</td><td className="p-3">{r.specification}<br/>{r.market}</td><td className="p-3"><a className="underline text-brand" href={r.source} target="_blank" rel="noreferrer">{r.attribution}</a></td></tr>)}</tbody></table>}
-      </section>}
-      {(source?.kind!=='periodic'||data.records.length>0)&&<>
-      <section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <div className="p-4 bg-white rounded-2xl border border-border-subtle shadow-card"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Có dữ liệu</p><Database className="w-4 h-4 text-brand"/></div><strong className="mt-2 block text-2xl text-primary-text">{data.records.length}</strong><span className="text-[11px] text-secondary-text">ngày trong khoảng chọn</span></div>
-        <div className="p-4 bg-white rounded-2xl border border-border-subtle shadow-card"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Ngày trống</p><CalendarRange className="w-4 h-4 text-amber-600"/></div><strong className="mt-2 block text-2xl text-primary-text">{data.missing_dates.length}</strong><span className="text-[11px] text-secondary-text">nguồn không công bố</span></div>
-        <div className="p-4 bg-white rounded-2xl border border-border-subtle shadow-card"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Chưa xác minh</p><TriangleAlert className="w-4 h-4 text-rose-600"/></div><strong className="mt-2 block text-2xl text-primary-text">{data.unverified_count}</strong><span className="text-[11px] text-secondary-text">không dùng huấn luyện</span></div>
-        <div className={`p-4 rounded-2xl border shadow-card ${data.readiness.ready?'bg-emerald-50/70 border-emerald-200':'bg-amber-50/70 border-amber-200'}`}><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-secondary-text">Huấn luyện AI</p>{data.readiness.ready?<CheckCircle2 className="w-4 h-4 text-emerald-700"/>:<Clock3 className="w-4 h-4 text-amber-700"/>}</div><strong className={`mt-2 block text-base ${data.readiness.ready?'text-emerald-800':'text-amber-800'}`}>{data.readiness.ready?'Sẵn sàng':'Chưa sẵn sàng'}</strong><span className="text-[11px] text-secondary-text">{data.readiness.observation_count} quan sát hợp lệ</span></div>
-      </section>
-      <div className={`flex gap-3 p-4 rounded-xl border text-sm ${data.readiness.ready?'bg-emerald-50 text-emerald-900 border-emerald-200':'bg-amber-50 text-amber-900 border-amber-200'}`}>{data.readiness.ready?<CheckCircle2 className="w-5 h-5 shrink-0"/>:<TriangleAlert className="w-5 h-5 shrink-0"/>}<p><strong>{data.readiness.ready?'Dữ liệu đủ điều kiện huấn luyện.':'Dữ liệu chưa đủ điều kiện huấn luyện.'}</strong> {data.readiness.ready?`${data.readiness.observation_count} ngày từ ${data.readiness.start_date} đến ${data.readiness.end_date}.`:data.readiness.reason} Ngày nguồn không công bố không được coi là giá quan sát.</p></div>
-      <section className="p-5 sm:p-6 bg-white rounded-2xl border border-border-subtle shadow-card overflow-hidden">
-        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5 pb-5 border-b border-border-subtle">
-          <div>
-            <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-brand shadow-[0_0_0_5px_rgba(78,113,82,0.12)]"/><h2 className="font-bold text-lg text-primary-text">Biến động giá lịch sử</h2></div>
-            <p className="mt-1.5 text-sm text-secondary-text">{source?.name} · Đơn vị {source?.unit} · {data.records.length} ngày có giá</p>
-          </div>
-          {chartStats&&<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 min-w-0 xl:min-w-[600px]">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Period Buttons: 30N | 90N | 1N */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-[#E5E7EB] bg-[#F8FAF9] p-0.5">
             {[
-              ['Đầu kỳ',formatPrice(chartStats.first.price),formatFullDate(chartStats.first.date)],
-              ['Cuối kỳ',formatPrice(chartStats.last.price),formatFullDate(chartStats.last.date)],
-              ['Thấp nhất',formatPrice(chartStats.min),'Trong khoảng chọn'],
-              ['Cao nhất',formatPrice(chartStats.max),'Trong khoảng chọn']
-            ].map(([label,value,note])=><div key={label} className="rounded-xl border border-border-subtle bg-canvas/70 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider font-bold text-secondary-text">{label}</p><p className="mt-0.5 font-mono font-bold text-primary-text truncate">{value}</p><p className="text-[10px] text-secondary-text truncate">{note}</p></div>)}
-          </div>}
+              { days: 30, label: '30N' },
+              { days: 90, label: '90N' },
+              { days: 365, label: '1N' },
+            ].map((item) => (
+              <button
+                key={item.days}
+                type="button"
+                onClick={() => chooseRange(item.days)}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors cursor-pointer ${
+                  rangeIs(item.days)
+                    ? 'bg-[#2F6F4E] text-white'
+                    : 'text-[#334155] hover:text-[#1E293B]'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <Link
+            href={`/forecast?commodity_id=${commodityId}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#2F6F4E] hover:bg-[#24583D] px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+          >
+            <span>Dự báo</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-        {data.records.length&&chartStats?<>
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-5">
-            <div><p className="text-xs text-secondary-text">Thay đổi từ đầu đến cuối kỳ</p><p className={`text-xl font-bold font-mono ${chartStats.change>0?'text-emerald-700':chartStats.change<0?'text-rose-600':'text-secondary-text'}`}>{chartStats.change>0?'+':''}{chartStats.change.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2})}%</p></div>
-            <div className="flex items-center gap-2 text-xs text-secondary-text"><span className="w-6 h-0.5 rounded bg-brand"/>Giá công bố<span className="ml-2 w-2 h-2 rounded-full border-2 border-brand bg-white"/>Điểm dữ liệu</div>
+      </div>
+
+      {/* Historical Price Chart Card with Single-Row Inline Stats */}
+      <section className="p-4 sm:p-5 bg-white rounded-xl border border-[#E5E7EB] shadow-card space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#E5E7EB]">
+          <div>
+            <h2 className="font-bold text-[15px] text-[#1E293B] flex flex-wrap items-center gap-2">
+              <span>Biến động giá lịch sử {source?.name || ''}</span>
+              {provinceCode !== 'all' && data?.location_context && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                    data.location_context.pricing_mode === 'direct'
+                      ? 'bg-[#F0F7F4] text-[#15803D] border border-[#15803D]/20'
+                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <span>{data.location_context.note || provinceName}</span>
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-[#64748B] mt-0.5 tabular-nums">
+              Đơn vị: {currentUnit} · {data?.records.length || 0} ngày quan sát ({formatDateVN(start)} – {formatDateVN(end)})
+              {provinceCode !== 'all' && data?.location_context?.explanation
+                ? ` · ${data.location_context.explanation}`
+                : ''}
+            </p>
           </div>
-          <div className="mt-3 h-[360px] rounded-xl bg-white px-1 py-4 sm:px-3">
-            <ResponsiveContainer width="100%" height="100%"><AreaChart data={chart} margin={{top:8,right:12,left:8,bottom:0}}>
-              <defs><linearGradient id="historyPriceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#059669" stopOpacity={0.18}/><stop offset="100%" stopColor="#059669" stopOpacity={0}/></linearGradient></defs>
-              <CartesianGrid vertical={false} stroke="#F4F4F5" strokeDasharray="3 3"/>
-              <XAxis dataKey="date" tickFormatter={formatChartDate} minTickGap={42} axisLine={{stroke:'#E4E4E7'}} tickLine={false} tick={{fill:'#71717A',fontSize:11.5}} dy={8}/>
-              <YAxis domain={['auto','auto']} tickFormatter={(value:number)=>formatCompactPrice(value)} axisLine={false} tickLine={false} tick={{fill:'#71717A',fontSize:11.5}} width={58}/>
-              <Tooltip cursor={{stroke:'#D4D4D8',strokeWidth:1,strokeDasharray:'3 3'}} labelFormatter={(label)=>`Ngày ${formatFullDate(String(label))}`} formatter={(value)=>[`${formatPrice(Number(value))} ${source?.unit}`,'Giá thực tế']} contentStyle={{backgroundColor:'#18181B',color:'#FFFFFF',border:'none',borderRadius:8,fontSize:12}} labelStyle={{color:'#D4D4D8',fontWeight:600,marginBottom:4}} itemStyle={{color:'#34D399',fontWeight:600}}/>
-              <Area type="monotone" dataKey="price" name="Giá" stroke="#059669" strokeWidth={2.25} fill="url(#historyPriceFill)" baseValue="dataMin" dot={data.records.length<=60?{r:2.5,fill:'#059669',strokeWidth:0}:false} activeDot={{r:4.5,fill:'#059669',stroke:'#fff',strokeWidth:2}} connectNulls={false} isAnimationActive={false}/>
-            </AreaChart></ResponsiveContainer>
+
+          {chartStats && (
+            <div className="flex flex-wrap items-center gap-4 text-xs tabular-nums bg-[#F8FAF9] px-3.5 py-2 rounded-lg border border-[#E5E7EB]">
+              <div>
+                <span className="text-[#64748B]">Đầu kỳ: </span>
+                <strong className="text-[#1E293B]">{formatNumberVN(chartStats.first.price)}</strong>
+              </div>
+              <div>
+                <span className="text-[#64748B]">Cuối kỳ: </span>
+                <strong className="text-[#1E293B]">{formatNumberVN(chartStats.last.price)}</strong>
+              </div>
+              <div>
+                <span className="text-[#64748B]">Thấp nhất: </span>
+                <strong className="text-[#1E293B]">{formatNumberVN(chartStats.min)}</strong>
+              </div>
+              <div>
+                <span className="text-[#64748B]">Cao nhất: </span>
+                <strong className="text-[#1E293B]">{formatNumberVN(chartStats.max)}</strong>
+              </div>
+              <div>
+                <span className="text-[#64748B]">Biến động: </span>
+                <strong
+                  className={
+                    chartStats.change >= 0 ? 'text-[#15803D]' : 'text-[#DC2626]'
+                  }
+                >
+                  {formatPct(chartStats.change, 2)}
+                </strong>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="h-[340px] flex items-center justify-center text-xs text-[#64748B]">
+            Đang tải chuỗi dữ liệu lịch sử...
           </div>
-          <p className="mt-3 text-xs text-secondary-text">Khoảng trống trên đường biểu diễn là ngày nguồn không công bố giá; hệ thống không tự tạo giá thay thế trên biểu đồ.</p>
-        </>:<div className="mt-5 rounded-xl border border-dashed border-border-strong bg-canvas/60 p-10 text-center text-secondary-text">Chưa có dữ liệu phù hợp. Hãy thu thập hoặc nhập lịch sử có nguồn.</div>}
-        <details className="text-sm mt-4 rounded-xl border border-border-subtle bg-canvas/50 px-4 py-3"><summary className="cursor-pointer font-semibold text-primary-text">Xem {data.missing_dates.length} ngày không có công bố</summary><p className="max-h-32 overflow-auto mt-3 text-xs leading-6 text-secondary-text">{data.missing_dates.join(', ')||'Không có ngày thiếu.'}</p></details>
+        ) : data && data.records.length > 0 ? (
+          <div className="w-full pt-1">
+            {(() => {
+              const span = Math.max((chartStats?.max ?? 0) - (chartStats?.min ?? 0), 1);
+              const pad = Math.max(span * 0.12, (chartStats?.min ?? 0) * 0.005);
+              const yMin = Math.max(0, Math.floor(((chartStats?.min ?? 0) - pad) / 100) * 100);
+              const yMax = Math.ceil(((chartStats?.max ?? 0) + pad) / 100) * 100;
+              const chartRows = chart.map((r) => ({
+                x: formatChartDate(r.date),
+                fullDate: `Ngày ${formatDateVN(r.date)}`,
+                price: r.price,
+                tipText: `${formatNumberVN(r.price)} ${currentUnit}`,
+              }));
+              return (
+                <FinChart
+                  id={`syncfusion-history-${commodityId}-${provinceCode}-${start}-${end}`}
+                  data={chartRows}
+                  xName="x"
+                  height={340}
+                  showLegend={false}
+                  showCrosshair={true}
+                  yMinimum={yMin}
+                  yMaximum={yMax}
+                  yFormat={(value: number) => formatNumberVN(Math.round(value))}
+                  series={[
+                    {
+                      type: 'SplineArea',
+                      name: 'Giá công bố',
+                      yName: 'price',
+                      color: '#2F6F4E',
+                      width: 2.25,
+                      opacity: 0.16,
+                      tipField: 'tipText',
+                      showMarkers: data.records.length <= 45,
+                    },
+                  ]}
+                />
+              );
+            })()}
+          </div>
+        ) : (
+          <div className="py-12 text-center text-xs text-[#64748B]">
+            Không có dữ liệu trong khoảng ngày đã chọn.
+          </div>
+        )}
       </section>
-      <section className="p-5 bg-white rounded-2xl border border-border-subtle overflow-x-auto"><table className="w-full text-sm text-left"><thead><tr>{['Ngày','Giá','Nguồn / thị trường','Trạng thái'].map(h=><th key={h} className="p-3">{h}</th>)}</tr></thead><tbody>{[...data.records].reverse().slice(page*30,(page+1)*30).map(r=><tr key={r.id} className="border-t border-border-subtle"><td className="p-3">{r.date}</td><td className="p-3">{r.price.toLocaleString('vi-VN')} {source?.unit}</td><td className="p-3">{/^https?:\/\//.test(r.source)?<a className="text-brand underline" href={r.source} target="_blank" rel="noreferrer">Xem nguồn công bố</a>:r.source}{r.source_details&&<span className="block text-xs text-secondary-text mt-1">{[r.source_details.product,r.source_details.market,r.source_details.price_type].filter(Boolean).join(' · ')}</span>}</td><td className="p-3">{provenanceLabel[r.provenance]||r.provenance}</td></tr>)}</tbody></table>
-        <div className="flex gap-4 items-center mt-3"><button className={input} disabled={page===0} onClick={()=>setPage(p=>p-1)}>Trước</button><span>Trang {page+1}/{Math.max(1,Math.ceil(data.records.length/30))}</span><button className={input} disabled={(page+1)*30>=data.records.length} onClick={()=>setPage(p=>p+1)}>Sau</button></div>
-      </section>
-      </>}
-    </>}
-  </div>;
+
+      {/* Historical Price DataGrid (Single Export CSV button inside AgroGrid) */}
+      {data && (
+        <AgroGrid
+          fileName={`lich-su-${source?.code || 'nong-san'}-${start}-${end}`}
+          pageSize={15}
+          height={420}
+          data={[...data.records].reverse().map((r) => ({
+            id: r.id,
+            date: r.date,
+            price: r.price,
+            unit: currentUnit,
+            source: r.source,
+            statusLabel: provenanceLabel[r.provenance] || r.provenance,
+          }))}
+          columns={[
+            { field: 'date', headerText: 'Ngày ghi nhận', kind: 'date', width: 130 },
+            {
+              field: 'price',
+              headerText: `Giá công bố (${currentUnit})`,
+              kind: 'money',
+              unitField: 'unit',
+              width: 180,
+            },
+            { field: 'source', headerText: 'Nguồn công bố', kind: 'text', width: 260 },
+            { field: 'statusLabel', headerText: 'Trạng thái', kind: 'text', width: 140 },
+          ] as AgroColumn[]}
+        />
+      )}
+    </div>
+  );
 }

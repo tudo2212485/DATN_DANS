@@ -3,67 +3,56 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  Bell, 
-  Database, 
-  LogOut, 
-  ChevronLeft, 
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Bell,
+  Database,
+  ChevronLeft,
   ChevronRight,
   GitCompare,
   BarChart3,
+  Cpu,
+  Users,
+  Activity,
 } from 'lucide-react';
-import { getUser, removeToken, User } from '@/lib/auth';
+import { getUser, User } from '@/lib/auth';
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  {
-    name: 'Tổng quan thị trường',
-    href: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Phân tích & Dự báo',
-    href: '/forecast',
-    icon: TrendingUp,
-  },
-  {
-    name: 'Dữ liệu lịch sử',
-    href: '/history',
-    icon: BarChart3,
-  },
-  {
-    name: 'So sánh nông sản',
-    href: '/compare',
-    icon: GitCompare,
-  },
-  {
-    name: 'Cảnh báo giá',
-    href: '/alerts',
-    icon: Bell,
-  },
+const MARKET_ITEMS: NavItem[] = [
+  { name: 'Tổng quan', href: '/', icon: LayoutDashboard },
+  { name: 'Phân tích & Dự báo', href: '/forecast', icon: TrendingUp },
+  { name: 'Dữ liệu lịch sử', href: '/history', icon: BarChart3 },
+  { name: 'So sánh nông sản', href: '/compare', icon: GitCompare },
+  { name: 'Cảnh báo giá', href: '/alerts', icon: Bell },
+];
+
+const ADMIN_ITEMS: NavItem[] = [
+  { name: 'Tổng quan hệ thống', href: '/dashboard/overview', icon: Activity },
+  { name: 'Quản lý dữ liệu & Scraper', href: '/dashboard/data-control', icon: Database },
+  { name: 'Quản lý Mô hình ML', href: '/dashboard/ml-models', icon: Cpu },
+  { name: 'Quản lý Tài khoản', href: '/dashboard/users', icon: Users, adminOnly: true },
 ];
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  
+
   useEffect(() => {
     setUser(getUser());
     const saved = localStorage.getItem('agro_sidebar_collapsed');
     if (saved !== null) {
       setIsCollapsed(saved === 'true');
     }
-  }, []);
+  }, [pathname]);
 
   const toggleCollapse = () => {
     const nextState = !isCollapsed;
@@ -71,69 +60,83 @@ export const Sidebar: React.FC = () => {
     localStorage.setItem('agro_sidebar_collapsed', String(nextState));
   };
 
-  const handleLogout = () => {
-    removeToken();
-    router.push('/login');
-  };
+  const showAdminSection = user?.role === 'admin';
+  const visibleAdminItems = ADMIN_ITEMS;
 
   return (
-    <aside 
+    <aside
       className={`${
-        isCollapsed ? 'w-16 px-2.5 py-4' : 'w-60 px-3.5 py-4'
-      } h-screen sticky top-0 bg-[#FAFAFA] border-r border-zinc-200/80 hidden lg:flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-200 ease-in-out z-20 font-sans`}
+        isCollapsed ? 'w-16 px-2 py-3.5' : 'w-[240px] px-3 py-3.5'
+      } h-screen sticky top-0 bg-white border-r border-[#E5E7EB] hidden lg:flex flex-col justify-between select-none shrink-0 overflow-y-auto custom-scrollbar transition-all duration-150 ease-in-out z-30 font-sans`}
     >
-      {/* Top section: Brand & Nav */}
-      <div className="space-y-6">
+      {/* Top section: Brand & Navigation */}
+      <div className="space-y-5">
         {/* Brand Header */}
-        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between px-1.5'} pb-3.5 border-b border-zinc-200/70`}>
+        <div
+          className={`flex items-center ${
+            isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between px-1.5'
+          } pb-3 border-b border-[#E5E7EB]`}
+        >
           {!isCollapsed ? (
-            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 shrink-0 border border-zinc-200 shadow-2xs">
-                <Image src="/logo.png" alt="AgroForecast" width={28} height={28} className="w-full h-full object-contain" />
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 shrink-0 border border-[#E5E7EB]">
+                <Image
+                  src="/logo.png"
+                  alt="AgroForecast"
+                  width={26}
+                  height={26}
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <div className="truncate">
-                <span className="text-[15px] font-bold text-zinc-900 tracking-tight block leading-none">
+              <div>
+                <span className="text-[15px] font-bold text-[#1E293B] tracking-tight block leading-tight">
                   AgroForecast
                 </span>
-                <span className="text-[11px] font-medium text-zinc-500 block mt-1 truncate">
-                  Dữ liệu Nông sản VN
+                <span className="text-[11px] font-medium text-[#64748B] block leading-tight">
+                  Dự báo Giá Nông sản
                 </span>
               </div>
             </Link>
           ) : (
             <Link href="/" title="AgroForecast">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 border border-zinc-200 shadow-2xs">
-                <Image src="/logo.png" alt="AgroForecast" width={28} height={28} className="w-full h-full object-contain" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5 border border-[#E5E7EB]">
+                <Image
+                  src="/logo.png"
+                  alt="AgroForecast"
+                  width={26}
+                  height={26}
+                  className="w-full h-full object-contain"
+                />
               </div>
             </Link>
           )}
 
           <button
+            type="button"
             onClick={toggleCollapse}
-            title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
-            className="flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 transition-colors cursor-pointer"
+            title={isCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-colors cursor-pointer"
           >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Navigation Links */}
+        {/* Group 1: Thị trường */}
         <div className="space-y-1">
           {!isCollapsed && (
-            <div className="px-2.5 pb-1.5">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Phân tích
+            <div className="px-2.5 pb-1">
+              <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider">
+                Thị trường
               </span>
             </div>
           )}
 
-          <nav className="space-y-0.5">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
+          <nav aria-label="Điều hướng thị trường" className="space-y-0.5">
+            {MARKET_ITEMS.map((item) => {
+              const isActive =
+                item.href === '/'
+                  ? pathname === '/' || pathname.startsWith('/commodities/')
+                  : pathname.startsWith(item.href);
               const Icon = item.icon;
 
               return (
@@ -142,17 +145,17 @@ export const Sidebar: React.FC = () => {
                   href={item.href}
                   title={isCollapsed ? item.name : undefined}
                   className={`flex items-center ${
-                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2'
-                  } rounded-lg text-[13.5px] transition-colors group relative ${
+                    isCollapsed ? 'justify-center p-2' : 'px-2.5 py-2'
+                  } rounded-lg text-[13px] transition-colors group ${
                     isActive
-                      ? 'bg-zinc-900 text-white font-medium shadow-2xs'
-                      : 'text-zinc-600 font-medium hover:text-zinc-900 hover:bg-zinc-200/50'
+                      ? 'bg-[#2F6F4E] text-white font-semibold'
+                      : 'text-[#334155] font-medium hover:text-[#1E293B] hover:bg-[#F8FAF9]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-700'
+                        isActive ? 'text-white' : 'text-[#64748B] group-hover:text-[#0F172A]'
                       }`}
                     />
                     {!isCollapsed && <span className="truncate">{item.name}</span>}
@@ -160,69 +163,63 @@ export const Sidebar: React.FC = () => {
                 </Link>
               );
             })}
-            
-            {(user?.role === 'admin' || user?.role === 'analyst') && (
-              <>
-                {!isCollapsed && (
-                  <div className="px-2.5 pt-4 pb-1.5">
-                    <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                      Hệ thống
-                    </span>
-                  </div>
-                )}
-                <Link
-                  href="/dashboard"
-                  title={isCollapsed ? 'Quản trị dữ liệu' : undefined}
-                  className={`flex items-center ${
-                    isCollapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-2'
-                  } rounded-lg text-[13.5px] transition-colors group relative ${
-                    pathname.startsWith('/dashboard') || pathname === '/admin'
-                      ? 'bg-zinc-900 text-white font-medium shadow-2xs'
-                      : 'text-zinc-600 font-medium hover:text-zinc-900 hover:bg-zinc-200/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Database
-                      className={`w-4 h-4 shrink-0 ${
-                        pathname.startsWith('/dashboard') || pathname === '/admin' ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-zinc-700'
-                      }`}
-                    />
-                    {!isCollapsed && <span className="truncate">Quản trị dữ liệu</span>}
-                  </div>
-                </Link>
-              </>
-            )}
           </nav>
         </div>
-      </div>
 
-      {/* Bottom User Profile Section */}
-      <div className={`pt-3 border-t border-zinc-200/70 flex items-center ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between px-1'}`}>
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-zinc-200/80 text-zinc-700 flex items-center justify-center font-semibold text-xs shrink-0 uppercase border border-zinc-300/60">
-            {user?.full_name?.substring(0, 2) || 'KH'}
+        {/* Group 2: Quản trị */}
+        {showAdminSection && (
+          <div className="space-y-1 pt-2 border-t border-[#E2E8F0]">
+            {!isCollapsed && (
+              <div className="px-2.5 pb-1 pt-1">
+                <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider">
+                  Quản trị
+                </span>
+              </div>
+            )}
+
+            <nav aria-label="Điều hướng quản trị" className="space-y-0.5">
+              {visibleAdminItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={isCollapsed ? item.name : undefined}
+                    className={`flex items-center ${
+                      isCollapsed ? 'justify-center p-2' : 'px-2.5 py-2'
+                    } rounded-lg text-[13px] transition-colors group ${
+                      isActive
+                        ? 'bg-[#2F6F4E] text-white font-semibold'
+                        : 'text-[#334155] font-medium hover:text-[#1E293B] hover:bg-[#F8FAF9]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${
+                          isActive ? 'text-white' : 'text-[#64748B] group-hover:text-[#0F172A]'
+                        }`}
+                      />
+                      {!isCollapsed && <span className="truncate">{item.name}</span>}
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
-          {!isCollapsed && (
-            <div className="flex flex-col truncate">
-              <span className="text-[13px] font-semibold text-zinc-800 leading-tight truncate">
-                {user?.full_name || 'Khách'}
-              </span>
-              <span className="text-[11px] text-zinc-500 truncate">
-                {!user ? 'Chế độ xem' : user.role === 'admin' ? 'Quản trị viên' : user.role === 'analyst' ? 'Phân tích viên' : 'Thành viên'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <button 
-          onClick={handleLogout}
-          title={user ? 'Đăng xuất' : 'Đăng nhập'}
-          className="text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/60 p-1.5 rounded-md transition-colors cursor-pointer shrink-0"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+        )}
       </div>
+
+      {/* Compact Footer Version Note (Tài khoản & Đăng xuất hiển thị duy nhất ở góc phải Topbar) */}
+      {!isCollapsed && (
+        <div className="pt-3 border-t border-[#E5E7EB] px-2 text-[11px] text-[#64748B] flex items-center justify-between">
+          <span>AgroForecast</span>
+          <span className="tabular-nums font-medium">v2.0</span>
+        </div>
+      )}
     </aside>
   );
 };
+
 export default Sidebar;

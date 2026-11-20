@@ -43,8 +43,13 @@ def isolate_background_work(monkeypatch, tmp_path):
     monkeypatch.setattr(loader, "get_exogenous_data", lambda *args: pd.DataFrame())
     monkeypatch.setattr("app.main.start_scheduler", lambda: None)
     monkeypatch.setattr("app.main.stop_scheduler", lambda: None)
+    from app.core.security import auth_rate_limiter, task_rate_limiter
+    auth_rate_limiter.reset()
+    task_rate_limiter.reset()
     predictor.clear_prediction_cache()
     yield
+    auth_rate_limiter.reset()
+    task_rate_limiter.reset()
     predictor.clear_prediction_cache()
 
 @pytest.fixture(scope="function")

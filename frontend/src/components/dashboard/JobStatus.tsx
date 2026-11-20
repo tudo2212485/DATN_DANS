@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchTaskApi, fetchTasksApi } from '@/lib/api';
+import { formatDateTimeVN, formatNumberVN } from '@/lib/formatters';
 import { TaskRunResult } from '@/types';
 
 export function useBackgroundJob(kind: string, onComplete: () => void, enabled = true) {
@@ -43,14 +44,16 @@ export function useBackgroundJob(kind: string, onComplete: () => void, enabled =
 
 export default function JobStatus({job, error}: {job: TaskRunResult | null; error?: string}) {
   if (!job && !error) return null;
-  return <div aria-live="polite" className="p-4 rounded-xl border border-border-subtle bg-canvas space-y-2 text-sm">
-    {error && <p role="alert" className="text-rose-700">{error}</p>}
+  return <div aria-live="polite" className="p-3.5 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] space-y-1.5 text-xs">
+    {error && <p role="alert" className="text-[#DC2626] font-medium">{error}</p>}
     {job && <>
-      <p className={job.status === 'FAILED' ? 'text-rose-700' : job.status === 'PARTIAL' ? 'text-amber-700' : 'text-brand'}>
+      <p className={job.status === 'FAILED' ? 'text-[#DC2626]' : job.status === 'PARTIAL' ? 'text-amber-800' : 'text-[#166534]'}>
         <strong>#{job.taskId} · {job.status}</strong> — {job.message}
       </p>
       {job.status === 'RUNNING' && <progress className="w-full" max={100} value={job.progress || 0} />}
-      <p className="text-xs text-secondary-text">{job.timestamp} · {job.recordsProcessed || 0} bản ghi</p>
+      <p className="text-[11px] font-mono tabular-nums text-[#64748B]">
+        Thời điểm: {formatDateTimeVN(job.timestamp)} · {formatNumberVN(job.recordsProcessed || 0)} bản ghi
+      </p>
     </>}
   </div>;
 }

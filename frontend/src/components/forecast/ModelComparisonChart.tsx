@@ -1,44 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts';
+import React, { useState, useMemo } from 'react';
 import { ModelComparisonMetrics } from '@/types';
+import { formatNumberVN } from '@/lib/formatters';
+import FinChart from '@/components/ui/FinChart';
 
 interface ModelComparisonChartProps {
   data: ModelComparisonMetrics[];
   metricToDisplay?: 'mae' | 'rmse' | 'mape' | 'r2';
   onMetricChange?: (m: 'mae' | 'rmse' | 'mape' | 'r2') => void;
+  unit?: string;
 }
 
-const METRIC_CONFIG = {
+const METRIC_LABELS: Record<'mae' | 'rmse' | 'mape' | 'r2', { label: string; title: string; desc: string }> = {
   mae: {
+    label: 'MAE',
     title: 'Sai số tuyệt đối trung bình (MAE)',
     desc: 'Giá trị càng thấp càng chính xác',
-    unit: 'đ',
   },
   rmse: {
+    label: 'RMSE',
     title: 'Căn bậc hai sai số toàn phương (RMSE)',
     desc: 'Phản ánh độ lệch chuẩn sai số dự báo',
-    unit: 'đ',
   },
   mape: {
-    title: 'Tỷ lệ phần trăm sai số (MAPE)',
-    desc: 'Sai số tương đối trên tập kiểm thử',
-    unit: '%',
+    label: 'MAPE',
+    title: 'Tỷ lệ phần trăm sai số tuyệt đối (MAPE)',
+    desc: 'Sai số tương đối (%) trên tập kiểm thử',
   },
   r2: {
+    label: 'R²',
     title: 'Hệ số xác định (R²)',
-    desc: 'Mức độ khớp xu hướng (tối đa 1.0)',
-    unit: '',
+    desc: 'Mức độ khớp phương sai xu hướng',
   },
 };
 
@@ -46,6 +39,7 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
   data,
   metricToDisplay: initialMetric = 'mae',
   onMetricChange,
+  unit = 'VNĐ/kg',
 }) => {
   const [activeMetric, setActiveMetric] = useState<'mae' | 'rmse' | 'mape' | 'r2'>(initialMetric);
 
@@ -54,113 +48,119 @@ export const ModelComparisonChart: React.FC<ModelComparisonChartProps> = ({
     if (onMetricChange) onMetricChange(m);
   };
 
-  const sortedData = [...data].sort((a, b) => {
-    if (activeMetric === 'r2') return (b.r2 || 0) - (a.r2 || 0);
-    return (a[activeMetric] || 0) - (b[activeMetric] || 0);
-  });
+  const sortedData = useMemo(() => {
+    return [...data].sort((a, b) => {
+      if (activeMetric === 'r2') return (b.r2 || 0) - (a.r2 || 0);
+      return (a[activeMetric] || 0) - (b[activeMetric] || 0);
+    });
+  }, [data, activeMetric]);
   const bestModelName = sortedData.length > 0 ? sortedData[0].modelName : 'LSTM';
 
+  const chartRows = useMemo(() => {
+    return data.map((item) => {
+      const val = Number(item[activeMetric] ?? 0);
+      let formattedLabel = '';
+      if (activeMetric === 'r2') {
+        formattedLabel = val.toFixed(3);
+      } else if (activeMetric === 'mape') {
+        formattedLabel = `${val.toFixed(2)}%`;
+      } else {
+        formattedLabel = `${formatNumberVN(Math.round(val))} ${unit}`;
+      }
+      return {
+        x: item.modelName,
+        value: val,
+        isBest: item.modelName === bestModelName,
+        labelText: activeMetric === 'r2' ? val.toFixed(2) : activeMetric === 'mape' ? `${val.toFixed(1)}%` : formatNumberVN(Math.round(val)),
+        tipText: formattedLabel,
+      };
+    });
+  }, [data, activeMetric, unit, bestModelName]);
+
   return (
-    <div className="bg-white rounded-xl border border-zinc-200/90 p-5 space-y-4 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-zinc-100">
+    <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 sm:p-5 space-y-3 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-[#E5E7EB]">
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-900">
-            So sánh sai số giữa các mô hình
+          <h3 className="text-[14px] font-bold text-[#1E293B]">
+            So sánh hiệu năng 5 mô hình
           </h3>
-          <p className="text-[12.5px] text-zinc-500 mt-0.5">
-            {METRIC_CONFIG[activeMetric].title} · {METRIC_CONFIG[activeMetric].desc}
+          <p className="text-[12px] text-[#64748B] mt-0.5">
+            {METRIC_LABELS[activeMetric].title}
           </p>
         </div>
 
-        <div className="flex items-center gap-0.5 bg-zinc-100 p-0.5 rounded-lg border border-zinc-200/60 shrink-0 w-fit">
+        {/* Segmented Control: MAE | RMSE | MAPE | R² */}
+        <div className="flex items-center gap-0.5 bg-[#F8FAF9] p-0.5 rounded-lg border border-[#E5E7EB] shrink-0 w-fit">
           {(['mae', 'rmse', 'mape', 'r2'] as const).map((metric) => (
             <button
               key={metric}
+              type="button"
               onClick={() => handleSelectMetric(metric)}
-              className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                 activeMetric === metric
-                  ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-800'
+                  ? 'bg-[#2F6F4E] text-white'
+                  : 'text-[#334155] hover:text-[#1E293B]'
               }`}
             >
-              {metric.toUpperCase()}
+              {METRIC_LABELS[metric].label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="h-[240px] w-full pt-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 8, right: 12, left: -12, bottom: 8 }}
-            barSize={34}
-          >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F4F4F5" />
-            <XAxis
-              dataKey="modelName"
-              axisLine={{ stroke: '#E4E4E7' }}
-              tickLine={false}
-              tick={{ fill: '#52525B', fontSize: 12, fontWeight: 500 }}
-              dy={6}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#71717A', fontSize: 11, fontWeight: 400 }}
-              domain={activeMetric === 'r2' ? [0, 1] : ['auto', 'auto']}
-              tickFormatter={(v) => {
-                if (activeMetric === 'r2') return Number(v).toFixed(2);
-                if (activeMetric === 'mape') return `${Number(v).toFixed(1)}%`;
-                if (Number(v) >= 1000) return `${(Number(v) / 1000).toFixed(1)}k`;
-                return Number(v).toLocaleString('vi-VN');
-              }}
-            />
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const val = Number(payload[0].value || 0);
-                  const isBest = label === bestModelName;
-                  return (
-                    <div className="bg-zinc-900 text-white px-3 py-2.5 rounded-lg shadow-lg text-xs space-y-1 min-w-[165px]">
-                      <div className="font-medium border-b border-zinc-800 pb-1 flex items-center justify-between gap-3">
-                        <span className="text-zinc-200">{label}</span>
-                        {isBest && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                            Sai số thấp nhất
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex justify-between items-center pt-0.5">
-                        <span className="text-zinc-400">{activeMetric.toUpperCase()}:</span>
-                        <span className="font-semibold text-white font-mono">
-                          {activeMetric === 'r2' ? val.toFixed(3) : Math.round(val).toLocaleString('vi-VN')} {METRIC_CONFIG[activeMetric].unit}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-              cursor={{ fill: '#F4F4F5', opacity: 0.6 }}
-            />
-            <Bar
-              dataKey={activeMetric}
-              radius={[4, 4, 0, 0]}
-              animationDuration={500}
-            >
-              {data.map((entry, index) => {
-                const isBest = entry.modelName === bestModelName;
-                return (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={isBest ? '#18181B' : '#D4D4D8'}
-                  />
-                );
-              })}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="w-full pt-1">
+        {chartRows.length > 0 ? (
+          (() => {
+            const vals = chartRows.map((r) => r.value);
+            const maxVal = Math.max(...vals, 0);
+            const minVal = Math.min(...vals, 0);
+            const isNonNegMetric = activeMetric !== 'r2' || minVal >= 0;
+            const yMin = isNonNegMetric ? 0 : undefined;
+            const yMax =
+              activeMetric === 'r2'
+                ? isNonNegMetric
+                  ? Math.max(1.15, Math.ceil(maxVal * 12) / 10)
+                  : undefined
+                : activeMetric === 'mape'
+                  ? Math.max(1, Math.ceil(maxVal * 1.25 * 2) / 2)
+                  : maxVal > 0
+                    ? Math.ceil((maxVal * 1.22) / 100) * 100
+                    : undefined;
+
+            return (
+              <FinChart
+                id={`agro-model-cmp-${activeMetric}`}
+                data={chartRows}
+                xName="x"
+                height={250}
+                showLegend={false}
+                yMinimum={yMin}
+                yMaximum={yMax}
+                yFormat={(v) => {
+                  if (activeMetric === 'r2') return Number(v).toFixed(2);
+                  if (activeMetric === 'mape') return `${Number(v).toFixed(1)}%`;
+                  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
+                  return formatNumberVN(v);
+                }}
+                series={[
+                  {
+                    type: 'Column',
+                    name: METRIC_LABELS[activeMetric].label,
+                    yName: 'value',
+                    color: '#2F6F4E',
+                    tipField: 'tipText',
+                    labels: true,
+                    labelField: 'labelText',
+                  },
+                ]}
+              />
+            );
+          })()
+        ) : (
+          <div className="h-[250px] flex items-center justify-center text-xs text-[#64748B]">
+            Chưa có dữ liệu so sánh mô hình.
+          </div>
+        )}
       </div>
     </div>
   );

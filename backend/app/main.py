@@ -26,8 +26,10 @@ except Exception as e:
 async def lifespan(app: FastAPI):
     from app.models.models import BackgroundJob
     from app.core.database import SessionLocal
+    from app.services.regional_pricing_service import ensure_regional_markets_seeded
     from datetime import datetime
     with SessionLocal() as db:
+        ensure_regional_markets_seeded(db)
         db.query(BackgroundJob).filter(BackgroundJob.status == "RUNNING").update({
             "status": "FAILED", "message": "Tác vụ bị gián đoạn khi máy chủ khởi động lại", "finished_at": datetime.now()})
         db.commit()
@@ -101,5 +103,11 @@ def health_check(db: Session = Depends(get_db)):
     }
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("BACKEND_HOST", "127.0.0.1"),
+        port=int(os.getenv("BACKEND_PORT", "8000")),
+        reload=os.getenv("BACKEND_RELOAD", "false").lower() == "true",
+    )

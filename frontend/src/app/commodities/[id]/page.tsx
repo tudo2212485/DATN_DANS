@@ -239,13 +239,13 @@ export default function CommodityDetailPage() {
                             {actual !== undefined && actual !== null && (
                               <div className="text-brand font-semibold flex justify-between gap-3">
                                 <span>Giá thực tế:</span>
-                                <span>{Number(actual).toLocaleString('vi-VN')} đ</span>
+                                <span>{Number(actual).toLocaleString('vi-VN')} {commodity?.unit || 'VNĐ/kg'}</span>
                               </div>
                             )}
                             {predicted !== undefined && predicted !== null && (
                               <div className="text-amber-600 font-bold flex justify-between gap-3">
                                 <span>Dự báo {selectedModel}:</span>
-                                <span>{Number(predicted).toLocaleString('vi-VN')} đ</span>
+                                <span>{Number(predicted).toLocaleString('vi-VN')} {commodity?.unit || 'VNĐ/kg'}</span>
                               </div>
                             )}
                             {upper !== undefined && upper !== null && lower !== undefined && lower !== null && (
@@ -379,17 +379,17 @@ export default function CommodityDetailPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-canvas border border-border-subtle">
+              <div className="p-3 rounded-lg bg-canvas border border-border-subtle">
                 <div className="text-[11px] text-secondary-text font-medium">Sai Số MAE</div>
-                <div className="text-base font-extrabold text-primary-text font-mono mt-0.5">
-                  {metrics.mae.toLocaleString('vi-VN')} đ
+                <div className="text-base font-extrabold text-primary-text font-mono tabular-nums mt-0.5">
+                  {Math.round(metrics.mae).toLocaleString('vi-VN')} {commodity?.unit || 'VNĐ/kg'}
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-canvas border border-border-subtle">
+              <div className="p-3 rounded-lg bg-canvas border border-border-subtle">
                 <div className="text-[11px] text-secondary-text font-medium">Sai Số RMSE</div>
-                <div className="text-base font-extrabold text-primary-text font-mono mt-0.5">
-                  {metrics.rmse.toLocaleString('vi-VN')} đ
+                <div className="text-base font-extrabold text-primary-text font-mono tabular-nums mt-0.5">
+                  {Math.round(metrics.rmse).toLocaleString('vi-VN')} {commodity?.unit || 'VNĐ/kg'}
                 </div>
               </div>
 

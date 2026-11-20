@@ -15,44 +15,33 @@ import {
   Cell,
 } from 'recharts';
 import { ComparisonDataPoint } from '@/types';
+import { formatPct } from '@/lib/formatters';
 
 interface MarketComparisonChartProps {
   data: ComparisonDataPoint[];
 }
 
 interface CommodityToggle {
-  key: keyof Omit<ComparisonDataPoint, 'date'>;
+  key: 'rice' | 'coffee' | 'pepper' | 'sugar';
   label: string;
-  category: 'Lương thực' | 'Công nghiệp' | 'Đặc sản';
   color: string;
   fillGradient: string;
 }
 
 const COMMODITIES: CommodityToggle[] = [
-  { key: 'rice', label: 'Lúa gạo IR504', category: 'Lương thực', color: '#059669', fillGradient: 'colorRice' },
-  { key: 'coffee', label: 'Cà phê Robusta', category: 'Công nghiệp', color: '#2563EB', fillGradient: 'colorCoffee' },
-  { key: 'pepper', label: 'Hồ tiêu đen', category: 'Công nghiệp', color: '#7C3AED', fillGradient: 'colorPepper' },
-  { key: 'sugar', label: 'Mía đường', category: 'Công nghiệp', color: '#D97706', fillGradient: 'colorSugar' },
-  { key: 'strawberry', label: 'Dâu tây Đà Lạt', category: 'Đặc sản', color: '#DB2777', fillGradient: 'colorStrawberry' },
-  { key: 'sweet_potato', label: 'Khoai lang tím Vĩnh Long', category: 'Lương thực', color: '#9333EA', fillGradient: 'colorSweetPotato' },
-  { key: 'potato', label: 'Khoai tây Đà Lạt', category: 'Lương thực', color: '#CA8A04', fillGradient: 'colorPotato' },
-  { key: 'cashew', label: 'Hạt điều thô', category: 'Công nghiệp', color: '#EA580C', fillGradient: 'colorCashew' },
+  { key: 'rice', label: 'Lúa gạo IR50404', color: '#2F6F4E', fillGradient: 'colorRice' },
+  { key: 'coffee', label: 'Cà phê Robusta', color: '#2563EB', fillGradient: 'colorCoffee' },
+  { key: 'pepper', label: 'Hồ tiêu đen', color: '#7C3AED', fillGradient: 'colorPepper' },
+  { key: 'sugar', label: 'Mía đường', color: '#D97706', fillGradient: 'colorSugar' },
 ];
 
 export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ data }) => {
   const [viewMode, setViewMode] = useState<'trend' | 'ranking'>('trend');
-  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'Lương thực' | 'Công nghiệp' | 'Đặc sản'>('ALL');
-  const [hoveredCommodity, setHoveredCommodity] = useState<string | null>(null);
-
   const [activeSeries, setActiveSeries] = useState<Record<string, boolean>>({
     rice: true,
     coffee: true,
     pepper: true,
-    sugar: false,
-    strawberry: true,
-    sweet_potato: false,
-    potato: false,
-    cashew: false,
+    sugar: true,
   });
 
   const toggleSeries = (key: string) => {
@@ -63,74 +52,53 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
     });
   };
 
-  const handleSelectGroup = (cat: 'ALL' | 'Lương thực' | 'Công nghiệp' | 'Đặc sản') => {
-    setCategoryFilter(cat);
-    if (cat === 'ALL') {
-      setActiveSeries({
-        rice: true,
-        coffee: true,
-        pepper: true,
-        sugar: false,
-        strawberry: true,
-        sweet_potato: false,
-        potato: false,
-        cashew: false,
-      });
-      return;
-    }
-    const next: Record<string, boolean> = {};
-    COMMODITIES.forEach((c) => {
-      next[c.key] = c.category === cat;
-    });
-    setActiveSeries(next);
-  };
-
   const rankingData = useMemo(() => {
     if (!data || data.length === 0) return [];
     const latest = data[data.length - 1];
     return COMMODITIES.map((c) => {
-      const val = Number(latest[c.key as keyof ComparisonDataPoint] || 0);
+      const rawVal = Number(latest[c.key] || 0);
+      const val = Math.abs(rawVal) < 0.005 ? 0 : Number(rawVal.toFixed(2));
       return {
         key: c.key,
         name: c.label,
-        change: Number(val.toFixed(2)),
+        change: val,
         color: c.color,
-        category: c.category,
       };
     }).sort((a, b) => b.change - a.change);
   }, [data]);
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200/90 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex flex-col justify-between h-full space-y-4 font-sans">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-zinc-100">
+    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 shadow-card flex flex-col justify-between h-full space-y-3.5 font-sans">
+      {/* Header + View Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[#E5E7EB]">
         <div>
-          <h2 className="text-[15px] font-semibold text-zinc-900">
+          <h2 className="text-[15px] font-bold text-[#1E293B]">
             So sánh tốc độ biến động giá (%)
           </h2>
-          <p className="text-[12.5px] text-zinc-500 mt-0.5">
+          <p className="text-xs text-[#64748B] mt-0.5">
             Tương quan tăng giảm phần trăm so với mốc đầu kỳ
           </p>
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="flex items-center gap-0.5 bg-zinc-100 p-0.5 rounded-lg border border-zinc-200/60 shrink-0 w-fit">
+        <div className="flex items-center gap-0.5 bg-[#F8FAF9] p-0.5 rounded-lg border border-[#E5E7EB] shrink-0 w-fit">
           <button
+            type="button"
             onClick={() => setViewMode('trend')}
-            className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === 'trend'
-                ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-800'
+                ? 'bg-[#2F6F4E] text-white font-semibold'
+                : 'text-[#334155] hover:text-[#1E293B]'
             }`}
           >
             Đường xu hướng
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('ranking')}
-            className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               viewMode === 'ranking'
-                ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-800'
+                ? 'bg-[#2F6F4E] text-white font-semibold'
+                : 'text-[#334155] hover:text-[#1E293B]'
             }`}
           >
             Xếp hạng biến động
@@ -138,96 +106,79 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
         </div>
       </div>
 
-      {/* Category & Series Toggles */}
-      <div className="space-y-2.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(['ALL', 'Lương thực', 'Công nghiệp', 'Đặc sản'] as const).map((cat) => (
+      {/* Single Horizontal Row of 4 Real Commodity Toggles */}
+      <div className="flex items-center flex-wrap gap-2">
+        {COMMODITIES.map((c) => {
+          const isActive = activeSeries[c.key];
+          return (
             <button
-              key={cat}
-              onClick={() => handleSelectGroup(cat)}
-              className={`px-2.5 py-1 rounded-md text-[12px] transition-all cursor-pointer border ${
-                categoryFilter === cat
-                  ? 'bg-zinc-900 text-white border-zinc-900 font-medium'
-                  : 'bg-white text-zinc-600 border-zinc-200/80 hover:border-zinc-300'
+              key={c.key}
+              type="button"
+              onClick={() => toggleSeries(c.key)}
+              aria-pressed={isActive}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors select-none cursor-pointer border ${
+                isActive
+                  ? 'bg-[#F0F7F4] text-[#1E293B] font-semibold border-[#2F6F4E]/40'
+                  : 'text-[#64748B] bg-white border-[#E5E7EB] opacity-65 hover:opacity-100'
               }`}
             >
-              {cat === 'ALL' ? 'Mặc định' : cat}
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: isActive ? c.color : '#CBD5E1' }}
+              />
+              <span>{c.label}</span>
             </button>
-          ))}
-        </div>
-
-        <div className="flex items-center flex-wrap gap-1.5 pt-1">
-          {COMMODITIES.map((c) => {
-            const isActive = activeSeries[c.key];
-            return (
-              <button
-                key={c.key}
-                onClick={() => toggleSeries(c.key)}
-                onMouseEnter={() => setHoveredCommodity(c.key)}
-                onMouseLeave={() => setHoveredCommodity(null)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] transition-all select-none cursor-pointer border ${
-                  isActive
-                    ? 'bg-zinc-50 text-zinc-900 font-medium border-zinc-300'
-                    : 'text-zinc-400 bg-transparent border-transparent hover:text-zinc-600'
-                }`}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: isActive ? c.color : '#D4D4D8' }}
-                />
-                <span className="whitespace-nowrap">{c.label}</span>
-              </button>
-            );
-          })}
-        </div>
+          );
+        })}
       </div>
 
       {/* Chart Canvas */}
-      <div className="h-[340px] w-full pt-1">
+      <div className="h-[320px] w-full pt-1">
         {viewMode === 'trend' ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 16, left: -12, bottom: 8 }}>
+            <AreaChart data={data} margin={{ top: 10, right: 16, left: -10, bottom: 6 }}>
               <defs>
                 {COMMODITIES.map((c) => (
                   <linearGradient key={c.fillGradient} id={c.fillGradient} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={c.color} stopOpacity={0.14} />
+                    <stop offset="5%" stopColor={c.color} stopOpacity={0.12} />
                     <stop offset="95%" stopColor={c.color} stopOpacity={0.0} />
                   </linearGradient>
                 ))}
               </defs>
 
-              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" vertical={false} />
-              <ReferenceLine y={0} stroke="#D4D4D8" strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <ReferenceLine y={0} stroke="#CBD5E1" strokeDasharray="3 3" />
 
               <XAxis
                 dataKey="date"
-                stroke="#71717A"
+                stroke="#64748B"
                 fontSize={11.5}
                 tickLine={false}
-                axisLine={{ stroke: '#E4E4E7' }}
+                axisLine={{ stroke: '#E5E7EB' }}
                 dy={6}
               />
 
               <YAxis
-                stroke="#71717A"
+                stroke="#64748B"
                 fontSize={11.5}
                 tickLine={false}
                 axisLine={false}
                 domain={['auto', 'auto']}
-                tickFormatter={(v: number) => `${v > 0 ? '+' : ''}${Number(v).toFixed(1)}%`}
+                tickFormatter={(v: number) => formatPct(v, 1)}
               />
 
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
                     return (
-                      <div className="bg-zinc-900 text-white px-3.5 py-2.5 rounded-lg shadow-xl text-[12px] space-y-1.5 min-w-[210px] z-30">
-                        <div className="font-medium text-zinc-300 border-b border-zinc-800 pb-1 flex items-center justify-between">
+                      <div className="bg-white text-[#1E293B] px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] shadow-md text-xs space-y-1.5 min-w-[210px]">
+                        <div className="font-semibold text-[#1E293B] border-b border-[#E5E7EB] pb-1 flex items-center justify-between">
                           <span>Kỳ: {label}</span>
-                          <span className="text-[11px] text-zinc-400">Thay đổi (%)</span>
+                          <span className="text-[11px] text-[#64748B]">Thay đổi (%)</span>
                         </div>
                         {payload.map((entry) => {
-                          const val = Number(entry.value || 0);
+                          const rawVal = Number(entry.value || 0);
+                          const val = Math.abs(rawVal) < 0.005 ? 0 : rawVal;
                           const match = COMMODITIES.find((c) => c.key === entry.dataKey);
                           const labelName = match?.label || entry.name;
                           const isPos = val >= 0;
@@ -241,15 +192,14 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
                                   className="w-2 h-2 rounded-full shrink-0"
                                   style={{ backgroundColor: entry.color }}
                                 />
-                                <span className="text-zinc-200 truncate">{labelName}</span>
+                                <span className="text-[#334155] truncate">{labelName}</span>
                               </div>
                               <span
-                                className={`font-mono font-semibold ${
-                                  isPos ? 'text-emerald-400' : 'text-rose-400'
+                                className={`tabular-nums font-semibold ${
+                                  isPos ? 'text-[#15803D]' : 'text-[#DC2626]'
                                 }`}
                               >
-                                {isPos ? '+' : ''}
-                                {val.toFixed(2)}%
+                                {formatPct(val, 2)}
                               </span>
                             </div>
                           );
@@ -261,29 +211,21 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
                 }}
               />
 
-              {COMMODITIES.map((c) => {
-                if (!activeSeries[c.key]) return null;
-                const isHovered = hoveredCommodity === c.key;
-                const hasHover = hoveredCommodity !== null;
-                const opacity = hasHover ? (isHovered ? 1 : 0.2) : 1;
-                const strokeWidth = isHovered ? 2.75 : 2;
-
-                return (
+              {COMMODITIES.map((c) =>
+                activeSeries[c.key] ? (
                   <Area
                     key={c.key}
                     type="monotone"
                     dataKey={c.key}
                     name={c.label}
                     stroke={c.color}
-                    strokeWidth={strokeWidth}
-                    fillOpacity={hasHover && !isHovered ? 0.02 : 1}
+                    strokeWidth={2.25}
                     fill={`url(#${c.fillGradient})`}
-                    strokeOpacity={opacity}
                     baseValue="dataMin"
                     isAnimationActive={false}
                   />
-                );
-              })}
+                ) : null
+              )}
             </AreaChart>
           </ResponsiveContainer>
         ) : (
@@ -293,41 +235,41 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
               layout="vertical"
               margin={{ top: 8, right: 24, left: 20, bottom: 8 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
               <XAxis
                 type="number"
-                tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}%`}
-                stroke="#71717A"
+                tickFormatter={(v) => formatPct(Number(v), 1)}
+                stroke="#64748B"
                 fontSize={11.5}
                 tickLine={false}
-                axisLine={{ stroke: '#E4E4E7' }}
+                axisLine={{ stroke: '#E5E7EB' }}
               />
               <YAxis
                 type="category"
                 dataKey="name"
-                stroke="#3F3F46"
+                stroke="#1E293B"
                 fontSize={12}
-                fontWeight={500}
+                fontWeight={600}
                 tickLine={false}
                 axisLine={false}
                 width={135}
               />
-              <ReferenceLine x={0} stroke="#D4D4D8" strokeDasharray="3 3" />
+              <ReferenceLine x={0} stroke="#CBD5E1" strokeDasharray="3 3" />
               <Tooltip
-                formatter={(val) => [`${Number(val || 0) > 0 ? '+' : ''}${val}%`, 'Biến động']}
+                formatter={(val) => [formatPct(Number(val || 0), 2), 'Biến động']}
                 contentStyle={{
-                  backgroundColor: '#18181B',
-                  color: '#FFFFFF',
+                  backgroundColor: '#FFFFFF',
+                  color: '#1E293B',
                   borderRadius: '8px',
-                  border: 'none',
+                  border: '1px solid #E5E7EB',
                   fontSize: '12px',
                 }}
               />
-              <Bar dataKey="change" radius={[0, 4, 4, 0]} barSize={20}>
+              <Bar dataKey="change" radius={[0, 4, 4, 0]} barSize={22} isAnimationActive={false}>
                 {rankingData.map((entry) => (
                   <Cell
                     key={entry.key}
-                    fill={entry.change >= 0 ? '#059669' : '#E11D48'}
+                    fill={entry.change >= 0 ? '#2F6F4E' : '#DC2626'}
                   />
                 ))}
               </Bar>

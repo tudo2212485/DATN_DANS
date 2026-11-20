@@ -1,110 +1,251 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "@syncfusion/ej2-tailwind3-theme/styles/base/base.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/icons/tailwind3.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/button/button.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/check-box/check-box.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/input/input.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/popup/popup.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/spinner/spinner.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/drop-down-base/drop-down-base.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/drop-down-list/drop-down-list.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/calendar/calendar.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/datepicker/datepicker.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/dialog/dialog.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/tooltip/tooltip.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/toolbar/toolbar.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/pager/pager.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/excel-filter/excel-filter.css";
+@import "@syncfusion/ej2-tailwind3-theme/styles/grid/grid.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --font-sans: 'Plus Jakarta Sans', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', Consolas, Menlo, Monaco, monospace;
+  --background: #F8FAF9;
+  --foreground: #1E293B;
+  --brand: #2F6F4E;
+  --brand-hover: #24583D;
+  --border: #E5E7EB;
+
+  /* Đồng bộ Syncfusion Tailwind3 Theme theo bảng màu AgroForecast */
+  --e-font-family: var(--font-sans), 'Be Vietnam Pro', 'Segoe UI', Roboto, Arial, sans-serif;
+  --color-sf-primary: #2F6F4E;
+  --color-sf-primary-bg-color: #2F6F4E;
+  --color-sf-primary-border-color: #2F6F4E;
+  --color-sf-primary-text: #FFFFFF;
+  --color-sf-primary-text-color: #FFFFFF;
+  --color-sf-primary-bg-color-hover: #24583D;
+  --color-sf-primary-border-color-hover: #24583D;
+  --color-sf-primary-bg-color-pressed: #1B4332;
+  --color-sf-primary-border-color-pressed: #1B4332;
+  --color-sf-primary-light: #4D8B6A;
+  --color-sf-primary-lighter: #F0F7F4;
+  --color-sf-primary-dark: #24583D;
+  --color-sf-primary-darker: #1B4332;
 }
 
 html {
-  scroll-behavior: smooth;
   font-size: 15px;
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 body {
-  color: #0F172A;
-  background-color: #F8FAFC;
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  color: var(--foreground);
+  background-color: var(--background);
+  font-family: var(--font-sans), 'Be Vietnam Pro', 'Segoe UI', Roboto, Arial, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  color: #0F172A;
+  color: #1E293B;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 button, input, select, textarea {
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family: inherit;
 }
 
-/* Tabular numbers for price and financial data to prevent layout shift */
+/* Bảo vệ tuyệt đối font icon của Syncfusion (.e-icons) khỏi Be Vietnam Pro */
+.e-icons,
+.e-icons::before,
+.e-grid .e-icons,
+.e-grid .e-icons::before,
+.e-pager .e-icons,
+.e-pager .e-icons::before,
+.e-toolbar .e-icons,
+.e-toolbar .e-icons::before,
+.e-popup .e-icons,
+.e-popup .e-icons::before {
+  font-family: 'e-icons' !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+}
+
+/* Tinh chỉnh Syncfusion DataGrid hài hòa với giao diện mềm AgroForecast */
+.e-grid {
+  border: 1px solid #E5E7EB !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  font-family: var(--font-sans), 'Be Vietnam Pro', sans-serif !important;
+  background-color: #FFFFFF;
+}
+
+.e-grid .e-toolbar {
+  background-color: #F8FAF9 !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  min-height: 44px;
+}
+
+.e-grid .e-toolbar .e-toolbar-items {
+  background-color: #F8FAF9 !important;
+}
+
+.e-grid .e-toolbar .e-tbar-btn {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 8px !important;
+  padding: 2px 10px !important;
+  margin-right: 4px !important;
+}
+
+.e-grid .e-toolbar .e-tbar-btn:hover {
+  background-color: #F0F7F4 !important;
+  border-color: #2F6F4E !important;
+}
+
+.e-grid .e-toolbar .e-tbar-btn .e-tbar-btn-text {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #1E293B !important;
+}
+
+.e-grid .e-toolbar .e-tbar-btn .e-btn-icon {
+  color: #2F6F4E !important;
+}
+
+.e-grid .e-gridheader {
+  background-color: #F8FAF9 !important;
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+.e-grid .e-headercell {
+  background-color: #F8FAF9 !important;
+  color: #64748B !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.e-grid .e-rowcell {
+  font-size: 13px !important;
+  color: #334155 !important;
+  border-color: #E5E7EB !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Class đơn không chứa dấu cách cho customAttributes.class của Syncfusion ColumnDirective */
+.e-grid .e-rowcell.agro-num-cell {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  font-weight: 600 !important;
+  color: #1E293B !important;
+}
+
+.e-grid .e-rowcell.agro-date-cell {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: #334155 !important;
+}
+
+.e-grid .e-row:hover .e-rowcell {
+  background-color: #F8FAF9 !important;
+}
+
+.e-grid .e-gridpager {
+  background-color: #F8FAF9 !important;
+  border-top: 1px solid #E5E7EB !important;
+  font-size: 12px !important;
+}
+
+.e-pager .e-currentitem,
+.e-pager .e-currentitem:hover {
+  background-color: #2F6F4E !important;
+  color: #FFFFFF !important;
+  border-radius: 6px !important;
+}
+
+/* Số liệu: chữ số đều nhau theo cột, giữ nét chữ mềm của Be Vietnam Pro */
 .font-mono,
 .tabular-nums {
-  font-family: 'JetBrains Mono', Consolas, Menlo, Monaco, monospace !important;
+  font-family: var(--font-sans), 'Be Vietnam Pro', sans-serif;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
-/* Modern smooth scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+::selection {
+  background: rgba(47, 111, 78, 0.18);
 }
 
-::-webkit-scrollbar-track {
-  background: #F1F5F9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+:focus-visible {
+  outline: 2px solid #2F6F4E;
+  outline-offset: 2px;
 }
 
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #CBD5E1 transparent;
 }
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-.custom-scrollbar::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: #CBD5E1;
   border-radius: 999px;
 }
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #059669;
+::-webkit-scrollbar-thumb:hover {
+  background: #2F6F4E;
 }
 
-@keyframes pulse-live {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
+/* Viewport-aware popover panel for Topbar Location Selector (CSS Anchor Positioning + progressive fallback) */
+.agro-location-popover[popover] {
+  padding: 0;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #FFFFFF;
+  color: #1E293B;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(460px, calc(100vh - 80px));
+  overflow: hidden;
+}
+
+@supports (position-area: block-end) {
+  .agro-location-popover[popover] {
+    inset: auto;
+    margin: 6px 0 0 0;
+    position-area: block-end span-inline-start;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.85);
+}
+
+@supports not (position-area: block-end) {
+  .agro-location-popover[popover] {
+    position: fixed;
+    top: 60px;
+    right: 16px;
+    left: auto;
+    bottom: auto;
+    margin: 0;
   }
-}
-
-.animate-pulse-live {
-  animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Focus visible styles */
-:focus-visible {
-  outline: 2px solid rgba(5, 150, 105, 0.5);
-  outline-offset: 2px;
 }

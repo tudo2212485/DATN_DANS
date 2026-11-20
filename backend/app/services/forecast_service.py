@@ -7,12 +7,17 @@ from datetime import date
 from app.schemas.schemas import (
     ForecastDashboardResponse,
     ForecastPointResponse,
+    LocationContextResponse,
     ModelMetricsResponse,
     CommodityResponse,
     RegionInfo,
 )
+from app.services.regional_pricing_service import (
+    normalize_province_code,
+    resolve_commodity_location_context,
+)
 from fastapi import HTTPException
-from typing import List
+from typing import List, Optional
 
 def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetricsResponse]:
     commodity = db.query(Commodity).filter(Commodity.id == commodity_id).first()
@@ -22,30 +27,44 @@ def get_forecast_comparison(db: Session, commodity_id: int) -> List[ModelMetrics
     context = training_context(db, commodity)
     latest_run = db.query(func.max(Forecast.training_run_id)).filter(Forecast.commodity_id == commodity_id).scalar()
     run = db.get(TrainingRun, latest_run) if latest_run else None
-    if not run or run.dataset_hash != fingerprint(context["rows"]):
-        return []
-    models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id, Forecast.training_run_id == latest_run).distinct().all()
+    if latest_run is not None:
+        if not run or run.dataset_hash != fingerprint(context["rows"]):
+            return []
+        models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id, Forecast.training_run_id == latest_run).distinct().all()
+    else:
+        if not context["quality"]["ready"]:
+            return []
+        models = db.query(Forecast.model_name).filter(Forecast.commodity_id == commodity_id).distinct().all()
     
+    run_meta = json.loads(run.metadata_json) if run and run.metadata_json else {}
+    model_meta_map = run_meta.get("model_metrics") or {}
+
     result = []
     for (m_name,) in models:
-        f = (
-            db.query(Forecast)
-            .filter(Forecast.commodity_id == commodity_id, Forecast.model_name == m_name, Forecast.training_run_id == latest_run)
-            .order_by(desc(Forecast.training_date), desc(Forecast.forecast_date))
-            .first()
-        )
+        q = db.query(Forecast).filter(Forecast.commodity_id == commodity_id, Forecast.model_name == m_name)
+        if latest_run is not None:
+            q = q.filter(Forecast.training_run_id == latest_run)
+        f = q.order_by(desc(Forecast.training_date), desc(Forecast.forecast_date)).first()
         if f and f.mae is not None:
+            mape_val = float(f.mape) if f.mape is not None else 0.0
+            m_extra = model_meta_map.get(m_name) or {}
+            acc_val = m_extra.get("accuracy")
+            if acc_val is None:
+                acc_val = round(max(0.0, 100.0 - mape_val), 2)
+            picp_val = m_extra.get("picp_95")
             result.append(
                 ModelMetricsResponse(
                     modelName=m_name,
                     mae=float(f.mae),
-                    rmse=float(f.rmse) if f.rmse else 0.0,
-                    mape=float(f.mape) if f.mape else 0.0,
-                    r2=float(f.r2) if f.r2 else 0.0,
+                    rmse=float(f.rmse) if f.rmse is not None else 0.0,
+                    mape=mape_val,
+                    r2=float(f.r2) if f.r2 is not None else 0.0,
+                    accuracy=float(acc_val),
+                    picp95=float(picp_val) if picp_val is not None else None,
                     trainDate=f.training_date.strftime("%d/%m/%Y") if f.training_date else "N/A"
                 )
             )
-    return sorted(result, key=lambda m: m.rmse)
+    return sorted(result, key=lambda m: (m.mape, m.rmse))
 
 
 COMMODITY_REGIONS = {
@@ -100,7 +119,12 @@ COMMODITY_REGIONS = {
 }
 
 def get_forecast_dashboard(
-    db: Session, commodity_id: int = 2, model_name: str = "LSTM", days: int = 10, region: str = None
+    db: Session,
+    commodity_id: int = 2,
+    model_name: str = "LSTM",
+    days: int = 10,
+    region: Optional[str] = None,
+    province: Optional[str] = None,
 ) -> ForecastDashboardResponse:
     commodity = db.query(Commodity).filter(Commodity.id == commodity_id).first()
     if not commodity:
@@ -137,26 +161,37 @@ def get_forecast_dashboard(
         .all()
     )
 
-    # Calculate Regional Basis Spread
+    # Calculate Regional Basis Spread (prioritize Location-Aware `?province=`, preserve legacy `?region=`)
     regions_list = COMMODITY_REGIONS.get(commodity.code, [
         {"id": "all", "name": "Vùng chuẩn (Bình quân)", "basisSpread": 0.0, "description": "Giá tham chiếu chuẩn"}
     ])
     matched_region = regions_list[0]
-    if region:
-        for r_item in regions_list:
-            if r_item["id"].lower() == region.lower():
-                matched_region = r_item
-                break
-    spread = float(matched_region.get("basisSpread", 0.0))
+    norm_prov = normalize_province_code(province)
+    loc = resolve_commodity_location_context(db, commodity, province if norm_prov else None)
+
+    if norm_prov:
+        if loc.get("pricing_mode") == "direct" and loc.get("latest_direct_price") and history:
+            spread = round(float(loc["latest_direct_price"]) - float(history[-1].price), 2)
+        else:
+            spread = float(loc.get("basis_offset", 0.0))
+        selected_region_id = loc["province_code"]
+    else:
+        if region:
+            for r_item in regions_list:
+                if r_item["id"].lower() == region.lower():
+                    matched_region = r_item
+                    break
+        spread = float(matched_region.get("basisSpread", 0.0))
+        selected_region_id = matched_region["id"]
 
     forecast_data = []
 
-    # Add historical points with regional spread
+    # Add historical points with regional spread (ISO YYYY-MM-DD for accurate tooltip & date formatting)
     for p in history:
         p_val = max(0.0, round(float(p.price) + spread, 2))
         forecast_data.append(
             ForecastPointResponse(
-                date=p.record_date.strftime("%d/%m"),
+                date=p.record_date.strftime("%Y-%m-%d"),
                 actualPrice=p_val,
                 predictedPrice=p_val,
                 lowerCI=p_val,
@@ -177,32 +212,73 @@ def get_forecast_dashboard(
 
     if forecast_rows:
         first_f = forecast_rows[0]
-        run = db.get(TrainingRun, first_f.training_run_id) if first_f.training_run_id else None
-        if not run or run.dataset_hash != fingerprint(context["rows"]):
+        latest_run_id = db.query(func.max(TrainingRun.id)).filter(TrainingRun.commodity_id == commodity_id).scalar()
+        run = db.get(TrainingRun, first_f.training_run_id or latest_run_id) if (first_f.training_run_id or latest_run_id) else None
+        if (first_f.training_run_id or latest_run_id) and (not run or run.dataset_hash != fingerprint(context["rows"])):
             raise HTTPException(409, "Dữ liệu đã thay đổi hoặc dự báo cũ chưa có nguồn đầu vào được xác minh. Hãy thu thập đủ lịch sử và huấn luyện lại.")
-        training = json.loads(run.metadata_json)
-        training.pop("snapshot", None)
-        training.update(run_id=run.id, dataset_hash=run.dataset_hash, trained_at=run.created_at.isoformat(),
-                        stale_days=max(0, (date.today() - history[-1].record_date).days),
-                        interval_note=("Dải ước lượng ±1,96 RMSE theo kỳ; chuỗi mía dùng giá mua trong báo cáo."
-                                       if context["cadence"] == "periodic" else
-                                       "Dải ước lượng ±1,96 RMSE theo mốc công bố AGROINFO."
-                                       if context["cadence"] == "irregular" else
-                                       "Dải ước lượng ±1,96 RMSE; chưa kiểm chứng độ bao phủ 95%."))
+        if run:
+            training = json.loads(run.metadata_json)
+            training.pop("snapshot", None)
+            trained_at_iso = run.created_at.isoformat()
+            run_id_val = run.id
+            ds_hash_val = run.dataset_hash
+        else:
+            training = dict(
+                quality,
+                commodity_unit=commodity.unit,
+                test_start=str(history[-min(10, len(history))].record_date) if history else None,
+                test_end=str(history[-1].record_date) if history else None,
+                test_count=min(10, len(history)),
+                train_end=str(history[-min(10, len(history))].record_date) if history else None,
+                filled_days=0,
+                baseline={"mae": float(first_f.mae or 0), "rmse": float(first_f.rmse or 0), "mape": float(first_f.mape or 0), "r2": float(first_f.r2 or 0)},
+                evaluation="Dự báo nhiều bước từ mốc lịch sử gần nhất.",
+            )
+            trained_at_iso = first_f.created_at.isoformat() if first_f.created_at else date.today().isoformat()
+            run_id_val = 0
+            ds_hash_val = fingerprint(context["rows"])
+        model_extra_map = (training.get("model_metrics") or {}) if isinstance(training, dict) else {}
+        matched_extra = {}
+        for k_m, v_m in model_extra_map.items():
+            if k_m.lower() == model_name.lower():
+                matched_extra = v_m or {}
+                break
+        picp_val = matched_extra.get("picp_95")
+        if picp_val is not None:
+            ci_note = (
+                f"Khoảng tin cậy 95% mở rộng theo chân trời (√h), hiệu chỉnh Conformal trên tập huấn luyện; "
+                f"độ bao phủ thực nghiệm trên tập kiểm thử (PICP): {float(picp_val):.1f}%."
+            )
+        elif context["cadence"] == "periodic":
+            ci_note = "Dải ước lượng ±1,96 RMSE theo kỳ; chuỗi mía dùng giá mua trong báo cáo."
+        elif context["cadence"] == "irregular":
+            ci_note = "Dải ước lượng ±1,96 RMSE theo mốc công bố AGROINFO."
+        else:
+            ci_note = "Dải ước lượng ±1,96 RMSE mở rộng theo chân trời."
+
+        training.update(run_id=run_id_val, dataset_hash=ds_hash_val, trained_at=trained_at_iso,
+                        stale_days=max(0, (date.today() - history[-1].record_date).days) if history else 0,
+                        interval_note=ci_note)
         if first_f.mae is not None:
+            mape_val = float(first_f.mape) if first_f.mape is not None else 0.0
+            acc_val = matched_extra.get("accuracy")
+            if acc_val is None:
+                acc_val = round(max(0.0, 100.0 - mape_val), 2)
             latest_metrics = ModelMetricsResponse(
                 modelName=model_name,
                 mae=float(first_f.mae),
-                rmse=float(first_f.rmse) if first_f.rmse else 0.0,
-                mape=float(first_f.mape) if first_f.mape else 0.0,
-                r2=float(first_f.r2) if first_f.r2 else 0.0,
+                rmse=float(first_f.rmse) if first_f.rmse is not None else 0.0,
+                mape=mape_val,
+                r2=float(first_f.r2) if first_f.r2 is not None else 0.0,
+                accuracy=float(acc_val),
+                picp95=float(picp_val) if picp_val is not None else None,
                 trainDate=first_f.training_date.strftime("%d/%m/%Y") if first_f.training_date else "N/A"
             )
 
         for i, f in enumerate(forecast_rows):
             pred_val = max(0.0, round(float(f.predicted_price) + spread, 2))
-            lower_val = max(0.0, round(float(f.lower_ci) + spread, 2))
-            upper_val = max(0.0, round(float(f.upper_ci) + spread, 2))
+            lower_val = max(0.0, min(pred_val, round(float(f.lower_ci) + spread, 2)))
+            upper_val = max(pred_val, round(float(f.upper_ci) + spread, 2))
             forecast_data.append(
                 ForecastPointResponse(
                     date=f.forecast_date.isoformat(),
@@ -222,6 +298,7 @@ def get_forecast_dashboard(
         forecastData=forecast_data,
         training=training,
         availableRegions=[RegionInfo(**r) for r in regions_list],
-        selectedRegion=matched_region["id"]
+        selectedRegion=selected_region_id,
+        location_context=LocationContextResponse(**{k: v for k, v in loc.items() if k in LocationContextResponse.model_fields}),
     )
 

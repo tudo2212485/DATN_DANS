@@ -12,10 +12,17 @@ SERIES_BREAK_DAYS = 30
 MAX_FILL_DAYS = 14
 
 
-def archive_price(db, row):
-    db.add(PriceRevision(price_id=row.id, snapshot_json=json.dumps({
+def archive_price(db, row, actor=None, new_price=None, reason=None):
+    payload = {
         column.name: str(getattr(row, column.name)) for column in row.__table__.columns
-    }, ensure_ascii=False)))
+    }
+    if actor:
+        payload["actor"] = str(actor)
+    if new_price is not None:
+        payload["new_price"] = str(new_price)
+    if reason:
+        payload["reason"] = str(reason)
+    db.add(PriceRevision(price_id=row.id, snapshot_json=json.dumps(payload, ensure_ascii=False)))
 
 
 def observations(db, commodity_id, start=None, end=None, eligible_only=True):
@@ -113,6 +120,17 @@ def training_context(db, commodity_or_id, start=None, end=None):
     cadence = SOURCES.get(commodity.code, {}).get("kind", "daily")
     if cadence == "periodic":
         rows = periodic_observations(db, commodity.id, start, end)
+        if not rows:
+            daily_rows = observations(db, commodity.id, start, end)
+            if daily_rows:
+                cadence = "daily"
+                rows = daily_rows
+                selected = modeling_rows(rows)
+                quality = readiness(rows, cadence)
+                step_days = 1
+                quality.update(cadence_days=step_days, target="Giá công bố")
+                return {"all_rows": rows, "rows": selected, "quality": quality,
+                        "cadence": cadence, "cadence_days": step_days}
         selected = rows
         quality = readiness(rows, cadence)
         intervals = [(b.record_date - a.record_date).days for a, b in zip(rows, rows[1:])]

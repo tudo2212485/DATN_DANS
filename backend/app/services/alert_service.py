@@ -9,8 +9,8 @@ from datetime import datetime
 
 from app.core.config import settings
 from app.core.security import sanitize_text
-from app.models.models import AlertRule, AlertLog, Commodity, PriceHistory
-from app.schemas.schemas import AlertRuleCreate, AlertRuleResponse, AlertLogResponse
+from app.models.models import AlertRule, AlertLog, Commodity, PriceHistory, User
+from app.schemas.schemas import AlertRuleCreate, AlertRuleUpdate, AlertRuleResponse, AlertLogResponse
 
 
 def send_email_notification(to_email: str, subject: str, html_content: str) -> bool:
@@ -43,14 +43,34 @@ def send_email_notification(to_email: str, subject: str, html_content: str) -> b
         return False
 
 
-def get_all_alert_rules(db: Session) -> List[AlertRuleResponse]:
-    rules = db.query(AlertRule).order_by(AlertRule.id.desc()).all()
+def _check_rule_ownership(rule: AlertRule, current_user: Optional[User]):
+    if current_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Yêu cầu đăng nhập để thao tác trên quy tắc cảnh báo",
+        )
+    if current_user.role != "admin":
+        if rule.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Bạn không có quyền truy cập hoặc chỉnh sửa quy tắc cảnh báo của người dùng khác"
+            )
+
+
+def get_all_alert_rules(db: Session, current_user: Optional[User] = None) -> List[AlertRuleResponse]:
+    if current_user is None:
+        return []
+    query = db.query(AlertRule)
+    if current_user.role != "admin":
+        query = query.filter(AlertRule.user_id == current_user.id)
+    rules = query.order_by(AlertRule.id.desc()).all()
     results = []
     for r in rules:
         res = AlertRuleResponse(
             id=r.id,
             commodity_id=r.commodity_id,
             commodity_name=r.commodity.name if r.commodity else "Nông sản",
+            user_id=r.user_id,
             rule_name=r.rule_name,
             condition_type=r.condition_type,
             threshold_value=float(r.threshold_value),
@@ -62,13 +82,14 @@ def get_all_alert_rules(db: Session) -> List[AlertRuleResponse]:
     return results
 
 
-def create_alert_rule(db: Session, rule_in: AlertRuleCreate) -> AlertRuleResponse:
+def create_alert_rule(db: Session, rule_in: AlertRuleCreate, current_user: Optional[User] = None) -> AlertRuleResponse:
     commodity = db.query(Commodity).filter(Commodity.id == rule_in.commodity_id).first()
     if not commodity:
         raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
 
     new_rule = AlertRule(
         commodity_id=rule_in.commodity_id,
+        user_id=current_user.id if current_user else None,
         rule_name=sanitize_text(rule_in.rule_name),
         condition_type=rule_in.condition_type,
         threshold_value=rule_in.threshold_value,
@@ -83,6 +104,7 @@ def create_alert_rule(db: Session, rule_in: AlertRuleCreate) -> AlertRuleRespons
         id=new_rule.id,
         commodity_id=new_rule.commodity_id,
         commodity_name=commodity.name,
+        user_id=new_rule.user_id,
         rule_name=new_rule.rule_name,
         condition_type=new_rule.condition_type,
         threshold_value=float(new_rule.threshold_value),
@@ -92,12 +114,28 @@ def create_alert_rule(db: Session, rule_in: AlertRuleCreate) -> AlertRuleRespons
     )
 
 
-def toggle_alert_rule(db: Session, rule_id: int, is_active: bool) -> AlertRuleResponse:
+def update_alert_rule(db: Session, rule_id: int, rule_in: AlertRuleUpdate, current_user: Optional[User] = None) -> AlertRuleResponse:
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc cảnh báo")
+    _check_rule_ownership(rule, current_user)
 
-    rule.is_active = is_active
+    if rule_in.commodity_id is not None:
+        commodity = db.query(Commodity).filter(Commodity.id == rule_in.commodity_id).first()
+        if not commodity:
+            raise HTTPException(status_code=404, detail="Không tìm thấy nông sản")
+        rule.commodity_id = rule_in.commodity_id
+    if rule_in.rule_name is not None:
+        rule.rule_name = sanitize_text(rule_in.rule_name)
+    if rule_in.condition_type is not None:
+        rule.condition_type = rule_in.condition_type
+    if rule_in.threshold_value is not None:
+        rule.threshold_value = rule_in.threshold_value
+    if rule_in.email is not None:
+        rule.email = rule_in.email.strip()
+    if rule_in.is_active is not None:
+        rule.is_active = rule_in.is_active
+
     db.commit()
     db.refresh(rule)
 
@@ -105,6 +143,7 @@ def toggle_alert_rule(db: Session, rule_id: int, is_active: bool) -> AlertRuleRe
         id=rule.id,
         commodity_id=rule.commodity_id,
         commodity_name=rule.commodity.name if rule.commodity else "Nông sản",
+        user_id=rule.user_id,
         rule_name=rule.rule_name,
         condition_type=rule.condition_type,
         threshold_value=float(rule.threshold_value),
@@ -114,10 +153,35 @@ def toggle_alert_rule(db: Session, rule_id: int, is_active: bool) -> AlertRuleRe
     )
 
 
-def delete_alert_rule(db: Session, rule_id: int):
+def toggle_alert_rule(db: Session, rule_id: int, is_active: bool, current_user: Optional[User] = None) -> AlertRuleResponse:
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc cảnh báo")
+    _check_rule_ownership(rule, current_user)
+
+    rule.is_active = is_active
+    db.commit()
+    db.refresh(rule)
+
+    return AlertRuleResponse(
+        id=rule.id,
+        commodity_id=rule.commodity_id,
+        commodity_name=rule.commodity.name if rule.commodity else "Nông sản",
+        user_id=rule.user_id,
+        rule_name=rule.rule_name,
+        condition_type=rule.condition_type,
+        threshold_value=float(rule.threshold_value),
+        email=rule.email,
+        is_active=rule.is_active,
+        created_at=rule.created_at
+    )
+
+
+def delete_alert_rule(db: Session, rule_id: int, current_user: Optional[User] = None):
+    rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc cảnh báo")
+    _check_rule_ownership(rule, current_user)
 
     db.delete(rule)
     db.commit()
@@ -205,10 +269,11 @@ def evaluate_all_alert_rules(db: Session) -> int:
     return triggered_count
 
 
-def send_test_alert(db: Session, rule_id: int):
+def send_test_alert(db: Session, rule_id: int, current_user: Optional[User] = None):
     rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Không tìm thấy quy tắc cảnh báo")
+    _check_rule_ownership(rule, current_user)
 
     commodity = rule.commodity
     com_name = commodity.name if commodity else "Nông sản"
@@ -246,9 +311,18 @@ def send_test_alert(db: Session, rule_id: int):
     }
 
 
-def get_all_alert_logs(db: Session, limit: int = 30) -> List[AlertLogResponse]:
+def get_all_alert_logs(
+    db: Session,
+    limit: int = 30,
+    current_user: Optional[User] = None,
+) -> List[AlertLogResponse]:
+    if current_user is None:
+        return []
+    query = db.query(AlertLog)
+    if current_user.role != "admin":
+        query = query.join(AlertRule, AlertLog.rule_id == AlertRule.id).filter(AlertRule.user_id == current_user.id)
     logs = (
-        db.query(AlertLog)
+        query
         .order_by(AlertLog.triggered_at.desc())
         .limit(limit)
         .all()

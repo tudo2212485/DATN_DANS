@@ -67,6 +67,23 @@ class SparklinePoint(BaseModel):
     date: str
     value: float
 
+class LocationContextResponse(BaseModel):
+    province_code: str = "all"
+    province_name: str = "Toàn quốc (Vùng trọng điểm)"
+    region_name: str = ""
+    pricing_mode: str = "national_benchmark"  # "direct" | "regional_benchmark" | "national_benchmark"
+    reference_province: str = ""
+    reference_province_code: Optional[str] = None
+    distance_km: float = 0.0
+    logistics_spread: float = 0.0
+    basis_offset: float = 0.0
+    direct_source: Optional[str] = None
+    direct_source_url: Optional[str] = None
+    latest_direct_date: Optional[str] = None
+    explanation: Optional[str] = None
+    note: Optional[str] = None
+
+
 class CommodityOverviewCard(BaseModel):
     id: int
     code: str
@@ -79,6 +96,7 @@ class CommodityOverviewCard(BaseModel):
     changePct: float
     isPositive: bool = Field(alias="isPositive", default=True)
     sparkline: List[SparklinePoint]
+    location_context: Optional[LocationContextResponse] = None
 
     class Config:
         populate_by_name = True
@@ -147,6 +165,8 @@ class ModelMetricsResponse(BaseModel):
     rmse: float
     mape: float
     r2: float
+    accuracy: Optional[float] = None
+    picp95: Optional[float] = None
     trainDate: str
 
 class RegionInfo(BaseModel):
@@ -163,14 +183,23 @@ class ForecastDashboardResponse(BaseModel):
     training: Optional[dict] = None
     availableRegions: Optional[List[RegionInfo]] = None
     selectedRegion: Optional[str] = None
+    location_context: Optional[LocationContextResponse] = None
 
 # --- Alert Rules Schemas ---
 class AlertRuleCreate(BaseModel):
     commodity_id: int
     rule_name: str
-    condition_type: str  # PRICE_ABOVE, PRICE_BELOW, PCT_INC_7D, PCT_DEC_7D
+    condition_type: str  # PRICE_ABOVE, PRICE_BELOW, PCT_INC_7D, PCT_DEC_7D, OUT_OF_CI_95
     threshold_value: float
     email: str
+
+class AlertRuleUpdate(BaseModel):
+    commodity_id: Optional[int] = None
+    rule_name: Optional[str] = None
+    condition_type: Optional[str] = None
+    threshold_value: Optional[float] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class AlertRuleResponse(BaseModel):
     id: int
@@ -331,8 +360,23 @@ class UserStatusUpdate(BaseModel):
     is_active: bool
 
 class ActiveModelSetting(BaseModel):
-    active_model: str  # LSTM, XGBoost, Prophet, ARIMA
+    active_model: str  # LSTM, XGBoost, Prophet, ARIMA, Random Forest
     description: Optional[str] = None
     updated_at: Optional[str] = None
+
+class PriceRevisionItem(BaseModel):
+    id: int
+    price_id: int
+    commodity_id: Optional[int] = None
+    commodity_name: Optional[str] = None
+    record_date: Optional[str] = None
+    previous_price: Optional[float] = None
+    new_price: Optional[float] = None
+    previous_source: Optional[str] = None
+    previous_provenance: Optional[str] = None
+    actor: Optional[str] = None
+    reason: Optional[str] = None
+    action: str = "UPDATED"
+    created_at: str
 
 

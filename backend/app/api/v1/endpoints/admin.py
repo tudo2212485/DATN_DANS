@@ -10,14 +10,15 @@ import math
 
 from app.core.database import get_db, SessionLocal
 from app.core.deps import require_role
-from app.core.security import get_password_hash
-from app.models.models import User, Commodity, PriceHistory, Forecast, AlertRule, BackgroundJob, SystemSetting
+from app.core.security import get_password_hash, sanitize_text, sanitize_csv_cell, task_rate_limiter
+from app.models.models import User, Commodity, PriceHistory, PriceRevision, Forecast, AlertRule, BackgroundJob, SystemSetting
 from app.schemas.schemas import (
     AdminStatsResponse,
     CommodityResponse,
     CommodityCreate,
     PriceCreateManual,
     AdminPriceItem,
+    PriceRevisionItem,
     TaskRunResponse,
     UserResponse,
     UserCreate,
@@ -39,7 +40,7 @@ router = APIRouter()
 @router.get("/stats", response_model=AdminStatsResponse)
 def get_admin_system_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
+    current_user: User = Depends(require_role(["admin"]))
 ):
     """Lấy số liệu thống kê tổng quan hệ thống cho Admin"""
     total_commodities = db.query(Commodity).count()
@@ -69,7 +70,7 @@ def get_admin_system_stats(
 @router.get("/commodities", response_model=List[CommodityResponse])
 def admin_get_commodities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
+    current_user: User = Depends(require_role(["admin"]))
 ):
     """Danh sách tất cả nông sản phục vụ quản trị"""
     return db.query(Commodity).order_by(Commodity.id).all()
@@ -139,7 +140,7 @@ def admin_get_recent_prices(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
+    current_user: User = Depends(require_role(["admin"]))
 ):
     """Lấy danh sách các bản ghi giá gần nhất để quản lý và kiểm tra dữ liệu"""
     query = (
@@ -193,7 +194,13 @@ def admin_create_or_update_price(
 
     if existing:
         from app.services.history_service import archive_price
-        archive_price(db, existing)
+        actor_label = current_user.full_name or current_user.email
+        reason_label = (
+            "Xác minh bản ghi giá"
+            if item.reviewed and existing.provenance != "reviewed" and float(existing.price) == float(item.price)
+            else "Cập nhật điểm giá thủ công"
+        )
+        archive_price(db, existing, actor=actor_label, new_price=item.price, reason=reason_label)
         existing.provenance = "reviewed" if item.reviewed else "unverified"
         existing.source_details = None
         existing.price = item.price
@@ -239,14 +246,66 @@ def admin_delete_price(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["admin"]))
 ):
-    """Xóa một bản ghi giá sai lệch"""
+    """Xóa một bản ghi giá sai lệch kèm lưu Audit Log"""
     record = db.query(PriceHistory).filter(PriceHistory.id == price_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi giá")
     
+    from app.services.history_service import archive_price
+    actor_label = current_user.full_name or current_user.email
+    archive_price(db, record, actor=actor_label, new_price=None, reason="Xóa bản ghi giá sai lệch")
     db.delete(record)
     db.commit()
     return {"message": "Đã xóa bản ghi giá thành công"}
+
+@router.get("/prices/revisions", response_model=List[PriceRevisionItem])
+def admin_get_price_revisions(
+    limit: int = Query(30, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Lấy lịch sử chỉnh sửa/xóa bản ghi giá (Audit Log)"""
+    import json
+    revisions = db.query(PriceRevision).order_by(desc(PriceRevision.id)).limit(limit).all()
+    commodities_map = {c.id: c.name for c in db.query(Commodity).all()}
+    live_prices = {
+        r.id: float(r.price)
+        for r in db.query(PriceHistory).filter(PriceHistory.id.in_([rev.price_id for rev in revisions])).all()
+    } if revisions else {}
+    result = []
+    for rev in revisions:
+        try:
+            snap = json.loads(rev.snapshot_json)
+        except Exception:
+            snap = {}
+        cid = int(snap["commodity_id"]) if str(snap.get("commodity_id", "")).isdigit() else None
+        p_val = float(snap["price"]) if snap.get("price") not in (None, "None", "") else None
+        action_val = "UPDATED" if rev.price_id in live_prices else "DELETED"
+        raw_new_price = snap.get("new_price")
+        if raw_new_price not in (None, "None", ""):
+            new_p_val = float(raw_new_price)
+        elif action_val == "UPDATED":
+            new_p_val = live_prices.get(rev.price_id)
+        else:
+            new_p_val = None
+        actor_val = snap.get("actor") or "Quản trị viên"
+        reason_val = snap.get("reason") or ("Xóa bản ghi giá" if action_val == "DELETED" else "Cập nhật điểm giá")
+        result.append(PriceRevisionItem(
+            id=rev.id,
+            price_id=rev.price_id,
+            commodity_id=cid,
+            commodity_name=commodities_map.get(cid, f"Nông sản #{cid}" if cid else "Nông sản"),
+            record_date=snap.get("record_date"),
+            previous_price=p_val,
+            new_price=new_p_val,
+            previous_source=snap.get("source"),
+            previous_provenance=snap.get("provenance"),
+            actor=actor_val,
+            reason=reason_val,
+            action=action_val,
+            created_at=rev.created_at.isoformat() if rev.created_at else datetime.now().isoformat(),
+        ))
+    return result
 
 # ---------------------------------------------------------
 # 4. Điều phối tác vụ (Tasks: Scraper & Model Retrain)
@@ -256,6 +315,8 @@ def admin_trigger_scrape(background_tasks: BackgroundTasks, days: int = Query(30
                         commodity_id: Optional[int] = Query(None), start_date: Optional[date] = Query(None),
                         end_date: Optional[date] = Query(None),
                         db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
+    if task_rate_limiter.is_rate_limited(f"scrape_{current_user.id}"):
+        raise HTTPException(429, "Quá nhiều yêu cầu kích hoạt cào dữ liệu. Vui lòng thử lại sau ít phút.")
     if bool(start_date) != bool(end_date) or (start_date and (start_date > end_date or end_date > date.today() or (end_date - start_date).days > 1826)):
         raise HTTPException(400, "Cần ngày bắt đầu/kết thúc hợp lệ trong quá khứ, tối đa 5 năm")
     if commodity_id:
@@ -272,6 +333,8 @@ def admin_trigger_scrape(background_tasks: BackgroundTasks, days: int = Query(30
 @router.post("/tasks/retrain", response_model=TaskRunResponse)
 def admin_trigger_retrain(background_tasks: BackgroundTasks, commodity_id: Optional[int] = Query(None),
                          db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
+    if task_rate_limiter.is_rate_limited(f"retrain_{current_user.id}"):
+        raise HTTPException(429, "Quá nhiều yêu cầu huấn luyện lại mô hình. Vui lòng thử lại sau ít phút.")
     if commodity_id and not db.get(Commodity, commodity_id):
         raise HTTPException(404, "Không tìm thấy nông sản")
     job = create_job(db, "retrain")
@@ -281,7 +344,7 @@ def admin_trigger_retrain(background_tasks: BackgroundTasks, commodity_id: Optio
 
 @router.get("/tasks", response_model=List[TaskRunResponse])
 def admin_tasks(kind: Optional[str] = None, db: Session = Depends(get_db),
-                current_user: User = Depends(require_role(["admin", "analyst"]))):
+                current_user: User = Depends(require_role(["admin"]))):
     query = db.query(BackgroundJob)
     if kind:
         query = query.filter(BackgroundJob.kind == kind)
@@ -290,7 +353,7 @@ def admin_tasks(kind: Optional[str] = None, db: Session = Depends(get_db),
 
 @router.get("/tasks/{task_id}", response_model=TaskRunResponse)
 def admin_task(task_id: int, db: Session = Depends(get_db),
-               current_user: User = Depends(require_role(["admin", "analyst"]))):
+               current_user: User = Depends(require_role(["admin"]))):
     job = db.get(BackgroundJob, task_id)
     if not job:
         raise HTTPException(404, "Không tìm thấy tác vụ")
@@ -452,7 +515,13 @@ async def admin_import_prices_csv(
             )
             if existing:
                 from app.services.history_service import archive_price
-                archive_price(db, existing)
+                archive_price(
+                    db,
+                    existing,
+                    actor=current_user.full_name or current_user.email,
+                    new_price=p_val,
+                    reason="Ghi đè từ Import CSV",
+                )
                 existing.provenance = "reviewed" if reviewed else "unverified"
                 existing.source_details = None
                 existing.price = p_val
@@ -496,7 +565,7 @@ def admin_export_prices_csv(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
+    current_user: User = Depends(require_role(["admin"]))
 ):
     """Xuất toàn bộ dữ liệu lịch sử giá ra file CSV để tải về"""
     query = (
@@ -522,15 +591,15 @@ def admin_export_prices_csv(
         writer.writerow([
             ph.id,
             ph.commodity_id,
-            c_code,
-            c_name,
+            sanitize_csv_cell(c_code),
+            sanitize_csv_cell(c_name),
             str(ph.record_date),
             float(ph.price),
             float(ph.price_min) if ph.price_min else "",
             float(ph.price_max) if ph.price_max else "",
             float(ph.volume) if ph.volume else 0,
-            ph.source or "",
-            ph.provenance,
+            sanitize_csv_cell(ph.source or ""),
+            sanitize_csv_cell(ph.provenance),
             "true" if ph.provenance == "reviewed" else "false"
         ])
         
@@ -548,7 +617,7 @@ def admin_export_prices_csv(
 def admin_get_crawler_logs(
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin", "analyst"]))
+    current_user: User = Depends(require_role(["admin"]))
 ):
     """Lấy danh sách nhật ký cào dữ liệu (Crawling Logs) gần nhất của Bot"""
     jobs = db.query(BackgroundJob).filter(BackgroundJob.kind == "scrape").order_by(BackgroundJob.id.desc()).limit(limit).all()
@@ -562,9 +631,9 @@ def admin_get_crawler_logs(
 # ---------------------------------------------------------
 @router.get("/models/active", response_model=ActiveModelSetting)
 def admin_get_active_model(db: Session = Depends(get_db),
-                          current_user: User = Depends(require_role(["admin", "analyst"]))):
+                          current_user: User = Depends(require_role(["admin"]))):
     setting = db.get(SystemSetting, "active_model")
-    return ActiveModelSetting(active_model=active_model(db).upper(), description="Mô hình mặc định khi API không chỉ định thuật toán",
+    return ActiveModelSetting(active_model=active_model(db).upper(), description="Mô hình mặc định áp dụng cho dự báo toàn hệ thống",
                               updated_at=setting.updated_at.isoformat() if setting else None)
 
 

@@ -27,3 +27,16 @@ def upgrade_existing_schema() -> None:
                 connection.execute(text(
                     "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
                 ))
+    # On PostgreSQL installations upgraded from pre-provenance schema where all seeded rows defaulted to 'unverified'
+    if engine.dialect.name == "postgresql" and "price_history" in tables:
+        with engine.begin() as connection:
+            verified_count = connection.execute(
+                text("SELECT COUNT(*) FROM price_history WHERE provenance IN ('collected', 'reviewed')")
+            ).scalar() or 0
+            total_count = connection.execute(
+                text("SELECT COUNT(*) FROM price_history")
+            ).scalar() or 0
+            if total_count >= 60 and verified_count == 0:
+                connection.execute(text(
+                    "UPDATE price_history SET provenance = 'reviewed' WHERE source IS NOT NULL AND TRIM(source) <> ''"
+                ))

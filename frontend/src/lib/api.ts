@@ -15,15 +15,17 @@ import {
 import {
   INITIAL_ALERT_RULES,
 } from './mockData';
+import { formatDateVN, formatDateTimeVN } from './formatters';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'irregular' | 'periodic'; suggested_start?: string }
+export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'irregular' | 'periodic'; suggested_start?: string; latest_date?: string | null }
 export interface HistoryReadiness { ready: boolean; reason: string | null; observation_count: number; start_date: string | null; end_date: string | null; max_gap_days: number }
 export interface HistoryResponse {
   records: {id: number; date: string; price: number; source: string; provenance: string; source_details?:{market:string;price_type:string;product:string;upstream:string}}[];
   periodic_records: {id:number;start:string;end:string;published_date:string;buying_price:number;selling_price:number;unit:string;specification:string;market:string;source:string;attribution:string}[];
   missing_dates: string[]; readiness: HistoryReadiness; range_readiness: HistoryReadiness; unverified_count: number;
+  location_context?: import('@/types').LocationContextData | null;
 }
 export interface TrainingMetadata {
   run_id: number; start_date: string; end_date: string; observation_count: number;
@@ -31,6 +33,7 @@ export interface TrainingMetadata {
   filled_days: number; baseline: {mae: number; rmse: number; mape: number; r2: number};
   evaluation: string; trained_at: string; stale_days: number; interval_note: string; dataset_hash: string;
   cadence?: 'daily' | 'irregular' | 'periodic'; cadence_days?: number; target?: string;
+  best_model?: string; validation_method?: string;
 }
 export async function fetchHistorySources(): Promise<HistorySource[]> {
   const res = await fetch(`${API_BASE_URL}/history/sources`, {cache:'no-store'});
@@ -40,10 +43,52 @@ export async function fetchTrainingReadiness(commodityId: number): Promise<Histo
   const res = await fetch(`${API_BASE_URL}/history/readiness?commodity_id=${commodityId}`,{cache:'no-store'});
   await assertApiOk(res); return res.json();
 }
-export async function fetchHistory(commodityId: number, start: string, end: string, includeUnverified = false): Promise<HistoryResponse> {
-  const params = new URLSearchParams({commodity_id:String(commodityId),start_date:start,end_date:end,include_unverified:String(includeUnverified)});
-  const res = await fetch(`${API_BASE_URL}/history?${params}`, {cache:'no-store'});
-  await assertApiOk(res); return res.json();
+export async function fetchHistory(
+  commodityId: number,
+  start: string,
+  end: string,
+  includeUnverified = false,
+  province?: string
+): Promise<HistoryResponse> {
+  const params = new URLSearchParams({
+    commodity_id: String(commodityId),
+    start_date: start,
+    end_date: end,
+    include_unverified: String(includeUnverified),
+  });
+  if (province && province !== 'all') params.set('province', province);
+  const res = await fetch(`${API_BASE_URL}/history?${params}`, { cache: 'no-store' });
+  await assertApiOk(res);
+  return res.json();
+}
+
+export async function fetchRegionsApi(): Promise<import('@/types').RegionItem[]> {
+  const res = await fetch(`${API_BASE_URL}/regions`, { cache: 'no-store' });
+  await assertApiOk(res);
+  return res.json();
+}
+
+export async function locateRegionApi(
+  lat: number,
+  lng: number
+): Promise<import('@/types').LocateRegionResult> {
+  const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  const res = await fetch(`${API_BASE_URL}/regions/locate?${params}`, { cache: 'no-store' });
+  await assertApiOk(res);
+  return res.json();
+}
+
+export async function fetchCommodityProvinceComparisonApi(
+  commodityCode: string,
+  province?: string
+): Promise<import('@/types').CommodityProvinceComparison> {
+  const q = province && province !== 'all' ? `?province=${encodeURIComponent(province)}` : '';
+  const res = await fetch(
+    `${API_BASE_URL}/market/regional-prices/${encodeURIComponent(commodityCode)}${q}`,
+    { cache: 'no-store' }
+  );
+  await assertApiOk(res);
+  return res.json();
 }
 
 // Helper mapping snake_case from Backend API to camelCase for Frontend
@@ -68,24 +113,26 @@ function mapAlertRule(r: Record<string, unknown>): AlertRuleItem {
     thresholdValue: Number(r.thresholdValue ?? r.threshold_value ?? 0),
     email: String(r.email ?? ''),
     isActive: Boolean(r.isActive !== undefined ? r.isActive : (r.is_active !== undefined ? r.is_active : true)),
-    createdAt: String(r.createdAt ?? r.created_at ?? '28/08/2026'),
+    createdAt: formatDateVN(String(r.createdAt ?? r.created_at ?? '')),
   };
 }
 
 /**
- * Fetch overview commodity cards
+ * Fetch overview commodity cards (supports optional Location-Aware `?province=`)
  */
-export async function fetchCommoditiesOverview(): Promise<CommoditySummary[]> {
-  const res = await fetch(`${API_BASE_URL}/commodities/overview`, { cache: 'no-store' });
+export async function fetchCommoditiesOverview(province?: string): Promise<CommoditySummary[]> {
+  const q = province && province !== 'all' ? `?province=${encodeURIComponent(province)}` : '';
+  const res = await fetch(`${API_BASE_URL}/commodities/overview${q}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('API Error fetching overview');
   return await res.json();
 }
 
 /**
- * Fetch market comparison series
+ * Fetch market comparison series (supports optional `?province=`)
  */
-export async function fetchMarketComparison(): Promise<ComparisonDataPoint[]> {
-  const res = await fetch(`${API_BASE_URL}/commodities/comparison`, { cache: 'no-store' });
+export async function fetchMarketComparison(province?: string): Promise<ComparisonDataPoint[]> {
+  const q = province && province !== 'all' ? `?province=${encodeURIComponent(province)}` : '';
+  const res = await fetch(`${API_BASE_URL}/commodities/comparison${q}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('API Error fetching comparison');
   return await res.json();
 }
@@ -100,11 +147,12 @@ export async function fetchCommoditySpotlight(code: string = 'COFFEE'): Promise<
 }
 
 /**
- * Fetch regional price table data from PostgreSQL
+ * Fetch regional price table data from PostgreSQL (supports optional `?province=`)
  */
-export async function fetchRegionalPrices(): Promise<import('@/types').RegionalPriceItem[]> {
+export async function fetchRegionalPrices(province?: string): Promise<import('@/types').RegionalPriceItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/commodities/regional-prices`, { cache: 'no-store' });
+    const q = province && province !== 'all' ? `?province=${encodeURIComponent(province)}` : '';
+    const res = await fetch(`${API_BASE_URL}/commodities/regional-prices${q}`, { cache: 'no-store' });
     await assertApiOk(res);
     return await res.json();
   } catch {
@@ -115,23 +163,26 @@ export async function fetchRegionalPrices(): Promise<import('@/types').RegionalP
 export const fetchRegionalPricesApi = fetchRegionalPrices;
 
 /**
- * Fetch forecast with 95% Confidence Interval & Metrics
+ * Fetch forecast with 95% Confidence Interval, Metrics & Location Context
  */
 export async function fetchForecastDashboard(
   commodityId: number = 2,
   modelName: string = 'LSTM',
   days: number = 14,
-  region?: string
+  region?: string,
+  province?: string
 ): Promise<{
   metrics: ModelMetrics;
   forecastData: ForecastPoint[];
   training?: TrainingMetadata;
   availableRegions?: import('@/types').RegionInfo[];
   selectedRegion?: string;
+  location_context?: import('@/types').LocationContextData | null;
 }> {
-  const regionParam = region ? `&region=${encodeURIComponent(region)}` : '';
+  const regionParam = region && region !== 'all' ? `&region=${encodeURIComponent(region)}` : '';
+  const provinceParam = province && province !== 'all' ? `&province=${encodeURIComponent(province)}` : '';
   const res = await fetch(
-    `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${modelName}&days=${days}${regionParam}`,
+    `${API_BASE_URL}/forecast?commodity_id=${commodityId}&model_name=${encodeURIComponent(modelName)}&days=${days}${regionParam}${provinceParam}`,
     { cache: 'no-store' }
   );
   await assertApiOk(res);
@@ -142,6 +193,7 @@ export async function fetchForecastDashboard(
     training: data.training,
     availableRegions: data.availableRegions,
     selectedRegion: data.selectedRegion,
+    location_context: data.location_context,
   };
 }
 
@@ -153,9 +205,13 @@ export const fetchForecastData = fetchForecastDashboard;
 export async function fetchModelComparison(commodityId: number = 2): Promise<ModelComparisonMetrics[]> {
   const res = await fetch(`${API_BASE_URL}/forecast/compare/${commodityId}`, { cache: 'no-store' });
   await assertApiOk(res);
-  const data = await res.json();
-  data.sort((a: ModelComparisonMetrics, b: ModelComparisonMetrics) => a.rmse - b.rmse);
-  return data.map((item: ModelComparisonMetrics, index: number) => ({ ...item, isBest: index === 0 }));
+  const data: ModelComparisonMetrics[] = await res.json();
+  data.sort((a, b) => (a.mape - b.mape) || (a.rmse - b.rmse));
+  return data.map((item, index) => ({
+    ...item,
+    accuracy: item.accuracy ?? Number(Math.max(0, 100 - (item.mape || 0)).toFixed(2)),
+    isBest: index === 0,
+  }));
 }
 
 /**
@@ -163,7 +219,10 @@ export async function fetchModelComparison(commodityId: number = 2): Promise<Mod
  */
 export async function fetchAlertRules(): Promise<AlertRuleItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/alerts`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/alerts`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
     await assertApiOk(res);
     const rawList = await res.json();
     return Array.isArray(rawList) ? rawList.map(mapAlertRule) : INITIAL_ALERT_RULES;
@@ -185,7 +244,35 @@ export async function createAlertRuleApi(payload: {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    await assertApiOk(res);
+    const raw = await res.json();
+    return mapAlertRule(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update existing alert rule
+ */
+export async function updateAlertRuleApi(
+  ruleId: number,
+  payload: {
+    commodity_id?: number;
+    rule_name?: string;
+    condition_type?: string;
+    threshold_value?: number;
+    email?: string;
+    is_active?: boolean;
+  }
+): Promise<AlertRuleItem | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     await assertApiOk(res);
@@ -203,7 +290,7 @@ export async function toggleAlertRuleApi(ruleId: number, isActive: boolean): Pro
   try {
     const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}/toggle`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ is_active: isActive }),
     });
     await assertApiOk(res);
@@ -220,6 +307,7 @@ export async function deleteAlertRuleApi(ruleId: number): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     await assertApiOk(res);
     return true;
@@ -235,6 +323,7 @@ export async function testAlertApi(ruleId: number): Promise<{ status: string; me
   try {
     const res = await fetch(`${API_BASE_URL}/alerts/${ruleId}/test`, {
       method: 'POST',
+      headers: getAuthHeaders(),
     });
     await assertApiOk(res);
     return await res.json();
@@ -263,7 +352,10 @@ interface RawAlertLog {
  */
 export async function fetchAlertLogsApi(): Promise<AlertLogItem[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/alerts/logs?limit=30`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE_URL}/alerts/logs?limit=30`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
     await assertApiOk(res);
     const data = await res.json();
     return data.map((item: RawAlertLog) => ({
@@ -275,7 +367,7 @@ export async function fetchAlertLogsApi(): Promise<AlertLogItem[]> {
       triggeredPrice: item.triggered_price,
       message: item.message,
       status: item.status || 'SENT',
-      triggeredAt: item.triggered_at ? new Date(item.triggered_at).toLocaleString('vi-VN') : 'Vừa xong',
+      triggeredAt: item.triggered_at ? formatDateTimeVN(item.triggered_at) : 'Vừa xong',
     }));
   } catch {
     return [
@@ -458,9 +550,15 @@ interface RawAdminPrice {
 /**
  * Lấy lịch sử giá gần nhất cho Admin
  */
-export async function fetchRecentPricesApi(commodityId?: number, startDate?: string, endDate?: string, offset: number = 0): Promise<AdminPriceItem[]> {
+export async function fetchRecentPricesApi(
+  commodityId?: number,
+  startDate?: string,
+  endDate?: string,
+  offset: number = 0,
+  limit: number = 100
+): Promise<AdminPriceItem[]> {
   try {
-    const params = new URLSearchParams({ limit: '30', offset: String(offset) });
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (commodityId) params.set('commodity_id', String(commodityId));
     if (startDate) params.set('start_date', startDate);
     if (endDate) params.set('end_date', endDate);
@@ -764,14 +862,25 @@ export async function fetchModelComparisonApi(commodityId: number = 2): Promise<
     });
     await assertApiOk(res);
     const data = await res.json();
-    return data.map((d: { modelName: string; mae: number; rmse: number; mape: number; r2: number }, idx: number) => ({
-      modelName: d.modelName,
-      mae: d.mae,
-      rmse: d.rmse,
-      mape: d.mape,
-      r2: d.r2,
-      isBest: idx === 0,
-    }));
+    data.sort(
+      (a: { mape: number; rmse: number }, b: { mape: number; rmse: number }) =>
+        (a.mape - b.mape) || (a.rmse - b.rmse)
+    );
+    return data.map(
+      (
+        d: { modelName: string; mae: number; rmse: number; mape: number; r2: number; accuracy?: number; picp95?: number | null },
+        idx: number
+      ) => ({
+        modelName: d.modelName,
+        mae: d.mae,
+        rmse: d.rmse,
+        mape: d.mape,
+        r2: d.r2,
+        accuracy: d.accuracy ?? Number(Math.max(0, 100 - (d.mape || 0)).toFixed(2)),
+        picp95: d.picp95 ?? null,
+        isBest: idx === 0,
+      })
+    );
   } catch (error) { throw error; }
 }
 
@@ -833,4 +942,46 @@ export async function fetchCurrentUserApi() {
   const res = await fetch(API_BASE_URL + '/auth/me', {headers: getAuthHeaders(), cache: 'no-store'});
   await assertApiOk(res);
   return res.json();
+}
+
+export async function fetchPriceRevisionsApi(limit: number = 30): Promise<import('@/types').PriceRevisionItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/prices/revisions?limit=${limit}`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
+    await assertApiOk(res);
+    const data = await res.json();
+    return data.map((item: {
+      id: number;
+      price_id: number;
+      commodity_id?: number | null;
+      commodity_name?: string | null;
+      record_date?: string | null;
+      previous_price?: number | null;
+      new_price?: number | null;
+      previous_source?: string | null;
+      previous_provenance?: string | null;
+      actor?: string | null;
+      reason?: string | null;
+      action?: string;
+      created_at: string;
+    }) => ({
+      id: item.id,
+      priceId: item.price_id,
+      commodityId: item.commodity_id,
+      commodityName: item.commodity_name || 'Nông sản',
+      recordDate: formatDateVN(item.record_date),
+      previousPrice: item.previous_price,
+      newPrice: item.new_price,
+      previousSource: item.previous_source,
+      previousProvenance: item.previous_provenance,
+      actor: item.actor || 'Quản trị viên',
+      reason: item.reason || (item.action === 'DELETED' ? 'Xóa bản ghi giá' : 'Cập nhật điểm giá'),
+      action: item.action || 'UPDATED',
+      createdAt: formatDateTimeVN(item.created_at),
+    }));
+  } catch {
+    return [];
+  }
 }

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Numeric, Boolean, Date, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Numeric, Boolean, Date, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -157,3 +157,46 @@ class AlertLog(Base):
     triggered_at = Column(DateTime(timezone=True), server_default=func.now())
 
     rule = relationship("AlertRule", back_populates="logs")
+
+
+class RegionalMarket(Base):
+    """Danh mục tỉnh/thành phố hỗ trợ định giá theo vị trí địa lý (Location-Aware Pricing)."""
+    __tablename__ = "regional_markets"
+
+    code = Column(String(60), primary_key=True, index=True)
+    name = Column(String(120), nullable=False)
+    region_name = Column(String(100), nullable=False)
+    lat = Column(Numeric(9, 6), nullable=False)
+    lng = Column(Numeric(9, 6), nullable=False)
+    is_major_hub = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    observations = relationship(
+        "RegionalPriceObservation",
+        back_populates="market",
+        cascade="all, delete-orphan",
+    )
+
+
+class RegionalPriceObservation(Base):
+    """Dữ liệu giá khảo sát thực tế tách riêng từng tỉnh/thành phố (không ghi đè bảng chuẩn price_history)."""
+    __tablename__ = "regional_price_observations"
+    __table_args__ = (
+        UniqueConstraint("commodity_id", "province_code", "recorded_date", name="uq_regional_obs_comm_prov_date"),
+    )
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, index=True)
+    commodity_id = Column(Integer, ForeignKey("commodities.id", ondelete="CASCADE"), nullable=False, index=True)
+    province_code = Column(String(60), ForeignKey("regional_markets.code", ondelete="CASCADE"), nullable=False, index=True)
+    recorded_date = Column(Date, nullable=False, index=True)
+    price = Column(Numeric(14, 2), nullable=False)
+    price_min = Column(Numeric(14, 2), nullable=True)
+    price_max = Column(Numeric(14, 2), nullable=True)
+    source = Column(String(150), nullable=False)
+    source_url = Column(Text, nullable=True)
+    pricing_type = Column(String(40), nullable=False, default="direct_survey", server_default="direct_survey")
+    raw_details = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    commodity = relationship("Commodity")
+    market = relationship("RegionalMarket", back_populates="observations")

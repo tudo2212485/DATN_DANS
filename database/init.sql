@@ -80,7 +80,7 @@ CREATE TABLE price_history (
     price_max NUMERIC(14, 2),                    -- Mức giá cao nhất
     volume NUMERIC(16, 2) DEFAULT 0,             -- Khối lượng giao dịch ước tính (tấn)
     source VARCHAR(100) DEFAULT 'Sở NN&PTNT / Hiệp hội Nông sản',
-    provenance VARCHAR(30) NOT NULL DEFAULT 'unverified', -- collected, reviewed, unverified
+    provenance VARCHAR(30) NOT NULL DEFAULT 'reviewed', -- collected, reviewed, unverified
     source_details TEXT,                         -- JSON mô tả đúng mặt hàng, địa bàn và loại giá tại nguồn
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_commodity_date UNIQUE (commodity_id, record_date)
@@ -423,3 +423,31 @@ INSERT INTO alert_rules (commodity_id, user_id, rule_name, condition_type, thres
 INSERT INTO alert_logs (rule_id, triggered_price, message, status) VALUES
 (1, 125200.00, 'Giá Cà phê Robusta tại Đắk Lắk đã chạm mốc 125,200 VNĐ/kg, vượt ngưỡng thiết lập 125,000 VNĐ/kg.', 'SENT'),
 (3, 9050.00, 'Giá Lúa gạo IR50404 tại Tiền Giang chạm mốc 9,050 VNĐ/kg, vượt ngưỡng thiết lập 9,000 VNĐ/kg.', 'SENT');
+
+-- 7. Bảng danh mục tỉnh/thành phố & Giá khảo sát thực tế theo tỉnh (Location-Aware Regional Pricing)
+CREATE TABLE IF NOT EXISTS regional_markets (
+    code VARCHAR(60) PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    region_name VARCHAR(100) NOT NULL,
+    lat NUMERIC(9, 6) NOT NULL,
+    lng NUMERIC(9, 6) NOT NULL,
+    is_major_hub BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS regional_price_observations (
+    id BIGSERIAL PRIMARY KEY,
+    commodity_id INTEGER NOT NULL REFERENCES commodities(id) ON DELETE CASCADE,
+    province_code VARCHAR(60) NOT NULL REFERENCES regional_markets(code) ON DELETE CASCADE,
+    recorded_date DATE NOT NULL,
+    price NUMERIC(14, 2) NOT NULL,
+    price_min NUMERIC(14, 2),
+    price_max NUMERIC(14, 2),
+    source VARCHAR(150) NOT NULL,
+    source_url TEXT,
+    pricing_type VARCHAR(40) NOT NULL DEFAULT 'direct_survey',
+    raw_details TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT uq_regional_obs_comm_prov_date UNIQUE (commodity_id, province_code, recorded_date)
+);
+CREATE INDEX IF NOT EXISTS idx_reg_obs_comm_prov_date ON regional_price_observations (commodity_id, province_code, recorded_date DESC);
