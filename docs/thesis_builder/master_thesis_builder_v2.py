@@ -54,6 +54,10 @@ from master_appendices_with_tables_and_charts import (
     APPENDIX_E_SECTIONS,
     APPENDIX_F_SECTIONS,
 )
+from part17_security_and_ui_skills import (
+    CH3_UI_AND_CHART_SKILLS_SECTIONS,
+    CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS,
+)
 
 # ==============================================================================
 # METADATA CHUẨN CỦA ĐỒ ÁN TỐT NGHIỆP
@@ -227,45 +231,55 @@ def render_complete_front_matter(doc):
         ("  1.3. Đối tượng và phạm vi nghiên cứu", "5"),
         ("  1.4. Phương pháp nghiên cứu và thực hiện", "7"),
         ("  1.5. Phân tích đánh giá các công trình nghiên cứu liên quan", "9"),
-        ("  1.6. Những vấn đề tồn tại và đóng góp mới của đề tài", "12"),
-        ("  1.7. Bố cục của khóa luận tốt nghiệp", "14"),
-        ("CHƯƠNG 2: CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG", "15"),
-        ("  2.1. Bài toán dự báo chuỗi thời gian nông sản", "15"),
+        ("  1.6. Những vấn đề tồn tại và đóng góp mới của đề tài", "11"),
+        ("  1.7. Bố cục của khóa luận tốt nghiệp", "13"),
+        ("CHƯƠNG 2: CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG", "14"),
+        ("  2.1. Bài toán dự báo chuỗi thời gian nông sản", "14"),
         ("  2.2. Thu thập và tiền xử lý dữ liệu giá tại vườn", "17"),
         ("  2.3. Xây dựng không gian đặc trưng chuỗi thời gian", "20"),
         ("  2.4. Các mô hình học máy và phương pháp dự báo", "22"),
-        ("  2.5. Phương pháp đánh giá và kiểm chứng thực nghiệm", "26"),
-        ("  2.6. Công nghệ phát triển ứng dụng và nền tảng hạ tầng", "28"),
-        ("CHƯƠNG 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG AGROFORECAST", "30"),
-        ("  3.1. Phân tích yêu cầu hệ thống và các ca sử dụng", "30"),
-        ("  3.2. Thiết kế kiến trúc tổng thể và luồng dữ liệu", "35"),
-        ("  3.3. Thiết kế chi tiết các ca sử dụng chính", "39"),
-        ("  3.4. Thiết kế cơ sở dữ liệu quan hệ (ERD 11 bảng)", "44"),
-        ("  3.5. Thiết kế giao diện lập trình ứng dụng (28 REST API Endpoints)", "50"),
+        ("  2.5. Phương pháp đánh giá và kiểm chứng thực nghiệm", "25"),
+        ("  2.6. Công nghệ phát triển ứng dụng và nền tảng hạ tầng", "27"),
+        ("CHƯƠNG 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG AGROFORECAST", "29"),
+        ("  3.1. Phân tích yêu cầu hệ thống và các ca sử dụng", "29"),
+        ("  3.2. Thiết kế kiến trúc tổng thể và luồng dữ liệu", "34"),
+        ("  3.3. Thiết kế chi tiết các ca sử dụng chính", "38"),
+        ("  3.4. Thiết kế cơ sở dữ liệu quan hệ (ERD 11 bảng)", "43"),
+        ("  3.5. Thiết kế giao diện lập trình ứng dụng (28 REST API Endpoints)", "49"),
         ("  3.6. Thiết kế giao diện người dùng Clean Fintech x AgriTech", "52"),
-        ("CHƯƠNG 4: XÂY DỰNG HỆ THỐNG, THỰC NGHIỆM 5 MÔ HÌNH HỌC MÁY, KIỂM THỬ VÀ BẢO MẬT", "56"),
-        ("  4.1. Môi trường triển khai và cấu trúc mã nguồn dự án", "56"),
-        ("  4.2. Xây dựng bộ thu thập dữ liệu giá nông sản tại vườn Việt Nam", "57"),
-        ("  4.3. Xây dựng giao diện tra cứu lịch sử giá và phân tích trực quan", "60"),
-        ("  4.4. Xây dựng quy trình huấn luyện học máy có truy vết toàn vẹn (ML Pipeline)", "63"),
-        ("  4.5. Xây dựng giao diện mô hình và trực quan hóa dự báo", "65"),
-        ("  4.6. Xây dựng hệ thống cảnh báo và bảng điều khiển quản trị", "67"),
-        ("  4.7. Dữ liệu thực nghiệm trên 8 mặt hàng nông sản và 29 vùng trồng", "69"),
-        ("  4.8. Kết quả thực nghiệm và so sánh chuyên sâu 5 mô hình học máy", "71"),
-        ("  4.9. Kiểm thử hệ thống 4 tầng và kiểm tra bảo mật OWASP Top 10 (72/72 ĐẠT)", "73"),
-        ("CHƯƠNG 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN", "76"),
-        ("  5.1. Các kết quả chính đã đạt được của đề tài", "76"),
-        ("  5.2. Những hạn chế và thách thức thực tế còn tồn tại", "77"),
-        ("  5.3. Hướng phát triển và mở rộng trong tương lai", "77"),
-        ("  5.4. Kết luận chung", "78"),
-        ("DANH MỤC TÀI LIỆU THAM KHẢO", "80"),
-        ("PHỤ LỤC", "82"),
-        ("  Phụ lục A: Danh mục và Đặc tả chi tiết 28 REST API Endpoints", "82"),
-        ("  Phụ lục B: Bảng kết quả 72 Kịch bản Kiểm thử Tự động và Bảo mật OWASP Top 10", "85"),
-        ("  Phụ lục C: Bảng tổng hợp số liệu thực nghiệm 5 Mô hình ML trên 8 Nông sản", "93"),
-        ("  Phụ lục D: Sơ đồ Thiết kế Kiến trúc, Biểu đồ Tuần tự Sequence và Lược đồ ERD", "96"),
-        ("  Phụ lục E: Hướng dẫn Kiểm chứng Kết quả và Kịch bản Trình bày trước Hội đồng", "102"),
-        ("  Phụ lục F: Hướng dẫn Cài đặt Hệ thống và Cấu trúc Đĩa DVD nộp Khóa luận", "106"),
+        ("    3.6.4. Thiết kế thành phần AI UI cao cấp với Syncfusion EJ2 React", "54"),
+        ("    3.6.5. Thiết kế kỹ năng biểu đồ phân tích kỹ thuật FinChart", "55"),
+        ("CHƯƠNG 4: XÂY DỰNG HỆ THỐNG, THỰC NGHIỆM 5 MÔ HÌNH HỌC MÁY, KIỂM THỬ VÀ BẢO MẬT", "57"),
+        ("  4.1. Môi trường triển khai và cấu trúc mã nguồn dự án", "57"),
+        ("  4.2. Xây dựng bộ thu thập dữ liệu giá nông sản tại vườn Việt Nam", "58"),
+        ("  4.3. Xây dựng giao diện tra cứu lịch sử giá và phân tích trực quan", "61"),
+        ("  4.4. Xây dựng quy trình huấn luyện học máy có truy vết toàn vẹn (ML Pipeline)", "64"),
+        ("  4.5. Xây dựng giao diện mô hình và trực quan hóa dự báo", "66"),
+        ("  4.6. Xây dựng hệ thống cảnh báo và bảng điều khiển quản trị", "68"),
+        ("  4.7. Dữ liệu thực nghiệm trên 8 mặt hàng nông sản và 29 vùng trồng", "70"),
+        ("  4.8. Kết quả thực nghiệm và so sánh chuyên sâu 5 mô hình học máy", "72"),
+        ("  4.9. Kết quả kiểm định chất lượng & kiểm toán bảo mật toàn diện hệ thống AgroForecast", "76"),
+        ("    4.9.1. Tóm tắt kết quả kiểm định tổng thể (Backend, Frontend, Coverage, E2E & Bảo mật)", "76"),
+        ("    4.9.2. Phương pháp và quy trình kiểm định kết hợp các Agent Skills chuyên sâu", "77"),
+        ("    4.9.3. Chi tiết kết quả kiểm thử hệ thống đa tầng (128 / 128 kịch bản PASS)", "77"),
+        ("    4.9.4. Phân tích nâng cao độ phủ mã nguồn Backend (tăng từ 83% lên 98%)", "78"),
+        ("    4.9.5. Kết quả kiểm thử E2E trên trình duyệt thật (Playwright)", "79"),
+        ("    4.9.6. Danh sách 9 lỗ hổng bảo mật phát hiện, chấm điểm CVSS v3.1 và giải pháp khắc phục", "80"),
+        ("    4.9.7. Ma trận đối chiếu các lớp phòng thủ theo chuẩn bảo mật quốc tế OWASP Top 10 (2021)", "82"),
+        ("    4.9.8. Quản trị rủi ro tồn dư và kết luận nghiệm thu an toàn thông tin", "83"),
+        ("CHƯƠNG 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN", "85"),
+        ("  5.1. Các kết quả chính đã đạt được của đề tài", "85"),
+        ("  5.2. Những hạn chế và thách thức thực tế còn tồn tại", "86"),
+        ("  5.3. Hướng phát triển và mở rộng trong tương lai", "86"),
+        ("  5.4. Kết luận chung", "87"),
+        ("DANH MỤC TÀI LIỆU THAM KHẢO", "89"),
+        ("PHỤ LỤC", "91"),
+        ("  Phụ lục A: Danh mục và Đặc tả chi tiết 28 REST API Endpoints", "91"),
+        ("  Phụ lục B: Bảng kết quả 72 Kịch bản Kiểm thử Tự động và Bảo mật OWASP Top 10", "94"),
+        ("  Phụ lục C: Bảng tổng hợp số liệu thực nghiệm 5 Mô hình ML trên 8 Nông sản", "102"),
+        ("  Phụ lục D: Sơ đồ Thiết kế Kiến trúc, Biểu đồ Tuần tự Sequence và Lược đồ ERD", "105"),
+        ("  Phụ lục E: Hướng dẫn Kiểm chứng Kết quả và Kịch bản Trình bày trước Hội đồng", "111"),
+        ("  Phụ lục F: Hướng dẫn Cài đặt Hệ thống và Cấu trúc Đĩa DVD nộp Khóa luận", "115"),
     ]
     for item, pg in toc_lines:
         p = doc.add_paragraph()
@@ -326,13 +340,18 @@ def render_complete_front_matter(doc):
         ("Bảng 3.5: Đặc tả các Endpoint RESTful API chính của hệ thống AgroForecast", "50"),
         ("Bảng 3.6: Đặc tả các Nhân tố Giải thích Mô hình Học máy (Explainable AI - XAI)", "40"),
         ("Bảng 3.7: Đặc tả Cấu trúc Bảng Users, Price Revisions và System Settings", "49"),
-        ("Bảng 4.1: Thống kê Bộ Dữ liệu Lịch sử Thực nghiệm của 8 Loại Nông sản", "56"),
-        ("Bảng 4.2: Kết quả Thực nghiệm Đánh giá Sai số 5 Mô hình trên Hồ tiêu Đắk Lắk", "58"),
-        ("Bảng 4.3: Kết quả Dự báo Giá Nông sản Bán tại Vườn theo từng Chân trời 30 Ngày", "61"),
-        ("Bảng 4.4: Danh mục Đầy đủ 72 Kịch bản Kiểm thử Tự động và Kiểm tra Bảo mật OWASP Top 10", "69"),
-        ("Bảng A.1: Danh mục và Đặc tả Chi tiết Toàn bộ 28 REST API Endpoints", "82"),
-        ("Bảng B.1: Chi tiết Toàn văn 72 Kịch bản Kiểm thử và Kiểm tra Bảo mật OWASP Top 10", "85"),
-        ("Bảng C.1: Bảng Số liệu Thực nghiệm 40 Tổ hợp Mô hình trên 8 Mặt hàng Nông sản", "93"),
+        ("Bảng 4.1: Thống kê Bộ Dữ liệu Lịch sử Thực nghiệm của 8 Loại Nông sản", "57"),
+        ("Bảng 4.2: Kết quả Thực nghiệm Đánh giá Sai số 5 Mô hình trên Hồ tiêu Đắk Lắk", "59"),
+        ("Bảng 4.3: Kết quả Dự báo Giá Nông sản Bán tại Vườn theo từng Chân trời 30 Ngày", "62"),
+        ("Bảng 4.4: Tóm tắt kết quả kiểm định chất lượng phần mềm và kiểm toán bảo mật hệ thống AgroForecast", "76"),
+        ("Bảng 4.5: Phân bổ kết quả kiểm định chất lượng phần mềm đa tầng của hệ thống AgroForecast", "77"),
+        ("Bảng 4.6: Bảng phân tích chi tiết độ phủ mã nguồn Backend theo từng nhóm mô-đun (pytest-cov)", "78"),
+        ("Bảng 4.7: Danh mục kịch bản kiểm thử End-to-End (E2E) trên trình duyệt thật qua Playwright", "79"),
+        ("Bảng 4.8: Danh mục 9 lỗ hổng bảo mật được phát hiện, định lượng CVSS v3.1 và biện pháp khắc phục triệt để", "80"),
+        ("Bảng 4.9: Ma trận đối chiếu các lớp phòng thủ kỹ thuật của AgroForecast theo chuẩn OWASP Top 10 (2021)", "82"),
+        ("Bảng A.1: Danh mục và Đặc tả Chi tiết Toàn bộ 28 REST API Endpoints", "91"),
+        ("Bảng B.1: Chi tiết Toàn văn 72 Kịch bản Kiểm thử và Kiểm tra Bảo mật OWASP Top 10", "94"),
+        ("Bảng C.1: Bảng Số liệu Thực nghiệm 40 Tổ hợp Mô hình trên 8 Mặt hàng Nông sản", "102"),
     ]
     for tbl_name, pg in tables_list:
         p = doc.add_paragraph()
@@ -390,6 +409,25 @@ def build_unified_5_chapters():
     chs[3]["sections"][2]["subsections"].extend(ch4_more)
 
     ch1, ch2, ch3, ch4 = chs
+
+    # Bổ sung thành phần AI UI (Syncfusion EJ2 AgroGrid, LocationSelector) và Biểu đồ FinChart vào Chương 3
+    for sec_ui in CH3_UI_AND_CHART_SKILLS_SECTIONS:
+        ch3["sections"].append({
+            "code": sec_ui["code"],
+            "title": sec_ui["title"],
+            "subsections": [
+                {
+                    "code": sec_ui["code"],
+                    "title": sec_ui["title"],
+                    "paragraphs": sec_ui["paragraphs"],
+                    "tables": sec_ui.get("tables", []),
+                }
+            ],
+        })
+
+    # Bổ sung toàn văn Báo cáo Kiểm định Chất lượng & Kiểm toán Bảo mật vào Chương 4 (Mục 4.9)
+    for sec_qa in CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS:
+        ch4["sections"].append(sec_qa)
 
     # Đảm bảo tiêu đề Chương 1 chuẩn xác theo format
     ch1["title"] = "Chương 1: GIỚI THIỆU VÀ TỔNG QUAN ĐỀ TÀI"
