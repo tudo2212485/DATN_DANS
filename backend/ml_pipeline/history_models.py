@@ -253,7 +253,7 @@ class _LSTMLogReturnForecaster(_BaseForecaster):
                 raw_ret = pred_scaled * self.y_std + self.y_mean
                 if not math.isfinite(raw_ret):
                     raw_ret = 0.0
-                damped_ret = float(np.clip(raw_ret, -self.clip_limit, self.clip_limit)) * (0.90 ** step)
+                damped_ret = float(np.clip(raw_ret, -self.clip_limit, self.clip_limit)) * (0.85 ** step)
                 next_log = log_hist[-1] + damped_ret
                 log_hist.append(next_log)
                 rets_hist.append(damped_ret)
@@ -330,9 +330,9 @@ class _ProphetLogForecaster(_BaseForecaster):
         anchor_offset = last_log - yhat_log[0]
         steps = np.arange(1, horizon + 1, dtype=float)
         # Keep Prophet's learned local slope & seasonality anchored smoothly to current level
-        seasonal_trend_delta = (yhat_log[1:] - yhat_log[0])
+        seasonal_trend_delta = (yhat_log[1:] - yhat_log[0]) * (0.94 ** (steps - 1.0))
         # Damp long-range Prophet linear slope extrapolation conservatively
-        max_step_delta = np.maximum(0.25, 4.5 * self.ret_std * np.sqrt(steps))
+        max_step_delta = np.maximum(0.20, 3.5 * self.ret_std * np.sqrt(steps))
         bounded_delta = np.clip(seasonal_trend_delta, -max_step_delta, max_step_delta)
         adjusted_log = last_log + bounded_delta + anchor_offset * 0.0  # exact bridge from last_log
         return np.maximum(np.exp(adjusted_log), 0.0)
@@ -406,11 +406,11 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
 
         df_p = pd.DataFrame({"ds": pd.DatetimeIndex(train_series.index), "y": log_vals})
         model = Prophet(
-            yearly_seasonality=(len(log_vals) >= 365),
+            yearly_seasonality=(4 if len(log_vals) >= 365 else False),
             weekly_seasonality=(len(log_vals) >= 14),
             daily_seasonality=False,
-            changepoint_prior_scale=0.03,
-            seasonality_prior_scale=1.0,
+            changepoint_prior_scale=0.01,
+            seasonality_prior_scale=0.15,
             uncertainty_samples=0,
         )
         model.fit(df_p)
@@ -434,7 +434,8 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
         norm_chan = (chan - x_mean) / x_std
 
         target_rets = chan[seq_len:, 0]
-        y_mean = float(np.mean(target_rets))
+        # Shrink unconditional historical drift toward 0 (prevents past bull/bear regime drift overfitting flat markets)
+        y_mean = 0.0
         y_std = float(np.std(target_rets))
         if y_std < 1e-6:
             y_std = 1.0
@@ -443,15 +444,15 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
         xs = np.asarray([norm_chan[i - seq_len:i] for i in range(seq_len, n)], dtype=np.float32)
         ys = np.asarray(norm_y, dtype=np.float32).reshape(-1, 1)
 
-        model = MultiLayerLSTM(input_size=chan.shape[1], hidden_size=32, num_layers=2, output_size=1)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.003, weight_decay=1e-3)
+        model = MultiLayerLSTM(input_size=chan.shape[1], hidden_size=24, num_layers=2, output_size=1)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.002, weight_decay=1e-2)
         criterion = torch.nn.SmoothL1Loss(beta=0.5)
 
         x_tensor = torch.tensor(xs, dtype=torch.float32)
         y_tensor = torch.tensor(ys, dtype=torch.float32)
         num_samples = len(x_tensor)
         batch_size = min(64, max(16, num_samples))
-        epochs = 40 if num_samples >= 100 else 30
+        epochs = 35 if num_samples >= 100 else 25
 
         model.train()
         for _ in range(epochs):

@@ -151,15 +151,15 @@ def get_market_comparison(db: Session, province: Optional[str] = None) -> List[M
 
     date_map = {}
     for p in all_prices:
-        d_str = p.record_date.strftime("%d/%m")
-        if d_str not in date_map:
-            date_map[d_str] = {}
+        dt_key = p.record_date
+        if dt_key not in date_map:
+            date_map[dt_key] = {}
         c_code = com_dict.get(p.commodity_id, "")
         adj_price = max(1.0, float(p.price) + offset_by_code.get(c_code, 0.0))
-        date_map[d_str][c_code] = adj_price
+        date_map[dt_key][c_code] = adj_price
 
-    # Chọn khoảng 8-10 mốc thời gian trải đều
-    sorted_dates = sorted(list(date_map.keys()), key=lambda x: datetime.strptime(x, "%d/%m") if "%d/%m" else x)
+    # Sắp xếp tăng dần theo đối tượng date thực tế (tránh lệch thứ tự qua ranh giới năm)
+    sorted_dates = sorted(date_map.keys())
     if len(sorted_dates) > 9:
         step = max(1, len(sorted_dates) // 8)
         sampled_dates = sorted_dates[::step]
@@ -167,6 +167,8 @@ def get_market_comparison(db: Session, province: Optional[str] = None) -> List[M
             sampled_dates.append(sorted_dates[-1])
     else:
         sampled_dates = sorted_dates
+
+    spans_multiple_years = bool(sampled_dates and sampled_dates[0].year != sampled_dates[-1].year)
 
     # Lấy mốc giá gốc đầu kỳ để tính % thay đổi
     base_prices = {}
@@ -189,7 +191,7 @@ def get_market_comparison(db: Session, province: Optional[str] = None) -> List[M
 
         comparison_points.append(
             MarketComparisonPoint(
-                date=d,
+                date=d.strftime("%d/%m/%y") if spans_multiple_years else d.strftime("%d/%m"),
                 rice=calc_pct("RICE_IR504"),
                 coffee=calc_pct("COFFEE_ROBUSTA"),
                 pepper=calc_pct("PEPPER_BLACK"),

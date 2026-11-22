@@ -1,5 +1,6 @@
 import io
 import csv
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -160,6 +161,17 @@ def admin_get_recent_prices(
 
     result = []
     for ph, c_name in records:
+        src_url = None
+        if ph.source_details:
+            try:
+                details_obj = json.loads(ph.source_details)
+                cand = details_obj.get("source_url") if isinstance(details_obj, dict) else None
+                if isinstance(cand, str) and cand.strip().lower().startswith(("https://", "http://")):
+                    src_url = cand.strip()
+            except Exception:
+                src_url = None
+        if not src_url and ph.source and ph.source.strip().lower().startswith(("https://", "http://")):
+            src_url = ph.source.strip()
         result.append(AdminPriceItem(
             provenance=ph.provenance,
             id=ph.id,
@@ -170,7 +182,8 @@ def admin_get_recent_prices(
             price_min=float(ph.price_min) if ph.price_min else None,
             price_max=float(ph.price_max) if ph.price_max else None,
             volume=float(ph.volume) if ph.volume else 0.0,
-            source=ph.source
+            source=ph.source,
+            source_url=src_url,
         ))
     return result
 

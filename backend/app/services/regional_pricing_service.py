@@ -250,6 +250,8 @@ def resolve_commodity_location_context(
             "direct_source": None,
             "direct_source_url": None,
             "latest_direct_date": None,
+            "observed_date": str(latest_nat_row.record_date) if latest_nat_row else None,
+            "observed_price": nat_price if latest_nat_row else None,
             "explanation": f"Giá tham chiếu chuẩn tại vùng sản xuất trọng điểm ({commodity.region}).",
             "note": f"Vùng trọng điểm ({commodity.region})",
         }
@@ -311,6 +313,8 @@ def resolve_commodity_location_context(
             "basis_offset": basis_offset,
             "latest_direct_price": direct_price,
             "latest_direct_date": str(latest_direct.recorded_date),
+            "observed_date": str(latest_direct.recorded_date),
+            "observed_price": direct_price,
             "direct_source": latest_direct.source,
             "direct_source_url": latest_direct.source_url,
             "explanation": (
@@ -401,6 +405,8 @@ def resolve_commodity_location_context(
         "basis_offset": total_basis,
         "latest_direct_price": None,
         "latest_direct_date": str(nearest_obs.recorded_date) if nearest_obs else None,
+        "observed_date": str(nearest_obs.recorded_date) if nearest_obs else (str(latest_nat_row.record_date) if latest_nat_row else None),
+        "observed_price": max(0.0, round((benchmark_price or nat_price) + logistics_spread, 2)),
         "direct_source": nearest_obs.source if nearest_obs else None,
         "direct_source_url": nearest_obs.source_url if nearest_obs else None,
         "explanation": (
@@ -487,6 +493,10 @@ def get_commodity_province_comparison(
         "COFFEE": "COFFEE_ROBUSTA",
         "PEPPER": "PEPPER_BLACK",
         "SUGAR": "SUGARCANE",
+        "STRAWBERRY": "STRAWBERRY",
+        "POTATO": "POTATO",
+        "SWEETPOTATO": "SWEET_POTATO",
+        "CASHEW": "CASHEW_NUT",
     }
     target_code = code_aliases.get(code_upper, code_upper)
     commodity = (

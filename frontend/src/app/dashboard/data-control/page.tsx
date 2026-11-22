@@ -45,6 +45,9 @@ interface CommodityItem {
 
 type DataControlTab = 'prices' | 'scraper' | 'audit';
 
+const isSafeHttpUrl = (value: unknown): value is string =>
+  typeof value === 'string' && /^https?:\/\//i.test(value.trim());
+
 export default function DashboardDataControlPage() {
   const canEdit = getUser()?.role === 'admin';
   const [activeTab, setActiveTab] = useState<DataControlTab>('prices');
@@ -288,6 +291,7 @@ export default function DashboardDataControlPage() {
         unit,
         volume: p.volume ?? 0,
         source: p.source || 'Nhập thủ công',
+        sourceUrl: p.sourceUrl ?? (isSafeHttpUrl(p.source) ? p.source : null),
         isVerified,
         statusLabel: isVerified ? 'Đã xác minh' : 'Chưa xác minh',
         _raw: p,
@@ -582,7 +586,13 @@ export default function DashboardDataControlPage() {
                   kind: 'number',
                   width: 135,
                 },
-                { field: 'source', headerText: 'Nguồn dữ liệu', kind: 'text', width: 220 },
+                {
+                  field: 'source',
+                  headerText: 'Nguồn dữ liệu',
+                  kind: 'link',
+                  urlField: 'sourceUrl',
+                  width: 260,
+                },
                 {
                   field: 'statusLabel',
                   headerText: 'Trạng thái',

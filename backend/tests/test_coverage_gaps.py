@@ -862,10 +862,50 @@ def test_scheduler_schema_upgrade_and_main_health(client, db_session, monkeypatc
     from app.main import global_exception_handler
 
     # 1. scheduled_scraper_task & scheduled_alert_evaluation_task (normal + error handling)
-    scraped_ids = []
-    monkeypatch.setattr("app.services.job_service.run_job", lambda jid, kind, opt: scraped_ids.append(opt["commodity_id"]))
+    scraped_opts = []
+    monkeypatch.setattr("app.services.job_service.run_job", lambda jid, kind, opt: scraped_opts.append((kind, opt)))
     sched.scheduled_scraper_task()
-    assert len(scraped_ids) == 1
+    assert scraped_opts == [("scrape", {"days": 7})]
+
+    # Startup auto catch-up: skips while another BackgroundJob is RUNNING
+    _seed_daily_prices(db_session, db_session.query(Commodity).first().id, days=3, base_price=95000.0)
+    assert sched.run_startup_catchup_if_stale() is False
+
+    # Clear RUNNING job -> stale DB launches catch-up job
+    db_session.query(BackgroundJob).delete()
+    db_session.commit()
+    assert sched.run_startup_catchup_if_stale() is True
+    assert len(scraped_opts) == 2
+
+    # Recent SUCCESS scrape within 2 hours -> skips catch-up
+    db_session.query(BackgroundJob).delete()
+    db_session.add(
+        BackgroundJob(
+            kind="scrape",
+            status="SUCCESS",
+            message="Recent OK",
+            finished_at=datetime.now(),
+        )
+    )
+    db_session.commit()
+    assert sched.run_startup_catchup_if_stale() is False
+
+    # Clear jobs & add today's price -> fresh DB skips catch-up
+    db_session.query(BackgroundJob).delete()
+    db_session.add(
+        PriceHistory(
+            commodity_id=db_session.query(Commodity).first().id,
+            record_date=sched._vn_today(),
+            price=98000.0,
+            provenance="collected",
+        )
+    )
+    db_session.commit()
+    assert sched.run_startup_catchup_if_stale() is False
+
+    # Exception inside catch-up is caught safely and returns False
+    monkeypatch.setattr(sched, "_vn_today", lambda: (_ for _ in ()).throw(RuntimeError("TZ err")))
+    assert sched.run_startup_catchup_if_stale() is False
 
     monkeypatch.setattr("app.services.job_service.create_job", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("Locked")))
     sched.scheduled_scraper_task()  # logs & survives
@@ -875,7 +915,8 @@ def test_scheduler_schema_upgrade_and_main_health(client, db_session, monkeypatc
     monkeypatch.setattr(sched, "evaluate_all_alert_rules", lambda db: (_ for _ in ()).throw(RuntimeError("Alert err")))
     sched.scheduled_alert_evaluation_task()  # logs & survives
 
-    # Start + idempotent second call + stop APScheduler
+    # Start + idempotent second call + stop APScheduler (stub catch-up thread target)
+    monkeypatch.setattr(sched, "run_startup_catchup_if_stale", lambda: False)
     inst1 = sched.start_scheduler()
     inst2 = sched.start_scheduler()
     assert inst1 is inst2

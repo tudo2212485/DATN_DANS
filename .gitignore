@@ -33,6 +33,9 @@ yarn-error.log*
 *.key
 *.dump
 *.sql.bak
+database/backup_*.sql
+database/agroforecast_latest.sql
+database/agroforecast_real_*.sql
 
 # Local AI Agent Tooling
 .agents/

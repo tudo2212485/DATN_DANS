@@ -48,6 +48,39 @@ def sources(db: Session = Depends(get_db)):
             for c in db.query(Commodity).order_by(Commodity.id).all()]
 
 
+def _extract_safe_http_url(raw_source: Optional[str], details: Optional[dict], direct_url: Optional[str] = None) -> Optional[str]:
+    """Return a validated http(s) verification URL for UI display (XSS-safe).
+    `direct_url` should ONLY be passed when an observation matches the exact same `record_date`.
+    """
+    candidates = [
+        direct_url,
+        (details or {}).get("source_url") if isinstance(details, dict) else None,
+        raw_source,
+    ]
+    for cand in candidates:
+        if isinstance(cand, str):
+            trimmed = cand.strip()
+            if trimmed.lower().startswith(("https://", "http://")):
+                return trimmed
+    return None
+
+
+def _clean_source_label(raw_source: Optional[str], details: Optional[dict]) -> str:
+    """Return a clean human-readable source name (never empty, avoids displaying raw URLs when provider exists)."""
+    text = (raw_source or "").strip()
+    if text and not text.lower().startswith(("https://", "http://")):
+        return text
+    if isinstance(details, dict):
+        prov = str(details.get("provider") or "").strip()
+        if prov:
+            return prov
+    if text.lower().startswith(("https://", "http://")):
+        if "giacaphe.com" in text.lower():
+            return "giacaphe.com (Giá cà phê nội địa)"
+        return text
+    return "Nguồn thị trường xác minh"
+
+
 @router.get("")
 def history(
     commodity_id: int,
@@ -92,30 +125,37 @@ def history(
 
     records_out = []
     for r in rows:
+        parsed_details = json.loads(r.source_details) if r.source_details else None
+        base_label = _clean_source_label(r.source, parsed_details)
         reg_hit = direct_by_date.get(r.record_date)
         if reg_hit is not None:
             price_val = float(reg_hit.price)
             src_val = f"{reg_hit.source} ({loc['province_name']})"
             prov_val = "collected"
+            # Only use provincial survey URL when the survey matches this exact record_date
+            src_url = _extract_safe_http_url(r.source, parsed_details, reg_hit.source_url)
         else:
             price_val = max(0.0, round(float(r.price) + offset, 2))
             if norm_prov:
                 src_val = (
-                    f"{loc['note']}"
+                    f"{base_label} · {loc['note']}"
                     if loc["pricing_mode"] == "regional_benchmark"
-                    else f"{loc.get('direct_source') or r.source} ({loc['province_name']})"
+                    else f"{base_label} (Tham chiếu {loc['province_name']})"
                 )
             else:
-                src_val = r.source
+                src_val = base_label
             prov_val = r.provenance
+            # NEVER inherit loc["direct_source_url"] from a different date/year onto this row!
+            src_url = _extract_safe_http_url(r.source, parsed_details, None)
         records_out.append(
             dict(
                 id=r.id,
                 date=str(r.record_date),
                 price=price_val,
                 source=src_val,
+                source_url=src_url,
                 provenance=prov_val,
-                source_details=json.loads(r.source_details) if r.source_details else None,
+                source_details=parsed_details,
             )
         )
 

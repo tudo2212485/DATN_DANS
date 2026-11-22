@@ -150,6 +150,13 @@ button, input, select, textarea {
   font-feature-settings: "tnum" 1;
 }
 
+/* Chống Syncfusion đặt line-height: 0 làm ẩn chữ bên trong các ô template link/span */
+.e-grid .e-rowcell.e-templatecell,
+.e-grid .e-rowcell a,
+.e-grid .e-rowcell a span {
+  line-height: 1.45 !important;
+}
+
 /* Class đơn không chứa dấu cách cho customAttributes.class của Syncfusion ColumnDirective */
 .e-grid .e-rowcell.agro-num-cell {
   font-variant-numeric: tabular-nums;

@@ -32,45 +32,45 @@ SOURCES = {
     ),
     "SUGARCANE": dict(
         kind="periodic",
-        source_url="https://thuongmaibiengioimiennui.gov.vn",
+        source_url="https://finance.yahoo.com/quote/SB=F/history/",
         suggested_start="2024-01-01",
-        limitation="Bộ Công Thương (thuongmaibiengioimiennui.gov.vn): Mía 7–10 chữ đường tại Tây Hòa, Phú Yên. Báo cáo giá mua/bán theo kỳ của Khuyến nông và Nhà máy đường; dự báo theo nhịp công bố định kỳ."
+        limitation="Chuỗi ngày quy đổi minh bạch từ sàn đường thô thế giới ICE #11 (Yahoo Finance SB=F × USD/VND) theo chuẩn mía 10 CCS, kết hợp các mốc khảo sát thu mua thực tế 2024–2026 tại Khánh Hòa, Phú Yên, Gia Lai (Bộ Công Thương, Báo Khánh Hòa, Báo Nhân Dân, Báo Nông nghiệp & Môi trường)."
     ),
     "STRAWBERRY": dict(
         kind="daily",
-        source_url="https://agri.lamdong.gov.vn",
-        product="Dâu tây giống New Zealand / Mỹ đá",
-        market="Đà Lạt (Lâm Đồng) & Sơn La",
-        price_type="Bán buôn",
-        suggested_start="2024-01-01",
-        limitation="Sở NN&PTNT tỉnh Lâm Đồng (agri.lamdong.gov.vn), Cổng TTĐT Sơn La (sonla.gov.vn) & Chợ đầu mối Thủ Đức: Dâu tây tươi loại 1 chất lượng cao tại Đà Lạt và Mộc Châu (VNĐ/kg)."
+        source_url="https://kamereo.vn/blog/vi/gia-dau-tay-hom-nay/",
+        product="Dâu tây Mỹ Đá / Giống Pháp Đà Lạt (giá sỉ tại vườn)",
+        market="Phường 8, Đà Lạt, Lâm Đồng",
+        price_type="Bán sỉ tại vườn",
+        suggested_start="2024-11-21",
+        limitation="Kamereo (bảng giá sỉ Dâu tây Đà Lạt & Mộc Châu) kết hợp chuỗi chỉ số nông sản thực tế Yahoo Finance DBA × USD/VND."
     ),
     "SWEET_POTATO": dict(
         kind="daily",
-        source_url="http://giaca.nsvl.com.vn",
-        product="Khoai lang tím Vĩnh Long",
-        market="Bình Tân, Vĩnh Long",
-        price_type="Bán buôn / tại ruộng",
-        suggested_start="2024-01-01",
-        limitation="Cổng TT Giá cả Nông sản Vĩnh Long (giaca.nsvl.com.vn) & Chợ đầu mối Thủ Đức: Khoai lang tím thương phẩm loại 1 tại thủ phủ chuyên canh Bình Tân, Vĩnh Long (VNĐ/kg)."
+        source_url="https://banggianongsan.com/gia-khoai-lang/",
+        product="Khoai lang tím Nhật (Bình Tân, Vĩnh Long / Chợ Bình Điền)",
+        market="Huyện Bình Tân, Vĩnh Long",
+        price_type="Thu mua / bán buôn",
+        suggested_start="2024-11-21",
+        limitation="Bảng Giá Nông Sản (banggianongsan.com) & Chợ Giá (chogia.vn) kết hợp chuỗi chỉ số thực tế Yahoo Finance CORN × USD/VND."
     ),
     "POTATO": dict(
         kind="daily",
-        source_url="https://agri.lamdong.gov.vn",
-        product="Khoai tây hồng / vàng Đà Lạt",
-        market="Đà Lạt, Lâm Đồng",
-        price_type="Bán buôn",
-        suggested_start="2024-01-01",
-        limitation="Sở NN&PTNT tỉnh Lâm Đồng (agri.lamdong.gov.vn) & Chợ đầu mối Thủ Đức: Khoai tây thương phẩm hồng / vàng Đà Lạt loại 1 thu mua tại nông hộ (VNĐ/kg)."
+        source_url="https://namtinhvegetable.com/san-pham/khoai-tay-hong-da-lat-vip/",
+        product="Khoai tây hồng Đà Lạt loại 1 (sỉ tại vựa Lâm Đồng)",
+        market="Phường 7, Đà Lạt, Lâm Đồng",
+        price_type="Bán sỉ tại vựa",
+        suggested_start="2024-11-21",
+        limitation="Vựa nông sản Nam Tĩnh Lâm Đồng (namtinhvegetable.com) kết hợp chuỗi chỉ số thực tế Yahoo Finance MOO × USD/VND."
     ),
     "CASHEW_NUT": dict(
         kind="daily",
-        source_url="https://vinacas.com.vn",
-        product="Hạt điều thô & điều nhân",
-        market="Bình Phước & Đông Nam Bộ",
-        price_type="Bán buôn / thu mua tại vườn",
-        suggested_start="2024-01-01",
-        limitation="Hiệp hội Điều Việt Nam (vinacas.com.vn), Cổng TTĐT tỉnh Bình Phước (binhphuoc.gov.vn) & Tổng cục Hải quan (customs.gov.vn): Giá thu mua điều thô tại vườn và giá nhân điều xuất khẩu (VNĐ/kg)."
+        source_url="https://banggianongsan.com/bang-gia-hat-dieu/",
+        product="Hạt điều tươi thu mua tại vườn (7 tỉnh trọng điểm)",
+        market="Huyện Bù Đăng, Bình Phước",
+        price_type="Thu mua tại vườn",
+        suggested_start="2024-11-21",
+        limitation="Bảng Giá Nông Sản (khảo sát 7 tỉnh Bình Phước, Đắk Lắk, Đắk Nông, Gia Lai, Kon Tum, Lâm Đồng, BR-VT) kết hợp Yahoo Finance SOYB × USD/VND."
     ),
 }
 

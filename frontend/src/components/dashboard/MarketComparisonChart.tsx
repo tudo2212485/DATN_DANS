@@ -22,7 +22,7 @@ interface MarketComparisonChartProps {
 }
 
 interface CommodityToggle {
-  key: 'rice' | 'coffee' | 'pepper' | 'sugar';
+  key: 'rice' | 'coffee' | 'pepper' | 'sugar' | 'strawberry' | 'potato' | 'sweet_potato' | 'cashew';
   label: string;
   color: string;
   fillGradient: string;
@@ -33,6 +33,10 @@ const COMMODITIES: CommodityToggle[] = [
   { key: 'coffee', label: 'Cà phê Robusta', color: '#2563EB', fillGradient: 'colorCoffee' },
   { key: 'pepper', label: 'Hồ tiêu đen', color: '#7C3AED', fillGradient: 'colorPepper' },
   { key: 'sugar', label: 'Mía đường', color: '#D97706', fillGradient: 'colorSugar' },
+  { key: 'strawberry', label: 'Dâu tây Đà Lạt', color: '#E11D48', fillGradient: 'colorStrawberry' },
+  { key: 'potato', label: 'Khoai tây Đà Lạt', color: '#0891B2', fillGradient: 'colorPotato' },
+  { key: 'sweet_potato', label: 'Khoai lang tím', color: '#9333EA', fillGradient: 'colorSweetPotato' },
+  { key: 'cashew', label: 'Hạt điều', color: '#B45309', fillGradient: 'colorCashew' },
 ];
 
 export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ data }) => {
@@ -42,6 +46,10 @@ export const MarketComparisonChart: React.FC<MarketComparisonChartProps> = ({ da
     coffee: true,
     pepper: true,
     sugar: true,
+    strawberry: true,
+    potato: true,
+    sweet_potato: true,
+    cashew: true,
   });
 
   const toggleSeries = (key: string) => {

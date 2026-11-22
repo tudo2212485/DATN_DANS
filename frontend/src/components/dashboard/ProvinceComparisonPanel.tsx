@@ -11,6 +11,10 @@ const COMMODITY_TABS = [
   { code: 'PEPPER_BLACK', label: 'Hồ tiêu đen' },
   { code: 'RICE_IR504', label: 'Lúa gạo IR50404' },
   { code: 'SUGARCANE', label: 'Mía đường' },
+  { code: 'STRAWBERRY', label: 'Dâu tây Đà Lạt' },
+  { code: 'POTATO', label: 'Khoai tây Đà Lạt' },
+  { code: 'SWEET_POTATO', label: 'Khoai lang tím' },
+  { code: 'CASHEW_NUT', label: 'Hạt điều' },
 ];
 
 interface ProvinceComparisonPanelProps {

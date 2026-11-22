@@ -1,14 +1,15 @@
 # BÁO CÁO KIỂM THỬ TỰ ĐỘNG TOÀN DIỆN HỆ THỐNG AGROFORECAST (AUTOMATED TEST REPORT)
 
-- **Dự án:** Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường (AgroForecast)
-- **Ngày xác minh:** 20/11/2026
-- **Công cụ kiểm thử:**
+- **Dự án:** Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường (AgroForecast — Danh mục 8 nông sản)
+- **Ngày xác minh:** 21/11/2026
+- **Công cụ kiểm thử & bảo mật:**
   - **Backend API, Coverage & ML Pipeline:** `pytest 9.1.1`, `pytest-cov 7.1.0` (`coverage 7.17.3`), `FastAPI TestClient`, `SQLAlchemy 2.0`, `PyTorch / XGBoost / Prophet / Statsmodels / Scikit-learn`
-  - **Real-Browser End-to-End (E2E):** `Playwright 1.65.2` (Headless Chrome) chạy trực tiếp trên Frontend `http://localhost:3000` kết nối Backend `http://127.0.0.1:8000` + PostgreSQL thực tế
+  - **Backend SAST Security Scan:** `Bandit` (`bandit -r app -ll` & `bandit -r ml_pipeline -ll` — **0 Medium / 0 High** trên `8.338` LoC)
+  - **Real-Browser End-to-End (E2E):** `Playwright 1.65.2` (Headless Chrome) chạy trực tiếp trên Frontend `http://localhost:3000` kết nối Backend `http://127.0.0.1:8000` + PostgreSQL thực tế (8 nông sản, 40 mô hình ML)
   - **Frontend Verification:** `Node.js Test Runner (node:test)`, `TypeScript Compiler (tsc --noEmit)`, `ESLint (next lint)`, `Next.js 14 Production Build (next build)`
-- **Tổng số kịch bản kiểm thử tự động:** **127 Test Cases** (**120 Backend Tests** + **3 Frontend Unit Tests** + **4 Playwright Real-Browser E2E Tests**) + **17/17 Static/Dynamic Next.js Routes Compiled**
-- **Độ phủ mã nguồn Backend (`pytest-cov` trên toàn bộ gói `app/`):** **98%** (**2.194 / 2.247** câu lệnh thực thi, tăng từ **83%** ban đầu)
-- **Tỷ lệ thành công:** **100% PASS (127/127 Passed, 0 Failed, 0 Console Errors, 0 Runtime Errors, 0 Syncfusion License Banners)**
+- **Tổng số kịch bản kiểm thử tự động:** **128 Test Cases** (**121 Backend Tests** + **3 Frontend Unit Tests** + **4 Playwright Real-Browser E2E Tests**) + **17/17 Static/Dynamic Next.js Routes Compiled**
+- **Độ phủ mã nguồn Backend (`pytest-cov` trên toàn bộ gói `app/`):** **97%** (**2.247 / 2.306** câu lệnh thực thi, tăng từ **83%** ban đầu; 13/27 module đạt **100%**)
+- **Tỷ lệ thành công:** **100% PASS (128/128 Passed, 0 Failed, 0 Console Errors, 0 Runtime Errors, 0 Syncfusion License Banners, 0 Bandit Medium/High Issues)**
 
 ---
 
@@ -63,24 +64,24 @@
 | ID | Mục Tiêu Kiểm Thử | Đầu Vào (Input) | Kết Quả Kỳ Vọng (Expected Output) | Kết Quả Thực Tế (Actual Result) | Trạng Thái |
 | :--- | :--- | :--- | :--- | :--- | :---: |
 | **TC-REG-01** | Danh mục tỉnh hỗ trợ & Định vị GPS tự động (Haversine) | `GET /api/v1/regions`, `GET /api/v1/regions/locate?lat=12.2388&lng=109.1967` (Nha Trang), tọa độ lỗi `lat=999` | Trả đủ 33 tỉnh/thành; tọa độ Nha Trang trả đúng `khanh-hoa` (`Khánh Hòa`, `distance_km < 1.0`); tọa độ ngoài miền trả `422` (không bao giờ 500) | Trả 33 tỉnh; Nha Trang khớp `khanh-hoa` (`0.0 km`); tọa độ sai trả `422` | **PASS** |
-| **TC-REG-02** | Phân biệt minh bạch `direct` và `regional_benchmark` tại Khánh Hòa | `GET /api/v1/market/overview?province=khanh-hoa` & `/api/v1/commodities/overview?province=khanh-hoa` | Mía đường trả `pricing_mode=direct` (`1.070.000`, `distance_km=0`); Cà phê trả `pricing_mode=regional_benchmark` tham chiếu Đắk Lắk kèm `distance_km > 100` & `logistics_spread > 0` | Phân biệt chính xác 100%, không `NaN`/`null` | **PASS** |
+| **TC-REG-02** | Phân biệt minh bạch `direct` và `regional_benchmark` tại Khánh Hòa | `GET /api/v1/market/overview?province=khanh-hoa` & `/api/v1/commodities/overview?province=khanh-hoa` | Mía đường trả `pricing_mode=direct` (`distance_km=0`); các nông sản khác trả `pricing_mode=regional_benchmark` kèm khoảng cách Haversine & cước vận chuyển | Phân biệt chính xác 100%, không `NaN`/`null` | **PASS** |
 | **TC-REG-03** | Nhất quán `?province=khanh-hoa` trên `/history`, `/forecast`, `/market/compare` và bảng chênh lệch theo tỉnh | Gọi đồng bộ `/history`, `/forecast?days=14`, `/market/compare`, `/market/regional-prices/{code}` với `province=khanh-hoa` | Điểm chuyển tiếp lịch sử–dự báo dịch chuyển đồng nhất đúng `basis_offset`; toàn bộ 14 điểm dự báo thỏa `lowerCI <= predictedPrice <= upperCI`; bảng so sánh tỉnh phân loại đúng `direct` vs `regional_benchmark` | 100% điểm khớp liền mạch và thỏa mãn bất đẳng thức 95% CI | **PASS** |
 
-### 1.7. Kiểm thử Mở rộng Phủ nhánh Nghiệp vụ & Xử lý Lỗi (TDD + Coverage Analysis — `backend/tests/test_coverage_gaps.py`)
+### 1.7. Kiểm thử Mở rộng Phủ nhánh Nghiệp vụ, Auto Catch-up & Bảo mật (`backend/tests/test_coverage_gaps.py`, `test_security_hardening.py`)
 
 | ID | Phân hệ / Mục Tiêu Kiểm Thử | Nhánh Nghiệp Vụ & Biên Lỗi Được Phủ | Kết Quả |
 | :--- | :--- | :--- | :---: |
-| **TC-COV-01..03** | Bảo mật Auth, JWT & Rate Limiting (`auth.py`, `deps.py`, `security.py`) | Giới hạn tần suất `429 Too Many Requests` trên `/login` & `/register`; JWT thiếu `sub` (`401`), user đã xóa (`404`); `get_optional_current_user` hạ cấp an toàn với token lỗi; `verify_password` hash hỏng & `sanitize_csv_cell` | **PASS** |
-| **TC-COV-04..06** | Quản trị Nông sản, Giá thủ công, Audit & CSV (`admin.py`, `commodities.py`, `schemas.py`) | CRUD đầy đủ + chặn trùng mã `400`/`404`; xác minh giá ghi `PriceRevision` (`UPDATED`/`DELETED`); toàn bộ 6 luật validate của `PriceCreateManual` (nguồn xác minh, giá âm, ngày tương lai, min/max, độ dài nguồn); `429` cho Scrape/Retrain; chuẩn hóa vai trò `_disabled`; Import CSV mã hóa `latin-1` & lỗi từng dòng | **PASS** |
-| **TC-COV-07..08** | Đánh giá Cảnh báo 7 ngày & SMTP (`alert_service.py`, `alerts.py`) | Kích hoạt `PCT_INC_7D` (+20%) và `PCT_DEC_7D` (-20%), bỏ qua mặt hàng chưa có giá; phân quyền xem quy tắc theo user vs admin; toàn bộ nhánh `404`; nhánh SMTP thực tế thành công & bắt lỗi ngoại lệ mạng an toàn | **PASS** |
-| **TC-COV-09..10** | Định giá Vùng `VNĐ/tấn`, Chuỗi Trực tiếp & Lịch sử (`regional_pricing_service.py`, `commodity_service.py`, `history.py`, `prices.py`, `regions.py`) | Công thức cước vận chuyển cho đơn vị `VNĐ/tấn` (Mía đường) và khoảng cách $\le 5$ km; mã tỉnh không tồn tại hồi quy an toàn về `national_benchmark`; chuỗi khảo sát trực tiếp $\ge 5$ phiên trên `/overview` & `/history`; `/history/readiness`, `/training-runs/{id}`, `/sources`, `/prices/history`, `/spotlight` | **PASS** |
-| **TC-COV-11..15** | Pipeline ML, Phục hồi Tác vụ, APScheduler & Schema Upgrade (`training_service.py`, `job_service.py`, `forecast_service.py`, `history_service.py`, `predictions.py`, `scheduler.py`, `schema_upgrade.py`, `main.py`) | Cô lập lỗi theo từng mô hình (`PARTIAL`/`FAILED`, chặn dự báo `>= 1e12`); tự động cập nhật `active_model` tốt nhất sau Walk-Forward; `sync_forecast_after_scrape` nhận diện snapshot đồng bộ; `run_job("retrain")` thành công & lỗi; lỗi `/forecast` (`404`/`400`/`409`) và chuỗi `periodic`/`irregular`; vòng đời `APScheduler`; `upgrade_existing_schema()` thêm cột an toàn; `/health` trạng thái `degraded` và `global_exception_handler` `500` | **PASS** |
+| **TC-COV-01..03** | Bảo mật Auth, JWT & Rate Limiting (`auth.py`, `deps.py`, `security.py`) | Giới hạn tần suất `429 Too Many Requests` trên `/login` & `/register`; JWT thiếu `sub` (`401`), user đã xóa (`404`); `get_optional_current_user` hạ cấp an toàn; `verify_password` hash hỏng & `sanitize_csv_cell` | **PASS** |
+| **TC-COV-04..06** | Quản trị Nông sản, Giá thủ công, Audit & CSV (`admin.py`, `commodities.py`, `schemas.py`) | CRUD đầy đủ + chặn trùng mã `400`/`404`; xác minh giá ghi `PriceRevision` (`UPDATED`/`DELETED`); đủ 6 luật validate `PriceCreateManual`; `429` Scrape/Retrain; chuẩn hóa vai trò `_disabled`; Import CSV `latin-1` | **PASS** |
+| **TC-COV-07..08** | Đánh giá Cảnh báo 7 ngày & SMTP (`alert_service.py`, `alerts.py`) | Kích hoạt `PCT_INC_7D` (+20%) và `PCT_DEC_7D` (-20%), bỏ qua mặt hàng chưa có giá; phân quyền xem quy tắc theo user vs admin; nhánh SMTP thực tế thành công & bắt lỗi ngoại lệ mạng an toàn | **PASS** |
+| **TC-COV-09..10** | Định giá Vùng `VNĐ/tấn`, Chuỗi Trực tiếp & Lịch sử (`regional_pricing_service.py`, `commodity_service.py`, `history.py`, `prices.py`, `regions.py`) | Công thức cước `VNĐ/tấn` và $\le 5$ km; mã tỉnh không tồn tại hồi quy `national_benchmark`; chuỗi trực tiếp $\ge 5$ phiên trên `/overview` & `/history`; `/history/readiness`, `/training-runs/{id}`, `/sources`, `/prices/history`, `/spotlight` | **PASS** |
+| **TC-COV-11..16** | Pipeline ML, Startup Auto Catch-up, APScheduler & Bảo mật SSRF/TLS (`training_service.py`, `job_service.py`, `scheduler.py`, `schema_upgrade.py`, `vietnam_real_scrapers.py`) | Cô lập lỗi theo mô hình (`PARTIAL`/`FAILED`, chặn tràn số $\ge 10^{12}$); `scheduled_scraper_task()` cào đủ 8 mặt hàng; `run_startup_catchup_if_stale()` (bỏ qua khi đang có job `RUNNING`, kích hoạt khi dữ liệu cũ, bỏ qua khi đã cào trong 2h hoặc đã có dữ liệu hôm nay, bắt lỗi an toàn); chống SSRF `ALLOWED_SCRAPER_DOMAINS`, chặn `javascript:`/`file://` trong `source_url`, `verify=True` 100% | **PASS** |
 
 ---
 
-## 2. KẾT QUẢ THỰC THI TERMINAL THỰC TẾ
+## 2. KẾT QUẢ THỰC THI TERMINAL THỰC TẾ (21/11/2026)
 
-### 2.1. Kết quả `pytest --cov=app --cov-report=term-missing -v` (Backend Suite — 120/120 PASSED, 98% Coverage)
+### 2.1. Kết quả `pytest --cov=app --cov-report=term-missing -v` & `bandit -ll` (Backend — 121/121 PASSED, 97% Coverage, 0 Bandit Issues)
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- D:\DA_TN\backend\venv\Scripts\python.exe
@@ -88,26 +89,13 @@ rootdir: D:\DA_TN\backend
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.14.2, cov-7.1.0
-collecting ... collected 120 items
+collecting ... collected 121 items
 ...
-tests/test_coverage_gaps.py::test_auth_rate_limiting_login_and_register PASSED
-tests/test_coverage_gaps.py::test_jwt_missing_sub_and_deleted_user PASSED
-tests/test_coverage_gaps.py::test_optional_current_user_edge_tokens_and_security_helpers PASSED
-tests/test_coverage_gaps.py::test_admin_and_public_commodities_crud_lifecycle PASSED
-tests/test_coverage_gaps.py::test_admin_manual_price_audit_and_schema_validation PASSED
-tests/test_coverage_gaps.py::test_admin_user_model_task_and_csv_branches PASSED
-tests/test_coverage_gaps.py::test_alert_evaluation_pct_triggers_ownership_and_404s PASSED
-tests/test_coverage_gaps.py::test_alert_email_smtp_success_and_error PASSED
-tests/test_coverage_gaps.py::test_regional_pricing_tonnes_unknown_province_and_direct_series PASSED
-tests/test_coverage_gaps.py::test_history_readiness_sources_prices_comparison_and_spotlight PASSED
-tests/test_coverage_gaps.py::test_history_service_cadence_and_readiness_branches PASSED
-tests/test_coverage_gaps.py::test_forecast_service_errors_and_legacy_fallback PASSED
-tests/test_coverage_gaps.py::test_training_service_and_job_service_recovery PASSED
-tests/test_coverage_gaps.py::test_predictions_endpoints_and_async_retrain PASSED
-tests/test_coverage_gaps.py::test_scheduler_schema_upgrade_and_main_health PASSED
-...
-TOTAL                                       2247     53    98%
-================ 120 passed, 18 warnings in 100.33s (0:01:40) =================
+TOTAL                                       2306     59    97%
+================ 121 passed, 18 warnings in 124.90s (0:02:04) =================
+
+bandit -r app -ll         -> 4,041 LoC scanned | Medium: 0 | High: 0 (No issues identified)
+bandit -r ml_pipeline -ll -> 4,297 LoC scanned | Medium: 0 | High: 0 (No issues identified)
 ```
 
 ### 2.2. Kết quả Kiểm thử E2E trên Trình duyệt thật (`pytest e2e/test_agroforecast_e2e.py -v` — 4/4 PASSED)
@@ -123,11 +111,15 @@ e2e/test_agroforecast_e2e.py::test_e2e_02_forecast_best_model_horizon_and_tabs P
 e2e/test_agroforecast_e2e.py::test_e2e_03_history_compare_alerts_clean_syncfusion PASSED [ 75%]
 e2e/test_agroforecast_e2e.py::test_e2e_04_rbac_analyst_blocked_and_admin_full_access PASSED [100%]
 
-============================= 4 passed in 28.53s ==============================
+============================= 4 passed in 29.03s ==============================
 ```
 
-### 2.3. Kết quả Kiểm thử Frontend (`node --test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`)
+### 2.3. Kết quả Kiểm thử Frontend (`tsc --noEmit`, `next lint`, `node --test`, `next build`)
 ```text
+> frontend@0.1.0 lint
+> next lint
+✔ No ESLint warnings or errors
+
 TAP version 13
 ok 1 - TC-FE-01: Format tiền tệ chuẩn Việt Nam và đơn vị nhất quán (Mía đường là VNĐ/tấn)
 ok 2 - TC-FE-02: Format ngày giờ chuẩn Việt Nam DD/MM/YYYY và DD/MM/YYYY HH:mm (loại bỏ ISO thô)
@@ -135,87 +127,57 @@ ok 3 - TC-FE-03: Tính toán phần trăm tăng trưởng chuẩn hóa và tươ
 1..3
 # tests 3 | pass 3 | fail 0
 
-> frontend@0.1.0 lint
-> next lint
-✔ No ESLint warnings or errors
-
 > frontend@0.1.0 build
 > next build
   ▲ Next.js 14.2.35
-  - Environments: .env.local
-   Creating an optimized production build ...
  ✓ Compiled successfully
-   Linting and checking validity of types ...
-   Collecting page data ...
  ✓ Generating static pages (17/17)
 ```
 
 ---
 
-## 3. BÁO CÁO ĐO & TỐI ƯU ĐỘ PHỦ MÃ NGUỒN BACKEND (`pytest-cov`)
+## 3. BÁO CÁO ĐO ĐỘ PHỦ MÃ NGUỒN BACKEND (`pytest-cov` — 21/11/2026)
 
-Sau khi đo mức nền ban đầu (**83%** trên 2.247 dòng lệnh thực thi của gói `app/`), nhóm áp dụng kỹ thuật phân tích độ phủ (**Coverage Analysis**) kết hợp **TDD** để nhận diện và bổ sung 15 kịch bản kiểm thử chuyên sâu cho các nhánh nghiệp vụ, kiểm soát truy cập và xử lý lỗi quan trọng, nâng tổng độ phủ lên **98%** (giảm số dòng chưa phủ từ **377** xuống chỉ còn **53** dòng).
-
-| Module (`backend/app/...`) | Số lệnh (Stmts) | Trước tối ưu (Baseline) | Sau tối ưu (Final) | Mức tăng | Ghi chú các nhánh quan trọng đã đóng |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| `api/v1/api.py` | 13 | 100% | **100%** | — | Định tuyến API v1 |
-| `api/v1/endpoints/admin.py` | 316 | 72% | **96%** | **+24%** | CRUD nông sản/giá/người dùng, Audit Log, Rate Limit 429, Import/Export CSV |
-| `api/v1/endpoints/alerts.py` | 30 | 97% | **100%** | **+3%** | Lọc cảnh báo theo phiên người dùng & khách |
-| `api/v1/endpoints/auth.py` | 41 | 95% | **100%** | **+5%** | Chống brute-force `429 Too Many Requests` trên `/login` & `/register` |
-| `api/v1/endpoints/commodities.py` | 50 | 72% | **100%** | **+28%** | `PUT`/`DELETE` nông sản + kiểm tra `404` |
-| `api/v1/endpoints/forecast.py` | 14 | 100% | **100%** | — | API dự báo & so sánh 5 mô hình |
-| `api/v1/endpoints/history.py` | 63 | 70% | **98%** | **+28%** | `/readiness`, `/training-runs/{id}`, `/sources`, chuỗi khảo sát trực tiếp theo tỉnh |
-| `api/v1/endpoints/market.py` | 25 | 96% | **100%** | **+4%** | Chặn `404` cho mã nông sản không tồn tại trên `/market/regional-prices/{code}` |
-| `api/v1/endpoints/predictions.py` | 58 | 64% | **100%** | **+36%** | `/forecast` theo `commodity_id`, `/metrics`, xử lý ngoại lệ `500`, `_async_retrain_task` |
-| `api/v1/endpoints/prices.py` | 12 | 83% | **100%** | **+17%** | `GET /api/v1/prices/history` |
-| `api/v1/endpoints/regions.py` | 14 | 86% | **100%** | **+14%** | Xử lý lỗi định vị địa lý trả `400` an toàn |
-| `core/config.py` | 20 | 100% | **100%** | — | Tải cấu hình môi trường |
-| `core/database.py` | 11 | 64% | **64%** | — | `get_db()` được override bởi SQLite in-memory trong fixture test |
-| `core/deps.py` | 42 | 86% | **100%** | **+14%** | JWT thiếu `sub`, user đã bị xóa (`404`), hạ cấp an toàn `get_optional_current_user` |
-| `core/scheduler.py` | 47 | 26% | **100%** | **+74%** | Toàn bộ tác vụ lập lịch scrape/cảnh báo, xử lý ngoại lệ & vòng đời APScheduler |
-| `core/schema_upgrade.py` | 23 | 39% | **74%** | **+35%** | Nâng cấp lược đồ thêm cột idempotent (6 dòng còn lại đặc thù riêng dialect PostgreSQL) |
-| `core/security.py` | 79 | 95% | **100%** | **+5%** | Hash hỏng, chống CSV Formula Injection rỗng, reset khóa RateLimiter |
-| `main.py` | 55 | 85% | **93%** | **+8%** | Endpoint `/`, `/health` trạng thái `degraded`, `global_exception_handler` `500` |
-| `models/models.py` | 153 | 100% | **100%** | — | Toàn bộ thực thể ORM SQLAlchemy |
-| `schemas/schemas.py` | 318 | 98% | **100%** | **+2%** | Đủ 6 ràng buộc nghiệp vụ của `PriceCreateManual` |
-| `services/alert_service.py` | 159 | 77% | **99%** | **+22%** | Đánh giá `PCT_INC_7D`/`PCT_DEC_7D`, lọc sở hữu, SMTP thật & lỗi mạng |
-| `services/commodity_service.py` | 135 | 81% | **96%** | **+15%** | Sparkline trực tiếp theo tỉnh ($\ge 5$ phiên), `spotlight`, bảng so sánh rỗng |
-| `services/forecast_service.py` | 121 | 86% | **97%** | **+11%** | Mã lỗi `404`/`400`/`409` và chế độ tương thích bản ghi dự báo cũ |
-| `services/history_service.py` | 106 | 83% | **100%** | **+17%** | Kiểm tra khoảng trống chuỗi >14 ngày, giá $\le 0$, hồi quy `periodic` $\to$ `daily` & `irregular` |
-| `services/job_service.py` | 70 | 84% | **93%** | **+9%** | Thực thi `run_job("retrain")` thành công/thất bại & đồng bộ snapshot sau scrape |
-| `services/regional_pricing_service.py` | 166 | 89% | **96%** | **+7%** | Cước vận chuyển `VNĐ/tấn`, khoảng cách $\le 5$ km, fallback mã tỉnh lạ |
-| `services/training_service.py` | 106 | 78% | **99%** | **+21%** | Cô lập lỗi theo mô hình (`PARTIAL`), chặn tràn số $\ge 10^{12}$, tự chọn `active_model` |
-| **TỔNG CỘNG (`app/`)** | **2.247** | **83% (377 miss)** | **98% (53 miss)** | **+15%** | **53 dòng còn lại chủ yếu là nhánh riêng PostgreSQL (`pg_advisory_xact_lock`, migration PG) và entrypoint `uvicorn`** |
+| Module (`backend/app/...`) | Số lệnh (Stmts) | Chưa phủ (Miss) | Độ phủ (Cover) | Ghi chú |
+| :--- | :---: | :---: | :---: | :--- |
+| `api/v1/api.py` | 13 | 0 | **100%** | Định tuyến API v1 |
+| `api/v1/endpoints/admin.py` | 316 | 14 | **96%** | CRUD nông sản/giá/người dùng, Audit Log, Rate Limit 429, Import/Export CSV |
+| `api/v1/endpoints/alerts.py` | 33 | 1 | **97%** | Lọc cảnh báo theo phiên người dùng & chống IDOR |
+| `api/v1/endpoints/auth.py` | 41 | 0 | **100%** | Chống brute-force `429` trên `/login` & `/register` |
+| `api/v1/endpoints/commodities.py` | 50 | 0 | **100%** | CRUD nông sản + kiểm tra `404` |
+| `api/v1/endpoints/forecast.py` | 14 | 0 | **100%** | API dự báo & so sánh 5 mô hình |
+| `api/v1/endpoints/history.py` | 63 | 1 | **98%** | `/readiness`, `/training-runs/{id}`, `/sources`, chuỗi theo tỉnh |
+| `api/v1/endpoints/market.py` | 25 | 0 | **100%** | `/market/overview` & `/market/regional-prices/{code}` |
+| `api/v1/endpoints/predictions.py` | 58 | 0 | **100%** | `/predictions/forecast`, `/metrics`, xử lý lỗi `500` |
+| `api/v1/endpoints/prices.py` | 12 | 0 | **100%** | `GET /api/v1/prices/history` |
+| `api/v1/endpoints/regions.py` | 14 | 0 | **100%** | Danh mục 33 tỉnh & định vị GPS Haversine |
+| `core/config.py` | 35 | 0 | **100%** | Kiểm tra cấu hình an toàn (JWT secret guard, CORS) |
+| `core/database.py` | 11 | 4 | **64%** | `get_db()` được override bởi SQLite in-memory trong test |
+| `core/deps.py` | 42 | 0 | **100%** | Xác thực JWT & phân quyền RBAC |
+| `core/scheduler.py` | 78 | 3 | **96%** | APScheduler GMT+7 & toàn bộ nhánh Startup Auto Catch-up |
+| `core/schema_upgrade.py` | 23 | 6 | **74%** | Nâng cấp lược đồ idempotent (6 dòng đặc thù riêng PG) |
+| `core/security.py` | 79 | 0 | **100%** | Bcrypt, JWT, chống CSV Formula Injection, RateLimiter |
+| `main.py` | 56 | 5 | **91%** | `/`, `/health` (`degraded`), `global_exception_handler` `500` |
+| `models/models.py` | 153 | 0 | **100%** | Toàn bộ thực thể ORM SQLAlchemy |
+| `schemas/schemas.py` | 318 | 0 | **100%** | Toàn bộ schema Pydantic & validation |
+| `services/alert_service.py` | 168 | 2 | **99%** | Đánh giá ngưỡng & gửi email SMTP |
+| `services/commodity_service.py` | 135 | 6 | **96%** | Tổng quan 8 mặt hàng, Sparkline trực tiếp, Spotlight |
+| `services/forecast_service.py` | 121 | 4 | **97%** | Dự báo & tương thích bản ghi |
+| `services/history_service.py` | 106 | 0 | **100%** | Kiểm tra chất lượng chuỗi & cadence |
+| `services/job_service.py` | 70 | 5 | **93%** | Thực thi tác vụ nền scrape/retrain & đồng bộ 8 mặt hàng |
+| `services/regional_pricing_service.py` | 166 | 7 | **96%** | Thuật toán Haversine 2 tầng & cước vận chuyển |
+| `services/training_service.py` | 106 | 1 | **99%** | Walk-Forward 7N, Conformal 95% CI, tự chọn `active_model` |
+| **TỔNG CỘNG (`app/`)** | **2.306** | **59** | **97%** | **13/27 module đạt 100%** |
 
 ---
 
-## 4. KẾT QUẢ KIỂM THỬ END-TO-END TRÊN TRÌNH DUYỆT THẬT (PLAYWRIGHT)
+## 4. KẾT QUẢ KIỂM THỬ END-TO-END TRÊN TRÌNH DUYỆT THẬT (PLAYWRIGHT — 8 NÔNG SẢN)
 
-Bộ kiểm thử tự động [e2e/test_agroforecast_e2e.py](file:///d:/DA_TN/e2e/test_agroforecast_e2e.py) điều khiển trình duyệt Chrome thật (`1440x900`) thao tác trực tiếp trên toàn bộ giao diện Next.js + Syncfusion EJ2 (`http://localhost:3000`) kết nối API FastAPI + PostgreSQL (`http://127.0.0.1:8000`):
+Bộ kiểm thử [e2e/test_agroforecast_e2e.py](file:///d:/DA_TN/e2e/test_agroforecast_e2e.py) điều khiển Chrome thật (`1440×900`) thao tác trực tiếp trên Next.js + Syncfusion EJ2 (`http://localhost:3000`) kết nối FastAPI + PostgreSQL (`http://127.0.0.1:8000`):
 
-| Mã E2E | Kịch Bản Người Dùng Thực Tế | Xác Minh Giao Diện & Dữ Liệu | Console / Runtime Errors | Banner Bản Quyền Syncfusion | Kết Quả |
+| Mã E2E | Kịch Bản Người Dùng Thực Tế | Xác Minh Giao Diện & Dữ Liệu | Console / Runtime Errors | Banner Syncfusion | Kết Quả |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| **E2E-01** | **Trang Tổng quan (`/`) & Định giá theo Vị trí Khánh Hòa** | Mở bộ chọn khu vực trên Topbar, tìm & chọn **Khánh Hòa**; xác nhận thẻ Mía đường hiển thị huy hiệu xanh **`Khảo sát tại Khánh Hòa`**, các mặt hàng còn lại hiển thị **`Tham chiếu ...`**; mở bảng **`Chênh lệch giá theo tỉnh hôm nay`** hiển thị nhãn **`Đang chọn`** | **0** | **0** | **PASS** |
-| **E2E-02** | **Trang Dự báo (`/forecast`) — Mô hình tốt nhất ($\star$), Kỳ hạn & Chuyển Tab** | Kiểm tra tự động kích hoạt mô hình tốt nhất (`★`) cho Lúa gạo & khi đổi sang Mía đường; chuyển kỳ hạn **`7N` $\leftrightarrow$ `30N`**; chuyển tab **`Bảng chi tiết dự báo` $\leftrightarrow$ `So sánh 5 mô hình`** kèm di chuột lên biểu đồ Syncfusion (đảm bảo không còn lỗi `BaseTooltip.appendChild`) | **0** | **0** | **PASS** |
-| **E2E-03** | **Lịch sử (`/history`), So sánh (`/compare`) & Cảnh báo (`/alerts`)** | Xác nhận `GridComponent` (`.e-grid`) và `ChartComponent` (`.e-chart svg`) của Syncfusion hiển thị hoàn chỉnh, biểu đồ Pearson render sạch trên `/compare` | **0** | **0** | **PASS** |
-| **E2E-04** | **Kiểm soát Truy cập RBAC (Guest / Analyst / Admin)** | 1) **Khách chưa đăng nhập** truy cập `/dashboard/overview` bị đẩy về `/login`; 2) **Analyst** (`anhnguyen@agroforecast.vn`) bị ẩn menu Quản trị ở Sidebar **và** bị chặn chuyển hướng khỏi toàn bộ 4 URL `/dashboard/*`; 3) **Admin** (`admin@agroforecast.vn`) truy cập trọn vẹn 4 trang `/dashboard/overview`, `/dashboard/data-control`, `/dashboard/ml-models`, `/dashboard/users` | **0** | **0** | **PASS** |
-
-> **Phát hiện & Khắc phục Lỗ hổng Thực tế qua Quy trình TDD (Red → Green):**
-> Trong lần chạy đầu tiên của **E2E-04**, Playwright đã bắt được một lỗi phân quyền thực tế trên Frontend: mặc dù Sidebar đã ẩn nhóm *Quản trị hệ thống* đối với vai trò `Analyst`, thành phần bảo vệ tuyến đường [frontend/src/app/dashboard/layout.tsx](file:///d:/DA_TN/frontend/src/app/dashboard/layout.tsx) vẫn kiểm tra `!['admin', 'analyst'].includes(user.role)`, khiến tài khoản `Analyst` vẫn mở được trang quản trị khi gõ trực tiếp URL `/dashboard/overview`. Nhóm đã thu hẹp điều kiện bảo vệ về chặt chẽ `user.role !== 'admin'`, build lại bản production (`next build`) và chạy lại **E2E-04** đạt **PASS 100%**.
-
----
-
-## 5. QUY TRÌNH ỨNG DỤNG AGENT SKILLS TRONG KIỂM THỬ TỰ ĐỘNG (QA METHODOLOGY)
-
-Để đảm bảo tính khoa học, khả năng tái lập và chất lượng công nghiệp cho đồ án tốt nghiệp, quy trình kiểm thử và nghiệm thu hệ thống **AgroForecast** áp dụng đồng bộ 4 **Agent Skills** chuẩn hóa lưu trong thư mục `.agents/skills/`:
-
-1. **`coverage-analysis` (Phân tích Độ phủ Mã nguồn):**
-   - Thiết lập mốc cơ sở (**Baseline = 83%**) bằng `pytest --cov=app --cov-report=term-missing`, phân loại các vùng mã chưa được phủ theo mức độ rủi ro nghiệp vụ (bảo mật Auth/RBAC, tính toàn vẹn dữ liệu giá/CSV, định giá theo tỉnh, cô lập lỗi huấn luyện ML, cảnh báo tự động) thay vì tăng số liệu hình thức.
-   - Kết quả: Đẩy độ phủ Backend lên **98%**, với 12/27 module cốt lõi đạt **100%**.
-2. **`test-driven-development` (Phát triển Hướng Kiểm thử — TDD Red/Green/Refactor):**
-   - Viết trước kịch bản kiểm thử hành vi thực tế phản ánh đúng hợp đồng nghiệp vụ (không mock tràn lan logic cốt lõi, tự tính giá trị kỳ vọng bằng tay cho cước vận chuyển Haversine `VNĐ/tấn`, ngưỡng tăng/giảm 7 ngày, xác thực RBAC).
-   - Chu trình **RED → GREEN** trên E2E-04 trực tiếp phát hiện và vá triệt để lỗ hổng truy cập URL trực tiếp `/dashboard/*` của tài khoản `Analyst`.
-3. **`webapp-testing` (Kiểm thử Ứng dụng Web Thực tế với Playwright):**
-   - Áp dụng mô hình *Reconnaissance-then-Action* kết hợp `wait_until="networkidle"`, gắn bộ thu thập tự động `page.on("console")` và `page.on("pageerror")` để kiểm chứng 100% luồng người dùng cuối trên trình duyệt thật (Location Picker Khánh Hòa, Syncfusion Grid/Chart tương tác chuột, phân quyền đa vai trò).
-4. **`verification-before-completion` (Xác minh Chứng cứ Trước khi Kết luận):**
-   - Tuân thủ nguyên tắc *Evidence Before Assertions*: mọi con số trong báo cáo (120/120 Backend tests, 98% coverage, 4/4 E2E Playwright, 3/3 Frontend unit tests, 0 TypeScript/ESLint errors, 17/17 Next.js routes) đều được trích xuất trực tiếp từ kết quả thực thi lệnh mới nhất ngay sau lần chỉnh sửa mã nguồn cuối cùng.
+| **E2E-01** | **Trang Tổng quan (`/`) 8 nông sản & Định giá vị trí Khánh Hòa** | Xác nhận đủ **8 thẻ nông sản** (bao gồm `Dâu tây Đà Lạt`, `Khoai tây Đà Lạt`, `Khoai lang tím Vĩnh Long`, `Hạt điều`) hiển thị lưới 4×2 gọn gàng; chọn **Khánh Hòa** hiển thị huy hiệu xanh **`Khảo sát tại Khánh Hòa`** cho Mía đường và **`Tham chiếu Lâm Đồng`** (~87 km) cho nông sản Đà Lạt; bảng **`Chênh lệch giá theo tỉnh hôm nay`** hiển thị nhãn **`Đang chọn`** | **0** | **0** | **PASS** |
+| **E2E-02** | **Trang Dự báo (`/forecast`) — Mô hình tốt nhất ($\star$), Dâu tây Đà Lạt & Tab** | Xác nhận tự động chọn mô hình tốt nhất (`★`) cho Lúa gạo, chuyển sang **`Dâu tây Đà Lạt`** (`Prophet ★`), đổi kỳ hạn **`7N` $\leftrightarrow$ `30N`**, chuyển tab **`Bảng chi tiết dự báo` $\leftrightarrow$ `So sánh 5 mô hình`** kèm di chuột trên biểu đồ Syncfusion (0 crash `BaseTooltip.appendChild`) | **0** | **0** | **PASS** |
+| **E2E-03** | **Lịch sử (`/history`), So sánh 8 nông sản (`/compare`) & Cảnh báo (`/alerts`)** | Xác nhận Syncfusion `GridComponent` (`.e-grid`) và `ChartComponent` (`.e-chart svg`) render hoàn chỉnh đủ 8 đường tăng trưởng chuẩn hóa và bảng tương quan Pearson | **0** | **0** | **PASS** |
+| **E2E-04** | **Kiểm soát Truy cập RBAC (Guest / Analyst / Admin)** | Khách chưa đăng nhập bị đẩy về `/login`; `Analyst` (`anhnguyen@agroforecast.vn`) bị ẩn menu Quản trị **và** bị chặn chuyển hướng khỏi toàn bộ 4 URL `/dashboard/*`; `Admin` (`admin@agroforecast.vn`) truy cập trọn vẹn 4 trang quản trị | **0** | **0** | **PASS** |

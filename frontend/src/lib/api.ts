@@ -22,7 +22,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 export interface HistorySource { id: number; code: string; name: string; unit: string; automatic: boolean; source_url: string | null; limitation: string; kind: 'daily' | 'irregular' | 'periodic'; suggested_start?: string; latest_date?: string | null }
 export interface HistoryReadiness { ready: boolean; reason: string | null; observation_count: number; start_date: string | null; end_date: string | null; max_gap_days: number }
 export interface HistoryResponse {
-  records: {id: number; date: string; price: number; source: string; provenance: string; source_details?:{market:string;price_type:string;product:string;upstream:string}}[];
+  records: {id: number; date: string; price: number; source: string; source_url?: string | null; provenance: string; source_details?:{market?:string;price_type?:string;product?:string;upstream?:string;source_url?:string}}[];
   periodic_records: {id:number;start:string;end:string;published_date:string;buying_price:number;selling_price:number;unit:string;specification:string;market:string;source:string;attribution:string}[];
   missing_dates: string[]; readiness: HistoryReadiness; range_readiness: HistoryReadiness; unverified_count: number;
   location_context?: import('@/types').LocationContextData | null;
@@ -545,6 +545,7 @@ interface RawAdminPrice {
   price_max?: number | null;
   volume?: number;
   source?: string | null;
+  source_url?: string | null;
 }
 
 /**
@@ -579,6 +580,7 @@ export async function fetchRecentPricesApi(
       priceMax: d.price_max,
       volume: d.volume,
       source: d.source,
+      sourceUrl: d.source_url ?? null,
       provenance: d.provenance,
     }));
   } catch (error) { throw error; }

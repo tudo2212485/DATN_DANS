@@ -16,6 +16,8 @@ export interface LocationContextData {
   direct_source?: string | null;
   direct_source_url?: string | null;
   latest_direct_date?: string | null;
+  observed_date?: string | null;
+  observed_price?: number | null;
   explanation?: string | null;
   note?: string | null;
 }
@@ -193,6 +195,7 @@ export interface AdminPriceItem {
   priceMax?: number | null;
   volume?: number;
   source?: string | null;
+  sourceUrl?: string | null;
 }
 
 export interface AdminUserItem {

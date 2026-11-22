@@ -33,18 +33,21 @@ const provenanceLabel: Record<string, string> = {
   unverified: 'Chưa xác minh',
 };
 
-const formatChartDate = (value: string) => {
-  const [year, month, day] = value.split('-');
-  return day && month && year ? `${day}/${month}` : value;
-};
+const isSafeHttpUrl = (value: unknown): value is string =>
+  typeof value === 'string' && /^https?:\/\//i.test(value.trim());
+
+function parseLocalIsoDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y || 2026, (m || 1) - 1, d || 1);
+}
 
 export default function HistoryPage() {
   const { provinceCode, provinceName } = useLocation();
   const [sources, setSources] = useState<HistorySource[]>([]);
   const [commodityId, setCommodityId] = useState(2);
-  const [anchorEnd, setAnchorEnd] = useState<string>('2026-11-20');
-  const [start, setStart] = useState<string>('2026-08-23');
-  const [end, setEnd] = useState<string>('2026-11-20');
+  const [anchorEnd, setAnchorEnd] = useState<string>('2026-11-22');
+  const [start, setStart] = useState<string>('');
+  const [end, setEnd] = useState<string>('');
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -99,11 +102,22 @@ export default function HistoryPage() {
   const source = sources.find((s) => s.id === commodityId);
   const currentUnit = getCommodityUnit(source?.name, source?.unit);
 
-  // Only plot observed points from start to end so the chart stretches cleanly across 100% width
-  const chart = (data?.records || []).map((r) => ({
-    date: r.date,
-    price: r.price,
-  }));
+  // Deduplicate by YYYY-MM-DD and sort strictly ascending so multi-year DateTime charts never loop back
+  const chart = (() => {
+    const byDay = new Map<string, { date: string; price: number }>();
+    for (const r of data?.records || []) {
+      if (r.date) {
+        byDay.set(r.date.slice(0, 10), { date: r.date.slice(0, 10), price: r.price });
+      }
+    }
+    return Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+  })();
+
+  const selectedSpanDays = (() => {
+    const s = parseLocalIsoDate(start);
+    const e = parseLocalIsoDate(end);
+    return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
+  })();
 
   const chartStats = data?.records.length
     ? (() => {
@@ -296,16 +310,19 @@ export default function HistoryPage() {
               const yMin = Math.max(0, Math.floor(((chartStats?.min ?? 0) - pad) / 100) * 100);
               const yMax = Math.ceil(((chartStats?.max ?? 0) + pad) / 100) * 100;
               const chartRows = chart.map((r) => ({
-                x: formatChartDate(r.date),
+                x: parseLocalIsoDate(r.date),
                 fullDate: `Ngày ${formatDateVN(r.date)}`,
                 price: r.price,
                 tipText: `${formatNumberVN(r.price)} ${currentUnit}`,
               }));
+              const xLabelFormat = selectedSpanDays > 180 ? 'MM/yyyy' : 'dd/MM/yy';
               return (
                 <FinChart
                   id={`syncfusion-history-${commodityId}-${provinceCode}-${start}-${end}`}
                   data={chartRows}
                   xName="x"
+                  xValueType="DateTime"
+                  xLabelFormat={xLabelFormat}
                   height={340}
                   showLegend={false}
                   showCrosshair={true}
@@ -314,14 +331,14 @@ export default function HistoryPage() {
                   yFormat={(value: number) => formatNumberVN(Math.round(value))}
                   series={[
                     {
-                      type: 'SplineArea',
+                      type: 'Area',
                       name: 'Giá công bố',
                       yName: 'price',
                       color: '#2F6F4E',
-                      width: 2.25,
-                      opacity: 0.16,
+                      width: 2,
+                      opacity: 0.14,
                       tipField: 'tipText',
-                      showMarkers: data.records.length <= 45,
+                      showMarkers: chartRows.length <= 45,
                     },
                   ]}
                 />
@@ -347,6 +364,7 @@ export default function HistoryPage() {
             price: r.price,
             unit: currentUnit,
             source: r.source,
+            sourceUrl: r.source_url ?? r.source_details?.source_url ?? (isSafeHttpUrl(r.source) ? r.source : null),
             statusLabel: provenanceLabel[r.provenance] || r.provenance,
           }))}
           columns={[
@@ -358,7 +376,13 @@ export default function HistoryPage() {
               unitField: 'unit',
               width: 180,
             },
-            { field: 'source', headerText: 'Nguồn công bố', kind: 'text', width: 260 },
+            {
+              field: 'source',
+              headerText: 'Nguồn công bố',
+              kind: 'link',
+              urlField: 'sourceUrl',
+              width: 320,
+            },
             { field: 'statusLabel', headerText: 'Trạng thái', kind: 'text', width: 140 },
           ] as AgroColumn[]}
         />

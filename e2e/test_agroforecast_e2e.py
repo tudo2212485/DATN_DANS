@@ -95,6 +95,10 @@ def test_e2e_01_overview_and_khanh_hoa_location_pricing(browser):
         page.wait_for_selector("text=Tổng quan giá nông sản", timeout=15000)
         page.wait_for_selector("text=Cà phê Robusta", timeout=15000)
         page.wait_for_selector("text=Mía đường", timeout=15000)
+        page.wait_for_selector("text=Dâu tây Đà Lạt", timeout=15000)
+        page.wait_for_selector("text=Khoai tây Đà Lạt", timeout=15000)
+        page.wait_for_selector("text=Khoai lang tím Vĩnh Long", timeout=15000)
+        page.wait_for_selector("text=Hạt điều", timeout=15000)
         _assert_no_syncfusion_banner(page, "Overview default")
 
         # Open Topbar Location Picker popover & pick Khánh Hòa
@@ -107,11 +111,11 @@ def test_e2e_01_overview_and_khanh_hoa_location_pricing(browser):
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(600)
 
-        # Verify transparent badges for Khánh Hòa: direct (Sugarcane) + regional_benchmark (Coffee/Pepper/Rice)
+        # Verify transparent badges for Khánh Hòa: direct (Sugarcane) + regional_benchmark (Lâm Đồng ~87 km for Đà Lạt produce)
         page.wait_for_selector("text=Khảo sát tại Khánh Hòa", timeout=10000)
         body_text = page.locator("body").inner_text()
         assert "Khảo sát tại Khánh Hòa" in body_text, "Thiếu huy hiệu khảo sát trực tiếp tại Khánh Hòa cho Mía đường"
-        assert "Tham chiếu" in body_text, "Thiếu huy hiệu tham chiếu vùng lân cận cho các nông sản khác"
+        assert "Tham chiếu Lâm Đồng" in body_text, "Thiếu huy hiệu tham chiếu Lâm Đồng (~87 km) cho nông sản Đà Lạt"
 
         # Toggle "Chênh lệch giá theo tỉnh hôm nay" table
         page.locator('button:has-text("Chênh lệch giá theo tỉnh hôm nay")').click()
@@ -140,18 +144,23 @@ def test_e2e_02_forecast_best_model_horizon_and_tabs(browser):
         active_model_btn = page.locator('button.bg-\\[\\#2F6F4E\\]:has-text("★")')
         assert active_model_btn.count() >= 1, "Mô hình tốt nhất (★) chưa được tự động kích hoạt trên /forecast"
 
-        # Switch commodity to Sugarcane (id=4 -> Random Forest ★) and confirm auto-selection follows ★
-        page.locator("#commodity-select").select_option(value="4")
+        # Switch commodity to Đà Lạt Strawberry (id=5) and confirm auto-selection follows ★
+        page.locator("#commodity-select").select_option(value="5")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(600)
         assert page.locator('button.bg-\\[\\#2F6F4E\\]:has-text("★")').count() >= 1, (
-            "Đổi sang Mía đường nhưng chưa tự chọn mô hình tốt nhất (★)"
+            "Đổi sang Dâu tây Đà Lạt nhưng chưa tự chọn mô hình tốt nhất (★)"
         )
 
-        # Switch horizon 7N -> 30N
+        # Verify only 7N, 14N, 30N horizons exist (10N removed) and switch 7N -> 14N -> 30N
+        assert page.locator('button:has-text("10N")').count() == 0, "Nút kỳ hạn 10N vẫn còn hiển thị trên /forecast"
         page.locator('button:has-text("7N")').click()
         page.wait_for_load_state("networkidle")
         page.wait_for_selector("text=Bảng chi tiết dự báo (7 ngày)", timeout=10000)
+
+        page.locator('button:has-text("14N")').click()
+        page.wait_for_load_state("networkidle")
+        page.wait_for_selector("text=Bảng chi tiết dự báo (14 ngày)", timeout=10000)
 
         page.locator('button:has-text("30N")').click()
         page.wait_for_load_state("networkidle")
@@ -187,12 +196,44 @@ def test_e2e_03_history_compare_alerts_clean_syncfusion(browser):
     try:
         _login(page, "admin@agroforecast.vn", "admin123")
 
-        # 1. /history
+        # 1. /history (verify DateTime chart, Topbar synced, clickable https:// source_url links with VISIBLE text height >= 12px)
         page.goto(f"{BASE_URL}/history", wait_until="networkidle")
         page.wait_for_selector("text=Dữ liệu lịch sử giá nông sản", timeout=15000)
-        page.wait_for_selector(".e-grid", timeout=15000)
+        page.wait_for_selector(".e-grid .e-row", timeout=15000)
         page.wait_for_selector(".e-chart svg", timeout=15000)
+        src_links = page.locator('.e-grid a[href^="https://"][target="_blank"]')
+        assert src_links.count() >= 1, "Cột Nguồn công bố trên /history chưa có link kiểm chứng https:// bấm trực tiếp"
+        first_link_metrics = page.evaluate("""() => {
+            const links = Array.from(document.querySelectorAll('.e-grid a[href^="https://"][target="_blank"]')).slice(0, 5);
+            return links.map(a => {
+                const r = a.getBoundingClientRect();
+                return { text: (a.innerText || '').trim(), href: a.getAttribute('href'), w: r.width, h: r.height };
+            });
+        }""")
+        assert len(first_link_metrics) >= 1
+        for lm in first_link_metrics:
+            assert len(lm["text"]) > 5 and lm["text"] != "↗", f"Nguồn công bố mất chữ: {lm}"
+            assert lm["h"] >= 12 and lm["w"] >= 60, f"Nguồn công bố bị co chiều cao/chiều rộng = 0: {lm}"
+            assert "ttcgroup.vn" not in (lm["href"] or "").lower(), f"Còn link bài cũ ttcgroup.vn: {lm}"
         _assert_no_syncfusion_banner(page, "History")
+
+        # 1b. /history?commodity_id=4 (Sugarcane with Khánh Hòa selected -> transparent Yahoo SB=F link, zero ttcgroup.vn)
+        page.evaluate("() => localStorage.setItem('agro_selected_province', 'khanh-hoa')")
+        page.goto(f"{BASE_URL}/history?commodity_id=4", wait_until="networkidle")
+        page.wait_for_selector(".e-grid .e-row", timeout=15000)
+        cane_links = page.evaluate("""() => {
+            const links = Array.from(document.querySelectorAll('.e-grid a[href^="https://"][target="_blank"]')).slice(0, 5);
+            return links.map(a => {
+                const r = a.getBoundingClientRect();
+                return { text: (a.innerText || '').trim(), href: a.getAttribute('href'), w: r.width, h: r.height };
+            });
+        }""")
+        assert len(cane_links) >= 1, "Mía đường trên /history chưa có link nguồn"
+        for cl in cane_links:
+            assert len(cl["text"]) > 10 and cl["h"] >= 12, f"Link Mía đường bị lỗi hiển thị: {cl}"
+            assert "ttcgroup.vn" not in (cl["href"] or "").lower(), f"Lọt bài báo cũ 2021 ttcgroup.vn: {cl}"
+            assert "finance.yahoo.com/quote/SB=F/history/" in (cl["href"] or "") or "nongnghiepmoitruong.vn" in (cl["href"] or ""), f"URL Mía đường bất thường: {cl}"
+        page.evaluate("() => localStorage.removeItem('agro_selected_province')")
 
         # 2. /compare
         page.goto(f"{BASE_URL}/compare", wait_until="networkidle")

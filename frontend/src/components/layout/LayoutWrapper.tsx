@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import LocationSelector from './LocationSelector';
 import { getToken, getUser, removeToken, User } from '@/lib/auth';
-import { fetchCommoditiesOverview } from '@/lib/api';
+import { fetchHistorySources } from '@/lib/api';
 import { formatDateVN } from '@/lib/formatters';
 import Link from 'next/link';
 import {
@@ -41,7 +41,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const isPublicPage = pathname === '/history' || pathname === '/forecast';
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [latestUpdateLabel, setLatestUpdateLabel] = useState<string>('20/11/2026');
+  const [latestUpdateLabel, setLatestUpdateLabel] = useState<string>('—');
 
   useEffect(() => {
     const token = getToken();
@@ -62,13 +62,16 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (isLoginPage) return;
     let active = true;
-    fetchCommoditiesOverview()
+    fetchHistorySources()
       .then((list) => {
         if (!active || !list || list.length === 0) return;
-        const firstSpark = list[0]?.sparkline;
-        if (firstSpark && firstSpark.length > 0) {
-          const lastPoint = firstSpark[firstSpark.length - 1].date;
-          setLatestUpdateLabel(lastPoint.includes('/') && lastPoint.length === 5 ? `${lastPoint}/2026` : formatDateVN(lastPoint));
+        const latestIso = list
+          .map((item) => item.latest_date || '')
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+          .sort()
+          .pop();
+        if (latestIso) {
+          setLatestUpdateLabel(formatDateVN(latestIso));
         }
       })
       .catch(() => {});

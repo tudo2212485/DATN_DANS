@@ -80,6 +80,8 @@ class LocationContextResponse(BaseModel):
     direct_source: Optional[str] = None
     direct_source_url: Optional[str] = None
     latest_direct_date: Optional[str] = None
+    observed_date: Optional[str] = None
+    observed_price: Optional[float] = None
     explanation: Optional[str] = None
     note: Optional[str] = None
 
@@ -143,6 +145,7 @@ class PriceHistoryBase(BaseModel):
     price_max: Optional[float] = None
     volume: Optional[float] = 0.0
     source: Optional[str] = None
+    source_url: Optional[str] = None
 
 class PriceHistoryResponse(PriceHistoryBase):
     id: int
@@ -281,6 +284,7 @@ class AdminPriceItem(BaseModel):
     price_max: Optional[float] = None
     volume: Optional[float] = 0.0
     source: Optional[str] = None
+    source_url: Optional[str] = None
 
 class TaskRunResponse(BaseModel):
     task_id: Optional[int] = None

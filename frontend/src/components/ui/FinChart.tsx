@@ -13,6 +13,7 @@ import {
   SplineAreaSeries,
   RangeAreaSeries,
   Category,
+  DateTime,
   Legend,
   Tooltip,
   DataLabel,
@@ -54,6 +55,8 @@ interface FinChartProps {
   id: string;
   data: Record<string, unknown>[];
   xName?: string;
+  xValueType?: 'Category' | 'DateTime';
+  xLabelFormat?: string;
   series: FinSeries[];
   height?: number;
   yFormat: (value: number) => string;
@@ -72,6 +75,8 @@ export default function FinChart({
   id,
   data,
   xName = 'x',
+  xValueType = 'Category',
+  xLabelFormat,
   series,
   height = 300,
   yFormat,
@@ -159,7 +164,8 @@ export default function FinChart({
 
   const primaryXAxis: AxisModel = useMemo(
     () => ({
-      valueType: 'Category',
+      valueType: xValueType,
+      ...(xValueType === 'DateTime' ? { labelFormat: xLabelFormat || 'dd/MM/yy' } : {}),
       majorGridLines: { width: 0 },
       majorTickLines: { width: 0 },
       lineStyle: { color: '#E5E7EB', width: 1 },
@@ -173,7 +179,7 @@ export default function FinChart({
       labelRotation: xLabelRotation ?? 0,
       edgeLabelPlacement: 'Shift',
     }),
-    [isColumnChart, xLabelRotation]
+    [isColumnChart, xLabelRotation, xValueType, xLabelFormat]
   );
 
   const primaryYAxis: AxisModel = useMemo(
@@ -210,9 +216,21 @@ export default function FinChart({
 
   const valueFormatter = tooltipFormat ?? yFormat;
 
+  const findRowForPoint = (pt: { index?: number; x?: unknown } | undefined) => {
+    const idx = Number(pt?.index ?? -1);
+    if (idx >= 0 && idx < data.length) return data[idx];
+    if (pt?.x instanceof Date) {
+      const targetMs = pt.x.getTime();
+      return data.find((r) => {
+        const xv = r[xName];
+        return xv instanceof Date && xv.getTime() === targetMs;
+      });
+    }
+    return undefined;
+  };
+
   const handleTooltipRender = (args: ITooltipRenderEventArgs) => {
-    const pointIndex = Number(args.point?.index ?? -1);
-    const row = pointIndex >= 0 && pointIndex < data.length ? data[pointIndex] : undefined;
+    const row = findRowForPoint(args.point);
     const seriesName = String(args.series?.name ?? '');
     const matched = visibleSeries.find((s) => s.name === seriesName);
 
@@ -229,8 +247,7 @@ export default function FinChart({
 
   const handleSharedTooltipRender = (args: ISharedTooltipRenderEventArgs) => {
     if (!args.point || !args.series || !args.text) return;
-    const firstIdx = Number(args.point[0]?.index ?? -1);
-    const firstRow = firstIdx >= 0 && firstIdx < data.length ? data[firstIdx] : undefined;
+    const firstRow = findRowForPoint(args.point[0]);
     if (firstRow && firstRow.fullDate) {
       args.headerText = `<b>${String(firstRow.fullDate)}</b>`;
     }
@@ -239,8 +256,7 @@ export default function FinChart({
       const sObj = args.series[i];
       const sName = String(sObj?.name ?? '');
       const matched = visibleSeries.find((s) => s.name === sName);
-      const pIdx = Number(pt?.index ?? -1);
-      const row = pIdx >= 0 && pIdx < data.length ? data[pIdx] : undefined;
+      const row = findRowForPoint(pt);
       if (matched?.tipField && row && row[matched.tipField] !== undefined) {
         return `${sName}: <b>${String(row[matched.tipField])}</b>`;
       }
@@ -311,6 +327,7 @@ export default function FinChart({
             SplineAreaSeries,
             RangeAreaSeries,
             Category,
+            DateTime,
             Legend,
             Tooltip,
             DataLabel,

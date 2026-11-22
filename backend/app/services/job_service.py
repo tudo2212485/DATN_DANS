@@ -53,7 +53,20 @@ def sync_forecast_after_scrape(job_id, options):
         else:
             commodities = (
                 db.query(Commodity)
-                .filter(Commodity.code.in_(("RICE_IR504", "COFFEE_ROBUSTA", "PEPPER_BLACK", "SUGARCANE")))
+                .filter(
+                    Commodity.code.in_(
+                        (
+                            "RICE_IR504",
+                            "COFFEE_ROBUSTA",
+                            "PEPPER_BLACK",
+                            "SUGARCANE",
+                            "STRAWBERRY",
+                            "POTATO",
+                            "SWEET_POTATO",
+                            "CASHEW_NUT",
+                        )
+                    )
+                )
                 .order_by(Commodity.id)
                 .all()
             )

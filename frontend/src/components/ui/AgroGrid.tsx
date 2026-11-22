@@ -13,6 +13,7 @@ import {
   Search,
   ExcelExport,
   ExcelQueryCellInfoEventArgs,
+  QueryCellInfoEventArgs,
   PageSettingsModel,
   FilterSettingsModel,
 } from '@syncfusion/ej2-react-grids';
@@ -23,7 +24,7 @@ import { formatDateTimeVN, formatDateVN, formatNumberVN, formatPct } from '@/lib
 // Đảm bảo Syncfusion license & Việt hóa L10n luôn sẵn sàng trước khi mount GridComponent
 initSyncfusion();
 
-export type AgroColumnKind = 'text' | 'date' | 'datetime' | 'number' | 'money' | 'pct' | 'decimal';
+export type AgroColumnKind = 'text' | 'date' | 'datetime' | 'number' | 'money' | 'pct' | 'decimal' | 'link';
 
 export interface AgroColumn {
   field: string;
@@ -33,6 +34,7 @@ export interface AgroColumn {
   align?: 'Left' | 'Right' | 'Center';
   unit?: string;
   unitField?: string;
+  urlField?: string;
   digits?: number;
   template?: (row: Record<string, unknown>) => React.ReactNode;
   allowSorting?: boolean;
@@ -168,6 +170,41 @@ export default function AgroGrid({
     hiddenExportFieldsRef.current = [];
   };
 
+  const handleQueryCellInfo = (args: QueryCellInfoEventArgs) => {
+    const field = args.column?.field;
+    if (!field || !args.cell) return;
+    const col = colMap.get(field);
+    if (!col || col.kind !== 'link') return;
+
+    const row = (args.data ?? {}) as Record<string, unknown>;
+    const rawLabel = row[field];
+    const labelText =
+      typeof rawLabel === 'string' && rawLabel.trim()
+        ? rawLabel.trim()
+        : 'Xem nguồn công bố';
+    const rawHref = col.urlField ? row[col.urlField] : rawLabel;
+    const href = typeof rawHref === 'string' ? rawHref.trim() : '';
+    const isSafe = /^https?:\/\//i.test(href);
+
+    args.cell.textContent = '';
+    if (isSafe) {
+      const a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.title = `Mở nguồn gốc kiểm chứng: ${labelText} (${href})`;
+      a.className =
+        'block w-full truncate leading-normal text-[#1D4ED8] hover:text-[#1E40AF] hover:underline font-medium';
+      a.textContent = `${labelText} ↗`;
+      args.cell.appendChild(a);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'block w-full truncate leading-normal text-[#334155]';
+      span.textContent = labelText || '—';
+      args.cell.appendChild(span);
+    }
+  };
+
   const handleExcelQueryCellInfo = (args: ExcelQueryCellInfoEventArgs) => {
     const field = args.column?.field;
     if (!field) return;
@@ -208,6 +245,7 @@ export default function AgroGrid({
         filterSettings={filterSettings}
         toolbar={toolbar}
         toolbarClick={handleToolbarClick}
+        queryCellInfo={handleQueryCellInfo}
         excelQueryCellInfo={handleExcelQueryCellInfo}
         excelExportComplete={handleExcelExportComplete}
       >
@@ -222,7 +260,7 @@ export default function AgroGrid({
             const isActionCol = col.field === 'actions';
 
             const accessor =
-              !col.template && col.kind && col.kind !== 'text'
+              !col.template && col.kind && col.kind !== 'text' && col.kind !== 'link'
                 ? (_field: string, rowData: object) =>
                     formatCellValue(col, rowData as Record<string, unknown>)
                 : undefined;
@@ -239,11 +277,7 @@ export default function AgroGrid({
                 allowFiltering={col.allowFiltering ?? !isActionCol}
                 allowSearching={col.allowSearching ?? !isActionCol}
                 valueAccessor={accessor}
-                template={
-                  col.template
-                    ? (rowData: Record<string, unknown>) => col.template!(rowData)
-                    : undefined
-                }
+                template={col.kind === 'link' ? undefined : col.template}
                 customAttributes={
                   isNumeric
                     ? { class: 'agro-num-cell' }

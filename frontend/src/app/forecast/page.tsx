@@ -67,7 +67,7 @@ export default function ForecastPage() {
   const [catalog, setCatalog] = useState<HistorySource[]>([]);
   const [selectedCommodityId, setSelectedCommodityId] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState<SupportedModel>('ARIMA');
-  const [forecastDays, setForecastDays] = useState<number>(10);
+  const [forecastDays, setForecastDays] = useState<number>(14);
   const [locationContext, setLocationContext] = useState<LocationContextData | null>(null);
   const [activeBottomTab, setActiveBottomTab] = useState<'table' | 'models'>('table');
   const autoPickedCommodityRef = useRef<number>(0);
@@ -234,12 +234,20 @@ export default function ForecastPage() {
   }, [selectedCommodityId, selectedModel, forecastDays, provinceCode]);
 
   const chartSeries = useMemo(() => {
+    const dedupMap = new Map<string, ChartPoint>();
+    for (const item of forecastData) {
+      if (item.date) {
+        dedupMap.set(item.date.slice(0, 10), item);
+      }
+    }
+    const ordered = Array.from(dedupMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
     let lastHistoryIdx = -1;
-    for (let i = 0; i < forecastData.length; i++) {
-      if (!forecastData[i].isForecast) lastHistoryIdx = i;
+    for (let i = 0; i < ordered.length; i++) {
+      if (!ordered[i].isForecast) lastHistoryIdx = i;
     }
 
-    return forecastData.map((item, idx) => {
+    return ordered.map((item, idx) => {
       const isBridgePoint = idx === lastHistoryIdx && chartMode === 'forecast';
       const showForecast = item.isForecast || isBridgePoint;
       const bridgePrice = item.actualPrice ?? item.predictedPrice;
@@ -330,7 +338,7 @@ export default function ForecastPage() {
         </div>
       )}
 
-      {/* Single-Row Control Toolbar: [Nông sản ▼] [Khu vực ▼] [Mô hình: LSTM | Prophet | ARIMA | XGBoost | RF] [Kỳ hạn: 7N | 10N | 14N | 30N] */}
+      {/* Single-Row Control Toolbar: [Nông sản ▼] [Khu vực ▼] [Mô hình: LSTM | Prophet | ARIMA | XGBoost | RF] [Kỳ hạn: 7N | 14N | 30N] */}
       <div className="bg-white rounded-xl border border-[#E5E7EB] p-3 flex flex-wrap items-center justify-between gap-2.5 shadow-card">
         {/* Left: Commodity Dropdown & Region Dropdown */}
         <div className="flex flex-wrap items-center gap-2.5">
@@ -415,7 +423,7 @@ export default function ForecastPage() {
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-[#64748B] hidden md:inline">Kỳ hạn:</span>
             <div className="flex items-center gap-0.5 bg-[#F8FAF9] p-0.5 rounded-lg border border-[#E5E7EB]">
-              {[7, 10, 14, 30].map((days) => (
+              {[7, 14, 30].map((days) => (
                 <button
                   key={days}
                   type="button"

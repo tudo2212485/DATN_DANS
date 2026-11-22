@@ -28,7 +28,7 @@ import {
 import Link from 'next/link';
 
 interface SeriesMeta {
-  key: 'rice' | 'coffee' | 'pepper' | 'sugar';
+  key: 'rice' | 'coffee' | 'pepper' | 'sugar' | 'strawberry' | 'potato' | 'sweet_potato' | 'cashew';
   codeMatch: string;
   defaultLabel: string;
   defaultUnit: string;
@@ -40,6 +40,10 @@ const SERIES_META: SeriesMeta[] = [
   { key: 'coffee', codeMatch: 'COFFEE', defaultLabel: 'Cà phê Robusta', defaultUnit: 'VNĐ/kg', color: '#1D4ED8' },
   { key: 'pepper', codeMatch: 'PEPPER', defaultLabel: 'Hồ tiêu đen', defaultUnit: 'VNĐ/kg', color: '#7C3AED' },
   { key: 'sugar', codeMatch: 'SUGAR', defaultLabel: 'Mía đường', defaultUnit: 'VNĐ/tấn', color: '#B45309' },
+  { key: 'strawberry', codeMatch: 'STRAWBERRY', defaultLabel: 'Dâu tây Đà Lạt', defaultUnit: 'VNĐ/kg', color: '#E11D48' },
+  { key: 'potato', codeMatch: 'POTATO', defaultLabel: 'Khoai tây Đà Lạt', defaultUnit: 'VNĐ/kg', color: '#0891B2' },
+  { key: 'sweet_potato', codeMatch: 'SWEETPOTATO', defaultLabel: 'Khoai lang tím Vĩnh Long', defaultUnit: 'VNĐ/kg', color: '#9333EA' },
+  { key: 'cashew', codeMatch: 'CASHEW', defaultLabel: 'Hạt điều', defaultUnit: 'VNĐ/kg', color: '#EA580C' },
 ];
 
 type TimeframeKey = '7N' | '14N' | '30N' | '3T' | '1N';
@@ -57,6 +61,10 @@ export default function ComparePage() {
     coffee: true,
     pepper: true,
     sugar: true,
+    strawberry: true,
+    potato: true,
+    sweet_potato: true,
+    cashew: true,
   });
 
   // Enterprise DataGrid state
@@ -102,11 +110,15 @@ export default function ComparePage() {
   // Bind each series card directly to live database commodity data
   const liveSeriesCards = useMemo(() => {
     return SERIES_META.map((meta) => {
-      const found = commodities.find(
-        (c) =>
-          c.code.toUpperCase().includes(meta.codeMatch) ||
+      const found = commodities.find((c) => {
+        const up = c.code.toUpperCase().replace(/_/g, '');
+        if (meta.key === 'potato') return up === 'POTATO';
+        if (meta.key === 'sweet_potato') return up === 'SWEETPOTATO';
+        return (
+          up.includes(meta.codeMatch) ||
           (meta.key === 'sugar' && c.name.toLowerCase().includes('mía'))
-      );
+        );
+      });
       const unit = getCommodityUnit(found?.name || meta.defaultLabel, found?.unit || meta.defaultUnit);
       const currentPrice = found ? found.currentPrice : 0;
       const latestPoint = comparisonData.length > 0 ? comparisonData[comparisonData.length - 1] : null;
@@ -146,6 +158,10 @@ export default function ComparePage() {
       coffee: Number(((Number(pt.coffee ?? 0) - Number(first.coffee ?? 0))).toFixed(2)),
       pepper: Number(((Number(pt.pepper ?? 0) - Number(first.pepper ?? 0))).toFixed(2)),
       sugar: Number(((Number(pt.sugar ?? 0) - Number(first.sugar ?? 0))).toFixed(2)),
+      strawberry: Number(((Number(pt.strawberry ?? 0) - Number(first.strawberry ?? 0))).toFixed(2)),
+      potato: Number(((Number(pt.potato ?? 0) - Number(first.potato ?? 0))).toFixed(2)),
+      sweet_potato: Number(((Number(pt.sweet_potato ?? 0) - Number(first.sweet_potato ?? 0))).toFixed(2)),
+      cashew: Number(((Number(pt.cashew ?? 0) - Number(first.cashew ?? 0))).toFixed(2)),
     }));
   }, [comparisonData, timeframe]);
 
@@ -157,6 +173,10 @@ export default function ComparePage() {
       coffee: displayedChartData.map((d) => d.coffee),
       pepper: displayedChartData.map((d) => d.pepper),
       sugar: displayedChartData.map((d) => d.sugar),
+      strawberry: displayedChartData.map((d) => d.strawberry),
+      potato: displayedChartData.map((d) => d.potato),
+      sweet_potato: displayedChartData.map((d) => d.sweet_potato),
+      cashew: displayedChartData.map((d) => d.cashew),
     };
     return liveSeriesCards.map((item) => {
       const vec = seriesVectors[item.key] || [0];
@@ -367,7 +387,7 @@ export default function ComparePage() {
             yFormat={(val: number) => formatPct(val, 1)}
             tooltipFormat={(val: number) => formatPct(val, 2)}
             series={liveSeriesCards.map((item) => ({
-              type: 'Spline',
+              type: 'Line',
               name: item.label,
               yName: item.key,
               color: item.color,
@@ -387,7 +407,7 @@ export default function ComparePage() {
               Bảng tóm tắt chênh lệch tăng trưởng (%) & Hệ số tương quan Pearson (r)
             </h3>
             <p className="text-[11.5px] text-[#64748B]">
-              Đánh giá mức độ đồng pha biến động giá giữa 4 mặt hàng nông sản chủ lực trong kỳ ({timeframe})
+              Đánh giá mức độ đồng pha biến động giá giữa {liveSeriesCards.length} mặt hàng nông sản trong kỳ ({timeframe})
             </p>
           </div>
         </div>

@@ -11,15 +11,28 @@ from app.services.history_service import archive_price
 from app.services.regional_pricing_service import ensure_regional_markets_seeded
 from .source_catalog import COFFEE_ARCHIVE, SOURCES, SUGARCANE_REPORTS
 from .vietnam_real_scrapers import (
+    fetch_real_cashew_history,
     fetch_real_coffee_history,
     fetch_real_pepper_history,
+    fetch_real_potato_history,
     fetch_real_rice_history,
+    fetch_real_strawberry_history,
     fetch_real_sugarcane_benchmark_history,
     fetch_real_sugarcane_provincial_reports,
+    fetch_real_sweet_potato_history,
 )
 
 HEADERS = {"User-Agent": "AgroForecast/2.0 (academic real price history collector)"}
-CORE_CODES = ("RICE_IR504", "COFFEE_ROBUSTA", "PEPPER_BLACK", "SUGARCANE")
+CORE_CODES = (
+    "RICE_IR504",
+    "COFFEE_ROBUSTA",
+    "PEPPER_BLACK",
+    "SUGARCANE",
+    "STRAWBERRY",
+    "POTATO",
+    "SWEET_POTATO",
+    "CASHEW_NUT",
+)
 _REAL_SESSION_CLS = requests.Session
 
 
@@ -418,9 +431,38 @@ def collect_domestic_history(db, http, commodity, start, end, progress=None):
         return dict(count=total_saved, status=status, message=msg)
 
     if commodity.code in ("STRAWBERRY", "SWEET_POTATO", "POTATO", "CASHEW_NUT"):
-        from .specialized_scrapers import collect_specialized_portal_history
+        if not is_real_http:
+            from .specialized_scrapers import collect_specialized_portal_history
 
-        return collect_specialized_portal_history(db, http, commodity, config, start, end, progress)
+            return collect_specialized_portal_history(db, http, commodity, config, start, end, progress)
+
+        fetcher_map = {
+            "STRAWBERRY": (fetch_real_strawberry_history, "Kamereo Đà Lạt & Yahoo Finance DBA×USD/VND"),
+            "POTATO": (fetch_real_potato_history, "Nam Tĩnh Đà Lạt & Yahoo Finance MOO×USD/VND"),
+            "SWEET_POTATO": (fetch_real_sweet_potato_history, "Bảng Giá Nông Sản / Chợ Giá & Yahoo Finance CORN×USD/VND"),
+            "CASHEW_NUT": (fetch_real_cashew_history, "Bảng Giá Nông Sản (7 tỉnh Bình Phước/Tây Nguyên) & Yahoo Finance SOYB×USD/VND"),
+        }
+        fetcher_fn, source_desc = fetcher_map[commodity.code]
+        rows, errs = fetcher_fn(http, start, end, progress)
+        count, skipped = _upsert_real_rows(db, commodity, rows)
+        if count == 0 and skipped == 0:
+            return dict(
+                count=0,
+                status="FAILED",
+                message=(
+                    f"{commodity.name} ({start} – {end}): không thu thập được bản ghi thật nào từ {source_desc}. "
+                    + ("Lỗi: " + "; ".join(errs[:3]) if errs else "")
+                ),
+            )
+        status = "PARTIAL" if (errs and count == 0) else "SUCCESS"
+        return dict(
+            count=count,
+            status=status,
+            message=(
+                f"{commodity.name} ({start} – {end}) [{source_desc}]: "
+                f"ghi nhận {count} bản ghi thật mới, giữ nguyên {skipped} bản ghi."
+            ),
+        )
 
     if commodity.unit.lower().replace("đ", "d") != "vnd/kg":
         raise ValueError("Nguồn trả VNĐ/kg, đơn vị nông sản không khớp")
