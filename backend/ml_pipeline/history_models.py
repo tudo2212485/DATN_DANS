@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import warnings
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -31,6 +33,93 @@ logging.getLogger("prophet").setLevel(logging.ERROR)
 logging.getLogger("cmdstanpy").setLevel(logging.ERROR)
 
 EPS = 1e-8
+_EXOG_CACHE: Dict[Tuple[str, str], pd.DataFrame] = {}
+
+
+def fetch_exogenous_macro_series(start_date: date, end_date: date) -> Optional[pd.DataFrame]:
+    """
+    Fetch real daily macroeconomic exogenous series from Yahoo Finance over strict HTTPS:
+      - `VND=X`: USD/VND exchange rate
+      - `CL=F`: WTI Crude Oil futures price (USD/barrel)
+    Returns a DataFrame indexed by daily DatetimeIndex with columns `['usd_vnd', 'wti_oil']`,
+    strictly forward-filled (causal only, NEVER backward-filled from future observations).
+    Returns None gracefully if disabled (`AGRO_ENABLE_EXOGENOUS=0`) or offline.
+    """
+    if os.environ.get("AGRO_ENABLE_EXOGENOUS", "1").strip() == "0":
+        return None
+    cache_key = (start_date.isoformat(), end_date.isoformat())
+    if cache_key in _EXOG_CACHE:
+        return _EXOG_CACHE[cache_key]
+
+    try:
+        import requests
+    except Exception:
+        return None
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AgroForecast/2.0",
+        "Accept": "application/json",
+    }
+    p1 = int(datetime.combine(start_date - timedelta(days=15), datetime.min.time(), tzinfo=timezone.utc).timestamp())
+    p2 = int(datetime.combine(end_date + timedelta(days=2), datetime.min.time(), tzinfo=timezone.utc).timestamp())
+
+    def _fetch_one(symbol: str) -> Dict[pd.Timestamp, float]:
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            f"?period1={p1}&period2={p2}&interval=1d"
+        )
+        resp = requests.get(url, headers=headers, timeout=(4, 8), verify=True)
+        resp.raise_for_status()
+        payload = resp.json()
+        res = payload["chart"]["result"][0]
+        timestamps = res.get("timestamp") or []
+        closes = res["indicators"]["quote"][0].get("close") or []
+        out: Dict[pd.Timestamp, float] = {}
+        for ts, c in zip(timestamps, closes):
+            if c is None or c <= 0 or not math.isfinite(float(c)):
+                continue
+            dt = pd.Timestamp(datetime.fromtimestamp(ts, timezone.utc).date())
+            out[dt] = float(c)
+        return out
+
+    try:
+        fx_map = _fetch_one("VND=X")
+        oil_map = _fetch_one("CL=F")
+        if not fx_map and not oil_map:
+            return None
+        full_idx = pd.date_range(start_date - timedelta(days=14), end_date, freq="D")
+        df = pd.DataFrame(index=full_idx)
+        df["usd_vnd"] = pd.Series(fx_map, dtype=float).reindex(full_idx).ffill()
+        df["wti_oil"] = pd.Series(oil_map, dtype=float).reindex(full_idx).ffill()
+        _EXOG_CACHE[cache_key] = df
+        return df
+    except Exception:
+        return None
+
+
+def _align_causal_exog_log(
+    index: pd.DatetimeIndex,
+    exog_df: Optional[pd.DataFrame],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Align exogenous series onto `index` using strictly past/same-day observations (no future backfill)."""
+    n = len(index)
+    if exog_df is None or exog_df.empty:
+        return np.full(n, np.nan, dtype=float), np.full(n, np.nan, dtype=float)
+    aligned = exog_df.reindex(index, method="ffill")
+    fx_raw = aligned["usd_vnd"].to_numpy(dtype=float) if "usd_vnd" in aligned.columns else np.full(n, np.nan)
+    oil_raw = aligned["wti_oil"].to_numpy(dtype=float) if "wti_oil" in aligned.columns else np.full(n, np.nan)
+    fx_log = np.where(np.isfinite(fx_raw) & (fx_raw > 0), np.log(np.maximum(fx_raw, EPS)), np.nan)
+    oil_log = np.where(np.isfinite(oil_raw) & (oil_raw > 0), np.log(np.maximum(oil_raw, EPS)), np.nan)
+    return fx_log, oil_log
+
+
+def _safe_diff(arr: List[float], lag: int) -> float:
+    if len(arr) <= lag:
+        return 0.0
+    a, b = arr[-1], arr[-1 - lag]
+    if not (math.isfinite(a) and math.isfinite(b)):
+        return 0.0
+    return float(np.clip(a - b, -0.15, 0.15))
 
 
 def _safe_log(values: np.ndarray) -> np.ndarray:
@@ -48,15 +137,16 @@ def _calendar_features(ts: pd.Timestamp) -> Tuple[float, float, float, float]:
     )
 
 
-def _extract_causal_row(log_hist: List[float], target_ts: pd.Timestamp) -> np.ndarray:
-    """Build strictly causal features using ONLY log prices at indices <= t-1."""
+def _extract_causal_row(
+    log_hist: List[float],
+    target_ts: pd.Timestamp,
+    fx_log_hist: Optional[List[float]] = None,
+    oil_log_hist: Optional[List[float]] = None,
+    exog_decay: float = 1.0,
+) -> np.ndarray:
+    """Build 22 strictly causal features using ONLY prices & macro observations at indices <= t-1."""
     n = len(log_hist)
     last = log_hist[-1]
-
-    def lag_ret(k: int) -> float:
-        if n - 1 - k >= 0:
-            return log_hist[-1 - (k - 1)] - log_hist[-1 - k] if k == 1 else log_hist[-k] - log_hist[-k - 1]
-        return 0.0
 
     # 1-day returns at lags 1, 2, 3, 7, 14 (all strictly past)
     r1 = (log_hist[-1] - log_hist[-2]) if n >= 2 else 0.0
@@ -85,6 +175,12 @@ def _extract_causal_row(log_hist: List[float], target_ts: pd.Timestamp) -> np.nd
     vol7 = float(np.std(diffs7))
     vol14 = float(np.std(diffs14))
 
+    # Strictly causal lagged exogenous macro returns (USD/VND and WTI Crude Oil)
+    fx_r1 = _safe_diff(fx_log_hist, 1) * exog_decay if fx_log_hist else 0.0
+    fx_mom7 = _safe_diff(fx_log_hist, 7) * exog_decay if fx_log_hist else 0.0
+    oil_r1 = _safe_diff(oil_log_hist, 1) * exog_decay if oil_log_hist else 0.0
+    oil_mom7 = _safe_diff(oil_log_hist, 7) * exog_decay if oil_log_hist else 0.0
+
     s_doy, c_doy, s_dow, c_dow = _calendar_features(target_ts)
     return np.array(
         [
@@ -93,44 +189,63 @@ def _extract_causal_row(log_hist: List[float], target_ts: pd.Timestamp) -> np.nd
             ma7, ma14, ma30,
             vol7, vol14,
             s_doy, c_doy, s_dow, c_dow,
+            fx_r1, fx_mom7, oil_r1, oil_mom7,
         ],
         dtype=float,
     )
 
 
-def _build_tabular_dataset(series: pd.Series) -> Tuple[np.ndarray, np.ndarray, float]:
-    """Construct strictly causal (X, y_log_return) from a training prefix."""
+def _build_tabular_dataset(
+    series: pd.Series,
+    exog_df: Optional[pd.DataFrame] = None,
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """Construct strictly causal (X, y_log_return) from a training prefix (with optional USD/VND & WTI)."""
     log_vals = _safe_log(series.to_numpy(dtype=float))
     idx = pd.DatetimeIndex(series.index)
+    fx_log, oil_log = _align_causal_exog_log(idx, exog_df)
     n = len(log_vals)
     warmup = min(30, max(2, n // 4))
     xs: List[np.ndarray] = []
     ys: List[float] = []
     log_list = log_vals.tolist()
+    fx_list = fx_log.tolist()
+    oil_list = oil_log.tolist()
     for t in range(warmup, n):
-        xs.append(_extract_causal_row(log_list[:t], idx[t]))
+        xs.append(_extract_causal_row(log_list[:t], idx[t], fx_list[:t], oil_list[:t]))
         ys.append(log_list[t] - log_list[t - 1])
     y_arr = np.asarray(ys, dtype=float)
     ret_std = float(np.std(y_arr)) if len(y_arr) > 1 else 0.01
     return np.asarray(xs, dtype=float), y_arr, max(ret_std, 1e-4)
 
 
-def _build_lstm_channel_matrix(series: pd.Series) -> np.ndarray:
+def _build_lstm_channel_matrix(
+    series: pd.Series,
+    exog_df: Optional[pd.DataFrame] = None,
+) -> np.ndarray:
     """
-    Build strictly causal 5-channel daily series for LSTM:
+    Build strictly causal 7-channel daily series for Stacked LSTM:
       ch0: 1-step log return r_t = log(y_t / y_{t-1})
       ch1: rolling 7d mean-reversion log(y_t) - MA7(log y_{t-6..t})
       ch2: rolling 7d realized volatility std(r_{t-6..t})
       ch3: sin(2*pi*doy/365.25)
       ch4: cos(2*pi*doy/365.25)
-    Every channel at row t depends ONLY on prices <= t.
+      ch5: 1-step USD/VND log return (0.0 if unavailable)
+      ch6: 1-step WTI Crude Oil log return (0.0 if unavailable)
+    Every channel at row t depends ONLY on observations <= t (zero leakage).
     """
     log_vals = _safe_log(series.to_numpy(dtype=float))
     idx = pd.DatetimeIndex(series.index)
+    fx_log, oil_log = _align_causal_exog_log(idx, exog_df)
     n = len(log_vals)
     rets = np.zeros(n, dtype=float)
+    fx_rets = np.zeros(n, dtype=float)
+    oil_rets = np.zeros(n, dtype=float)
     if n > 1:
         rets[1:] = np.diff(log_vals)
+        raw_fx_d = np.diff(fx_log)
+        raw_oil_d = np.diff(oil_log)
+        fx_rets[1:] = np.where(np.isfinite(raw_fx_d), np.clip(raw_fx_d, -0.1, 0.1), 0.0)
+        oil_rets[1:] = np.where(np.isfinite(raw_oil_d), np.clip(raw_oil_d, -0.15, 0.15), 0.0)
 
     s_log = pd.Series(log_vals)
     s_ret = pd.Series(rets)
@@ -140,7 +255,7 @@ def _build_lstm_channel_matrix(series: pd.Series) -> np.ndarray:
     doy = idx.dayofyear.to_numpy(dtype=float)
     sin_doy = np.sin(2.0 * math.pi * doy / 365.25)
     cos_doy = np.cos(2.0 * math.pi * doy / 365.25)
-    return np.column_stack([rets, ma_ratio, vol7, sin_doy, cos_doy])
+    return np.column_stack([rets, ma_ratio, vol7, sin_doy, cos_doy, fx_rets, oil_rets])
 
 
 def _local_causal_vol(series: pd.Series, min_rel_vol: float = 0.0025) -> float:
@@ -173,6 +288,7 @@ class _BaseForecaster:
         history_series: pd.Series,
         horizon: int,
         future_index: Optional[pd.DatetimeIndex] = None,
+        exog_df: Optional[pd.DataFrame] = None,
     ) -> np.ndarray:
         raise NotImplementedError
 
@@ -189,6 +305,7 @@ class _TreeLogReturnForecaster(_BaseForecaster):
         history_series: pd.Series,
         horizon: int,
         future_index: Optional[pd.DatetimeIndex] = None,
+        exog_df: Optional[pd.DataFrame] = None,
     ) -> np.ndarray:
         dates = (
             pd.DatetimeIndex(future_index)
@@ -196,9 +313,19 @@ class _TreeLogReturnForecaster(_BaseForecaster):
             else pd.date_range(history_series.index[-1] + pd.Timedelta(days=1), periods=horizon)
         )
         log_hist = _safe_log(history_series.to_numpy(dtype=float)).tolist()
+        # Strictly causal: slice exogenous observations ONLY up to history_series.index[-1]
+        fx_log, oil_log = _align_causal_exog_log(pd.DatetimeIndex(history_series.index), exog_df)
+        fx_list = fx_log.tolist()
+        oil_list = oil_log.tolist()
         preds: List[float] = []
         for step in range(horizon):
-            feat = _extract_causal_row(log_hist, dates[step]).reshape(1, -1)
+            feat = _extract_causal_row(
+                log_hist,
+                dates[step],
+                fx_list,
+                oil_list,
+                exog_decay=(0.85 ** step),
+            ).reshape(1, -1)
             raw_ret = float(self.model.predict(feat)[0])
             if not math.isfinite(raw_ret):
                 raw_ret = 0.0
@@ -225,6 +352,7 @@ class _LSTMLogReturnForecaster(_BaseForecaster):
         history_series: pd.Series,
         horizon: int,
         future_index: Optional[pd.DatetimeIndex] = None,
+        exog_df: Optional[pd.DataFrame] = None,
     ) -> np.ndarray:
         import torch
 
@@ -234,7 +362,7 @@ class _LSTMLogReturnForecaster(_BaseForecaster):
             else pd.date_range(history_series.index[-1] + pd.Timedelta(days=1), periods=horizon)
         )
         log_hist = _safe_log(history_series.to_numpy(dtype=float)).tolist()
-        chan = _build_lstm_channel_matrix(history_series)
+        chan = _build_lstm_channel_matrix(history_series, exog_df=exog_df)
         # Keep the trailing seq_len channel rows (pad at front if shorter)
         if len(chan) < self.seq_len:
             pad = np.repeat(chan[:1], self.seq_len - len(chan), axis=0)
@@ -259,12 +387,12 @@ class _LSTMLogReturnForecaster(_BaseForecaster):
                 rets_hist.append(damped_ret)
                 preds.append(max(math.exp(next_log), 0.0))
 
-                # Build next causal channel row strictly from updated history
+                # Build next causal channel row strictly from updated history (unknown future macro returns -> 0.0)
                 ma7_val = float(np.mean(log_hist[-min(7, len(log_hist)):]))
                 ma_ratio = next_log - ma7_val
                 vol7_val = float(np.std(rets_hist[-min(7, len(rets_hist)):]))
                 s_doy, c_doy, _, _ = _calendar_features(dates[step])
-                next_row = np.array([[damped_ret, ma_ratio, vol7_val, s_doy, c_doy]], dtype=float)
+                next_row = np.array([[damped_ret, ma_ratio, vol7_val, s_doy, c_doy, 0.0, 0.0]], dtype=float)
                 window = np.vstack([window[1:], next_row])
         return np.asarray(preds, dtype=float)
 
@@ -281,6 +409,7 @@ class _ARIMALogForecaster(_BaseForecaster):
         history_series: pd.Series,
         horizon: int,
         future_index: Optional[pd.DatetimeIndex] = None,
+        exog_df: Optional[pd.DataFrame] = None,
     ) -> np.ndarray:
         log_hist = _safe_log(history_series.to_numpy(dtype=float))
         try:
@@ -312,6 +441,7 @@ class _ProphetLogForecaster(_BaseForecaster):
         history_series: pd.Series,
         horizon: int,
         future_index: Optional[pd.DatetimeIndex] = None,
+        exog_df: Optional[pd.DataFrame] = None,
     ) -> np.ndarray:
         last_ts = pd.Timestamp(history_series.index[-1])
         last_log = float(_safe_log(np.array([history_series.iloc[-1]]))[0])
@@ -338,17 +468,27 @@ class _ProphetLogForecaster(_BaseForecaster):
         return np.maximum(np.exp(adjusted_log), 0.0)
 
 
-def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
-    """Fit a single forecasting model STRICTLY on `train_series` (no future data)."""
+def fit_model(
+    name: str,
+    train_series: pd.Series,
+    exog_df: Optional[pd.DataFrame] = None,
+) -> _BaseForecaster:
+    """Fit a single forecasting model STRICTLY on `train_series` (and causal past `exog_df` <= train_end)."""
     values = np.asarray(train_series.to_numpy(dtype=float))
     log_vals = _safe_log(values)
     diffs = np.diff(log_vals) if len(log_vals) > 1 else np.array([0.01])
     ret_std = max(float(np.std(diffs)), 1e-4)
+    # Strictly slice exogenous series to timestamps <= train_series.index[-1] (zero leakage)
+    train_exog = (
+        exog_df.loc[exog_df.index <= pd.Timestamp(train_series.index[-1])]
+        if exog_df is not None and not exog_df.empty
+        else None
+    )
 
     if name == "Random Forest":
         from sklearn.ensemble import RandomForestRegressor
 
-        x_train, y_train, r_std = _build_tabular_dataset(train_series)
+        x_train, y_train, r_std = _build_tabular_dataset(train_series, exog_df=train_exog)
         min_leaf = max(1, min(8, len(y_train) // 25))
         model = RandomForestRegressor(
             n_estimators=150,
@@ -364,7 +504,7 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
     if name == "XGBoost":
         from xgboost import XGBRegressor
 
-        x_train, y_train, r_std = _build_tabular_dataset(train_series)
+        x_train, y_train, r_std = _build_tabular_dataset(train_series, exog_df=train_exog)
         model = XGBRegressor(
             n_estimators=160,
             max_depth=3,
@@ -422,7 +562,7 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
 
         torch.manual_seed(42)
         np.random.seed(42)
-        chan = _build_lstm_channel_matrix(train_series)
+        chan = _build_lstm_channel_matrix(train_series, exog_df=train_exog)
         n = len(chan)
         seq_len = min(14, max(3, n // 5))
         if n <= seq_len + 2:
@@ -477,16 +617,23 @@ def fit_model(name: str, train_series: pd.Series) -> _BaseForecaster:
     raise ValueError(f"Unsupported model: {name}")
 
 
-def predict_series(name: str, series: pd.Series, horizon: int, future_index=None) -> np.ndarray:
+def predict_series(
+    name: str,
+    series: pd.Series,
+    horizon: int,
+    future_index=None,
+    exog_df: Optional[pd.DataFrame] = None,
+) -> np.ndarray:
     """Fit a prefix and forecast `horizon` steps ahead without seeing any holdout values."""
-    forecaster = fit_model(name, series)
-    return forecaster.forecast_from(series, horizon, future_index=future_index)
+    forecaster = fit_model(name, series, exog_df=exog_df)
+    return forecaster.forecast_from(series, horizon, future_index=future_index, exog_df=exog_df)
 
 
 def _calibrate_conformal_scores(
     forecaster: _BaseForecaster,
     train_series: pd.Series,
     horizon: int = 7,
+    exog_df: Optional[pd.DataFrame] = None,
 ) -> List[float]:
     """
     Collect dimensionless normalized residuals STRICTLY on the trailing segment of `train_series`
@@ -504,7 +651,7 @@ def _calibrate_conformal_scores(
         past = train_series.iloc[:origin]
         h_len = min(horizon, n - origin)
         target_slice = train_series.iloc[origin:origin + h_len]
-        preds = forecaster.forecast_from(past, h_len, future_index=target_slice.index)
+        preds = forecaster.forecast_from(past, h_len, future_index=target_slice.index, exog_df=exog_df)
         vol = _local_causal_vol(past)
         actuals = target_slice.to_numpy(dtype=float)
         prev_val = float(past.iloc[-1])
@@ -537,6 +684,7 @@ def walk_forward_evaluate(
     holdout_series: pd.Series,
     observed_mask: np.ndarray,
     horizon: int = 7,
+    exog_df: Optional[pd.DataFrame] = None,
 ) -> Dict:
     """
     Leak-free chronological Walk-Forward Evaluation (rolling origin every `horizon` days) with
@@ -544,12 +692,12 @@ def walk_forward_evaluate(
     - Model weights & scalers are fitted STRICTLY ONCE on `train_series` (train_end < holdout_start).
     - Initial conformal quantile `q95` is calibrated strictly on `train_series` only.
     - At each rolling origin t0 across `holdout_series`, ONLY strictly past prices (< holdout[t0])
-      and strictly past realized OOS errors (< holdout[t0]) are visible when forecasting
+      and strictly past exogenous values (< holdout[t0]) are visible when forecasting
       holdout[t0 : t0 + horizon].
     - Evaluates ONLY on genuine observed (non-ffilled) dates via `observed_mask`.
     """
-    forecaster = fit_model(name, train_series)
-    train_scores = _calibrate_conformal_scores(forecaster, train_series, horizon=horizon)
+    forecaster = fit_model(name, train_series, exog_df=exog_df)
+    train_scores = _calibrate_conformal_scores(forecaster, train_series, horizon=horizon, exog_df=exog_df)
     q95_initial = _conformal_quantile_95(train_scores, floor=2.35)
 
     full_series = pd.concat([train_series, holdout_series])
@@ -566,7 +714,7 @@ def walk_forward_evaluate(
         past = full_series.iloc[:train_len + origin]
         h_len = min(horizon, holdout_len - origin)
         target_slice = holdout_series.iloc[origin:origin + h_len]
-        preds = forecaster.forecast_from(past, h_len, future_index=target_slice.index)
+        preds = forecaster.forecast_from(past, h_len, future_index=target_slice.index, exog_df=exog_df)
         vol = _local_causal_vol(past)
         actuals = target_slice.to_numpy(dtype=float)
 

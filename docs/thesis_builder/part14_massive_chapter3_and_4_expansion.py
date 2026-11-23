@@ -18,7 +18,7 @@ CH3_MASSIVE_EXPANSION = [
                 "rows": [
                     ["Mã và Tên Use Case", "UC-02: Phân tích và Dự báo biến động giá nông sản đa mô hình theo địa phương bán tại vườn/ruộng"],
                     ["Tác nhân (Actors)", "Nông hộ sản xuất, Thương lái thu mua, Nhà phân phối, Chuyên viên phân tích (Analyst), Quản trị viên (Admin)"],
-                    ["Mô tả tóm tắt", "Cho phép người dùng chọn 1 trong 8 mặt hàng nông sản, 1 trong 5 mô hình học máy (LSTM, Prophet, ARIMA, XGBoost, Random Forest), kỳ hạn dự báo (7, 10, 14, 30 ngày) và địa phương cấp huyện/phường để xem giá dự báo tại vườn kèm khoảng tin cậy 95% và giải thích AI (XAI)."],
+                    ["Mô tả tóm tắt", "Cho phép người dùng chọn 1 trong 8 mặt hàng nông sản, 1 trong 5 mô hình học máy (LSTM, Prophet, ARIMA, XGBoost, Random Forest — tự động kích hoạt mô hình ★ tối ưu), 3 kỳ hạn dự báo chuẩn (7, 14, 30 ngày — khóa cứng Literal[7, 14, 30]) và tỉnh/huyện bán tại vườn để xem giá dự báo kèm khoảng tin cậy Conformal 95% và giải thích AI (XAI)."],
                     ["Tiền điều kiện (Pre-conditions)", "1. Chuỗi lịch sử của nông sản có ít nhất 60 quan sát (daily) hoặc 30 quan sát (irregular) đã xác minh (provenance in {'collected', 'reviewed'}).\n2. Đã có phiên huấn luyện TrainingRun với chữ ký SHA-256 dataset_hash khớp với chuỗi lịch sử hiện tại."],
                     ["Hậu điều kiện (Post-conditions)", "Hiển thị chính xác biểu đồ kết hợp lịch sử - dự báo, dải tin cậy 95%, 4 chỉ số tổng hợp, biểu đồ XAI, bảng so sánh 5 mô hình và cho phép xuất bảng dự báo ra tập tin CSV."],
                     ["Luồng sự kiện chính (Main Flow)", "1. Người dùng mở màn hình /forecast.\n2. Hệ thống tải danh mục nông sản và gọi GET /api/v1/forecast cùng GET /api/v1/forecast/compare/{id}.\n3. Backend kiểm tra readiness['ready'] == True và đối chiếu run.dataset_hash == fingerprint(rows).\n4. Backend tra cứu basisSpread của huyện đang chọn trong COMMODITY_REGIONS và cộng vào chuỗi lịch sử 30 ngày + chuỗi dự báo (predictedPrice, lowerCI, upperCI).\n5. Frontend tính toán điểm nối isBridgePoint, miền trục tung động yDomain và vẽ biểu đồ Recharts.\n6. Người dùng đổi mô hình AI, đổi kỳ hạn hoặc chọn huyện khác; hệ thống cập nhật tức thời toàn bộ số liệu."],
@@ -80,24 +80,24 @@ CH3_MASSIVE_EXPANSION = [
 CH4_MASSIVE_EXPANSION = [
     {
         "code": "4.2.6.",
-        "title": "Phân tích đối sánh kết quả dự báo đa kỳ hạn (7 ngày, 10 ngày, 14 ngày và 30 ngày) của 8 mặt hàng nông sản",
+        "title": "Phân tích đối sánh kết quả dự báo đa kỳ hạn (7 ngày, 14 ngày và 30 ngày) của 8 mặt hàng nông sản",
         "paragraphs": [
-            "Trong thực tế sản xuất và kinh doanh nông sản tại Việt Nam, mỗi nhóm đối tượng người dùng có một khung thời gian ra quyết định khác nhau: người nông dân cắt dâu tây, dỡ khoai tây tại Đà Lạt hoặc gặt lúa tươi tại An Giang cần dự báo ngắn hạn 7 ngày đến 10 ngày tới để chọn ngày thu hoạch có giá bán tại vườn tốt nhất; thương lái và đại lý thu mua cấp huyện tại Cư M'gar, Di Linh, Chư Sê cần dự báo 14 ngày tới để cân đối vốn lưu động và kho bãi; trong khi các doanh nghiệp chế biến xuất khẩu cà phê, hồ tiêu, hạt điều và nhà máy đường cần dự báo trung hạn 30 ngày tới để ký hợp đồng giao hàng kỳ hạn.",
-            "Khi kỳ hạn dự báo H tăng từ 7 ngày lên 10 ngày, 14 ngày và 30 ngày, độ bất định của thị trường tăng lên tự nhiên theo thời gian. Hệ thống AgroForecast phản ánh trung thực quy luật này thông qua hai khía cạnh: (1) Quỹ đạo dự báo trung tâm của mô hình tối ưu nắm bắt xu thế chủ đạo (tăng nhẹ, điều chỉnh hoặc ổn định theo mùa vụ); và (2) Bề rộng của dải khoảng tin cậy 95% [LowerCI, UpperCI] cung cấp biên an toàn định lượng để người dùng phòng ngừa rủi ro. Bảng 4.5 dưới đây tổng hợp chi tiết mức giá dự báo tại địa phương chuẩn ở cả 4 mốc kỳ hạn (+7 ngày, +10 ngày, +14 ngày và +30 ngày) đối với toàn bộ 8 mặt hàng nông sản chủ lực.",
+            "Trong thực tế sản xuất và kinh doanh nông sản tại Việt Nam, mỗi nhóm đối tượng người dùng có một khung thời gian ra quyết định khác nhau: người nông dân cắt dâu tây, dỡ khoai tây tại Đà Lạt hoặc gặt lúa tươi tại An Giang cần dự báo ngắn hạn 7 ngày tới để chọn ngày thu hoạch có giá bán tại vườn tốt nhất; thương lái và đại lý thu mua cấp huyện tại Cư M'gar, Di Linh, Chư Sê cần dự báo 14 ngày tới để cân đối vốn lưu động và kho bãi; trong khi các doanh nghiệp chế biến xuất khẩu cà phê, hồ tiêu, hạt điều và nhà máy đường cần dự báo trung hạn 30 ngày tới để ký hợp đồng giao hàng kỳ hạn.",
+            "Khi kỳ hạn dự báo H tăng từ 7 ngày lên 14 ngày và 30 ngày, độ bất định của thị trường tăng lên tự nhiên theo quy luật căn bậc hai thời gian (sqrt(h)). Hệ thống AgroForecast phản ánh trung thực quy luật này qua 3 kỳ hạn chuẩn (Literal[7, 14, 30] ở cả API và UI) với hai khía cạnh: (1) Quỹ đạo dự báo trung tâm của mô hình tối ưu ★ nắm bắt xu thế chủ đạo; và (2) Bề rộng dải khoảng tin cậy Conformal 95% [LowerCI, UpperCI] mở rộng đều theo sqrt(h) (W_30 / W_1 = 5,477). Bảng 4.5 tổng hợp chi tiết mức giá dự báo chốt tại mốc 23/11/2026 ở cả 3 mốc kỳ hạn (+7 ngày, +14 ngày và +30 ngày) cho toàn bộ 8 mặt hàng nông sản.",
         ],
         "tables": [
             {
-                "caption": "Bảng 4.5. Tổng hợp kết quả dự báo biến động giá tại vườn/ruộng ở 4 mốc kỳ hạn (+7 ngày, +10 ngày, +14 ngày, +30 ngày) cho 8 nông sản",
-                "headers": ["Mặt hàng & Địa phương chuẩn", "Mô hình tối ưu", "Giá tại vườn hiện tại", "Dự báo +7 ngày", "Dự báo +10 ngày", "Dự báo +14 ngày", "Dự báo +30 ngày", "Xu hướng chủ đạo 30 ngày"],
+                "caption": "Bảng 4.5. Tổng hợp kết quả dự báo biến động giá tại vườn/ruộng ở 3 mốc kỳ hạn chuẩn (+7 ngày, +14 ngày, +30 ngày — chốt mốc 23/11/2026) cho 8 nông sản",
+                "headers": ["Mặt hàng & Địa phương chuẩn", "Mô hình tối ưu", "Giá hiện tại (23/11)", "Dự báo +7 ngày", "Dự báo +14 ngày", "Dự báo +30 ngày", "Xu hướng chủ đạo & CI 30 ngày"],
                 "rows": [
-                    ["Lúa IR50404 (Châu Phú, An Giang)", "ARIMA (MAPE 1,04%)", "7.450 đ/kg", "7.495 đ/kg", "7.510 đ/kg", "7.530 đ/kg", "7.585 đ/kg", "Tăng nhẹ ổn định (+1,81%) theo nhu cầu xay xát cuối năm"],
-                    ["Cà phê Robusta (Cư M'gar, Đắk Lắk)", "XGBoost (MAPE 5,91%)", "117.518 đ/kg", "118.020 đ/kg", "118.250 đ/kg", "117.890 đ/kg", "116.950 đ/kg", "Dao động tích lũy vùng đỉnh khi bước vào vụ thu hoạch mới"],
-                    ["Hồ tiêu đen (Chư Sê, Gia Lai)", "XGBoost (MAPE 0,70%)", "143.360 đ/kg", "143.850 đ/kg", "144.120 đ/kg", "144.480 đ/kg", "145.200 đ/kg", "Tăng trưởng tích cực (+1,28%) do nguồn cung trong dân hạn chế"],
-                    ["Mía đường 10 CCS (Tây Hòa, Phú Yên)", "XGBoost / ARIMA", "1.246.588 đ/tấn", "1.246.588 đ/tấn", "1.246.588 đ/tấn", "1.246.588 đ/tấn", "1.246.588 đ/tấn", "Đi ngang ổn định (0,00%) theo biểu giá thu mua hợp đồng vụ ép"],
-                    ["Dâu tây Đà Lạt (Phường 8, Đà Lạt)", "PyTorch LSTM (MAPE 0,44%)", "108.870 đ/kg", "109.210 đ/kg", "109.450 đ/kg", "109.820 đ/kg", "111.150 đ/kg", "Tăng đều (+2,09%) khi Đà Lạt bước vào mùa khô du lịch cuối năm"],
-                    ["Khoai lang tím (Bình Tân, Vĩnh Long)", "PyTorch LSTM (MAPE 0,83%)", "8.395 đ/kg", "8.450 đ/kg", "8.480 đ/kg", "8.525 đ/kg", "8.640 đ/kg", "Phục hồi nhẹ (+2,92%) nhờ nhu cầu đóng cont xuất khẩu"],
-                    ["Khoai tây Đà Lạt (Phường 7, Đà Lạt)", "PyTorch LSTM (MAPE 0,86%)", "15.783 đ/kg", "15.880 đ/kg", "15.920 đ/kg", "15.995 đ/kg", "16.210 đ/kg", "Tăng vững (+2,71%) do nguồn cung khoai thương phẩm loại 1 khan hiếm"],
-                    ["Hạt điều thô (Bù Đăng, Bình Phước)", "PyTorch LSTM (MAPE 0,64%)", "37.441 đ/kg", "37.690 đ/kg", "37.810 đ/kg", "37.980 đ/kg", "38.450 đ/kg", "Tăng trưởng (+2,69%) phục vụ chế biến điều nhân dịp lễ cuối năm"],
+                    ["Lúa IR50404 (ĐBSCL)", "ARIMA ★ (MAPE 1,58%)", "6.850 đ/kg", "6.850 đ/kg", "6.850 đ/kg", "6.850 đ/kg", "Đi ngang ổn định (0,00%, CI 30N: 5.228–8.472 đ/kg)"],
+                    ["Cà phê Robusta (Tây Nguyên)", "PyTorch LSTM ★ (1,79%)", "71.700 đ/kg", "73.846 đ/kg", "72.913 đ/kg", "72.979 đ/kg", "Phục hồi nhẹ (+1,78%, CI 30N: 61.136–84.822 đ/kg)"],
+                    ["Hồ tiêu đen (Tây Nguyên & ĐNB)", "ARIMA ★ (MAPE 0,74%)", "129.100 đ/kg", "129.080 đ/kg", "129.080 đ/kg", "129.080 đ/kg", "Ổn định vùng cao (-0,02%, CI 30N: 116.066–142.094 đ/kg)"],
+                    ["Mía đường 10 CCS (ICE SB=F)", "Prophet ★ (MAPE 2,62%)", "1.230.000 đ/tấn", "1.218.314 đ/tấn", "1.215.719 đ/tấn", "1.220.793 đ/tấn", "Dao động theo sàn (-0,75%, CI 30N: 851k–1.591k đ/tấn)"],
+                    ["Dâu tây Đà Lạt (Phường 8, Đà Lạt)", "Prophet ★ (MAPE 1,08%)", "100.000 đ/kg", "98.984 đ/kg", "98.666 đ/kg", "98.956 đ/kg", "Điều chỉnh nhẹ theo vụ (-1,04%, CI 30N: 89.190–108.723 đ/kg)"],
+                    ["Khoai tây Đà Lạt (Phường 7, Đà Lạt)", "Prophet ★ (MAPE 1,30%)", "20.000 đ/kg", "19.994 đ/kg", "20.000 đ/kg", "20.032 đ/kg", "Ổn định đi ngang (+0,16%, CI 30N: 15.746–24.319 đ/kg)"],
+                    ["Khoai lang tím (Bình Tân, Vĩnh Long)", "XGBoost ★ (MAPE 1,71%)", "16.000 đ/kg", "15.992 đ/kg", "15.988 đ/kg", "15.986 đ/kg", "Ổn định quanh 16.000 (-0,09%, CI 30N: 13.725–18.246 đ/kg)"],
+                    ["Hạt điều thô (Bù Đăng, Bình Phước)", "ARIMA ★ (MAPE 1,30%)", "32.500 đ/kg", "32.500 đ/kg", "32.500 đ/kg", "32.500 đ/kg", "Đi ngang ổn định (0,00%, CI 30N: 28.749–36.251 đ/kg)"],
                 ],
             }
         ],
@@ -113,13 +113,13 @@ CH4_MASSIVE_EXPANSION = [
                 "caption": "Bảng 4.6. Tổng hợp kết quả nghiệm thu các chỉ tiêu chất lượng phần mềm, hiệu năng học máy và bảo mật hệ thống",
                 "headers": ["Hạng mục đánh giá nghiệm thu", "Chỉ tiêu mục tiêu đề ra", "Kết quả đo lường thực tế đạt được", "Trạng thái nghiệm thu"],
                 "rows": [
-                    ["Độ phủ mặt hàng & Địa phương", "Tối thiểu 4 - 8 nông sản, có phân biệt giá theo vùng", "8 mặt hàng chủ lực & 29 huyện/phường bán tại vườn/ruộng", "ĐẠT VƯỢT MỨC"],
-                    ["Số lượng mô hình học máy tích hợp", "Tối thiểu 3 mô hình dự báo chuỗi thời gian", "5 mô hình hoạt động đồng bộ (LSTM, Prophet, ARIMA, XGBoost, RF)", "ĐẠT VƯỢT MỨC"],
-                    ["Sai số dự báo MAPE của mô hình tối ưu", "MAPE < 10% (Ngưỡng dự báo chính xác cao theo Lewis)", "MAPE đạt từ 0,00% đến 5,91% trên toàn bộ 8/8 mặt hàng", "ĐẠT XUẤT SẮC"],
-                    ["Kiểm soát nguồn gốc & Chống rò rỉ dữ liệu", "Không dùng dữ liệu chưa xác minh hoặc rò rỉ tập Test", "100% kiểm tra provenance + Holdout Split + SHA-256 dataset_hash", "ĐẠT TUYỆT ĐỐI"],
-                    ["Tỷ lệ vượt qua kiểm thử tự động Backend", "Tối thiểu 95% kịch bản kiểm thử đạt PASSED", "72 / 72 kịch bản kiểm thử tự động đạt PASSED (Tỷ lệ 100%)", "ĐẠT 100%"],
-                    ["Kiểm tra kiểu tĩnh Frontend TypeScript", "Không có lỗi biên dịch kiểu dữ liệu (0 Type Errors)", "Chạy npx tsc --noEmit hoàn tất với 0 lỗi trên toàn bộ 8 màn hình", "ĐẠT 100%"],
-                    ["Phòng vệ bảo mật theo chuẩn OWASP Top 10", "Đảm bảo xác thực, phân quyền và chống tiêm mã độc", "6 lớp bảo vệ (Bcrypt, JWT, RBAC, ORM SQLi, XSS/CSV Sanitize, RateLimit, 7 Headers)", "ĐẠT CHUẨN OWASP"],
+                    ["Độ phủ dữ liệu & Địa phương", "Tối thiểu 4 - 8 nông sản, có phân biệt giá theo vùng", "8 mặt hàng (4.899 bản ghi lịch sử + 9.079 quan sát 33 tỉnh/29 huyện)", "ĐẠT VƯỢT MỨC"],
+                    ["Số lượng mô hình ML & Biến ngoại sinh", "Tối thiểu 3 mô hình chuỗi thời gian, kết hợp vĩ mô", "5 mô hình (LSTM 7 kênh, Prophet, ARIMA, XGBoost & RF 22 ft) + USD/VND, WTI", "ĐẠT VƯỢT MỨC"],
+                    ["Sai số dự báo MAPE của mô hình tối ưu", "MAPE < 10% (Ngưỡng dự báo chính xác cao theo Lewis)", "MAPE đạt từ 0,74% đến 2,62% (40/40 mô hình R2 > 0, PICP 89,4–100%)", "ĐẠT XUẤT SẮC"],
+                    ["Kiểm soát nguồn gốc & Chống rò rỉ dữ liệu", "Không dùng dữ liệu chưa xác minh hoặc rò rỉ tập Test", "3 nhóm nguồn minh bạch + Walk-Forward Zero-Leakage + SHA-256 + Literal[7,14,30]", "ĐẠT TUYỆT ĐỐI"],
+                    ["Kiểm thử tự động Backend & E2E", "Tối thiểu 95% kịch bản kiểm thử đạt PASSED", "125/125 Pytest Backend (cov 98%) + 3/3 Frontend Unit + 4/4 Playwright E2E", "ĐẠT 100%"],
+                    ["Kiểm tra kiểu tĩnh & Đóng gói triển khai", "0 lỗi biên dịch TS/Lint, có khả năng đóng gói Docker", "0 lỗi TS/ESLint, build sạch 17/17 routes, đầy đủ Docker Compose 3 dịch vụ", "ĐẠT 100%"],
+                    ["Phòng vệ bảo mật theo chuẩn OWASP Top 10", "Đảm bảo xác thực, phân quyền và chống tiêm mã độc", "Bandit SAST 0 Medium/High, pip-audit 0 CVE, 22/22 Admin RBAC, chống IDOR/XSS/SSRF", "ĐẠT CHUẨN OWASP"],
                     ["Thời gian phản hồi API Dự báo (Hot Cache)", "Dưới 250 mili-giây cho mỗi yêu cầu tra cứu", "Đạt trung bình 12 - 45 mili-giây nhờ In-Memory Cache & B-Tree Index", "ĐẠT XUẤT SẮC"],
                 ],
             }

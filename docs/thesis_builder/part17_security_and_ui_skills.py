@@ -47,7 +47,7 @@ CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS = [
                         "caption": "Bảng 4.4. Tóm tắt kết quả kiểm định chất lượng phần mềm và kiểm toán bảo mật hệ thống AgroForecast",
                         "headers": ["Hạng mục kiểm định", "Trước khi xử lý (Baseline)", "Sau khi hoàn thiện & vá", "Đánh giá nghiệm thu"],
                         "rows": [
-                            ["Kiểm thử tự động Backend (pytest)", "105 kịch bản PASS", "121 / 121 PASS (100,57s)", "ĐẠT (100%)"],
+                            ["Kiểm thử tự động Backend (pytest)", "105 kịch bản PASS", "125 / 125 PASS (bao gồm Data Truth & Exogenous Zero-Leakage)", "ĐẠT (100%)"],
                             ["Độ phủ mã nguồn Backend (pytest-cov)", "83% (377 dòng chưa phủ)", "98% (2.194 / 2.247 statements)", "ĐẠT (Xuất sắc)"],
                             ["Kiểm thử đơn vị & Build Frontend", "Kiểm tra cơ bản", "3/3 Unit PASS • 0 lỗi TS/Lint • 17/17 routes build", "ĐẠT"],
                             ["Kiểm thử E2E trình duyệt (Playwright)", "Phát hiện 1 lỗi RBAC ở pha RED", "4 / 4 PASS (28,67s) • 0 lỗi Console/Runtime", "ĐẠT"],
@@ -70,9 +70,9 @@ CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS = [
             },
             {
                 "code": "4.9.3.",
-                "title": "Chi tiết kết quả kiểm thử hệ thống đa tầng (128 / 128 kịch bản PASS)",
+                "title": "Chi tiết kết quả kiểm thử hệ thống đa tầng (132 / 132 kịch bản PASS)",
                 "paragraphs": [
-                    "Tổng cộng 128 kịch bản kiểm thử tự động trên toàn hệ thống đã vượt qua 100% sau bản vá bảo mật cuối cùng (bao gồm 120 kịch bản chức năng & phủ nhánh ở đợt kiểm thử chính, bổ sung thêm 1 kịch bản hồi quy bảo mật toàn diện ở đợt kiểm toán, cùng 3 kiểm thử đơn vị Frontend và 4 luồng kiểm thử E2E trình duyệt thật).",
+                    "Tổng cộng 132 kịch bản kiểm thử tự động trên toàn hệ thống đã vượt qua 100% sau bản vá bảo mật và nâng cấp biến ngoại sinh cuối cùng (bao gồm 125 kịch bản Backend Pytest — mở rộng từ bộ 72 kịch bản lõi với nhóm kiểm thử độ phủ nhánh 98%, kiểm toán sự thật dữ liệu 2024–2026 và chống rò rỉ biến ngoại sinh USD/VND + WTI — kết hợp 3 kiểm thử đơn vị Frontend và 4 luồng kiểm thử E2E trình duyệt thật).",
                     "Bảng 4.5 tổng hợp phân bổ kết quả kiểm thử trên 4 tầng kiến trúc phần mềm của AgroForecast.",
                 ],
                 "tables": [
@@ -80,7 +80,7 @@ CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS = [
                         "caption": "Bảng 4.5. Phân bổ kết quả kiểm định chất lượng phần mềm đa tầng của hệ thống AgroForecast",
                         "headers": ["Tầng kiểm thử", "Công cụ & Tập kiểm thử", "Kết quả xác minh", "Ghi chú kỹ thuật"],
                         "rows": [
-                            ["Backend Unit & API Integration", "pytest -v (bao gồm test_coverage_gaps.py, test_regional_pricing.py, test_security_phase7.py)", "121 / 121 PASS (100,57s)", "Bao gồm test hồi quy RBAC, Alerts, SSRF, Secret và ML No Data Leakage"],
+                            ["Backend Unit & API Integration", "pytest -v (bao gồm test_coverage_gaps.py, test_regional_pricing.py, test_security_phase7.py, test_data_truth_audit.py)", "125 / 125 PASS", "Bao gồm test hồi quy RBAC, Alerts, SSRF, Secret, Data Truth và Exogenous Zero-Leakage"],
                             ["Frontend Unit Tests", "node --test (src/lib/__tests__/formatters.test.mjs)", "3 / 3 PASS", "Kiểm chứng logic định dạng tiền tệ, ngày tháng và tiện ích xử lý dữ liệu giao diện"],
                             ["Frontend Type, Lint & Production Build", "npx tsc --noEmit, next lint, next build", "0 lỗi • 0 cảnh báo", "Đóng gói thành công toàn bộ 17 / 17 tuyến trang (routes) tĩnh và động"],
                             ["End-to-End (E2E) Trình duyệt thật", "Playwright (e2e/test_agroforecast_e2e.py) trên Headless Chrome", "4 / 4 PASS (28,67s)", "0 lỗi Console, 0 lỗi Runtime, 0 xuất hiện banner bản quyền Syncfusion"],
@@ -188,7 +188,7 @@ CH4_QA_AND_SECURITY_FULL_REPORT_SECTIONS = [
                 "title": "Quản trị rủi ro tồn dư và kết luận nghiệm thu an toàn thông tin",
                 "paragraphs": [
                     "Giải trình quản trị rủi ro tồn dư đối với 6 cảnh báo npm audit (SEC-09): Sau khi vá triệt để 8/8 lỗ hổng không gây xung đột tương thích trên Frontend, 6 cảnh báo còn lại xuất phát từ hai nhóm nguyên nhân: (1) Gói eslint-config-next chỉ phục vụ kiểm tra cú pháp ở môi trường lập trình của lập trình viên (devDependencies), hoàn toàn không được đóng gói vào bản biên dịch chạy thực tế của máy chủ sản xuất; và (2) Bản vá yêu cầu nâng cấp nhảy phiên bản lớn từ next@14.2.35 lên Next.js 16 gây phá vỡ tương thích hoàn toàn với React 18 và bộ thư viện Syncfusion EJ2. Để loại trừ bề mặt tấn công mà vẫn giữ vững độ ổn định tuyệt đối của hệ thống, nhóm nghiên cứu đã triển khai các biện pháp kiểm soát bù trừ (compensating controls): bật cấu hình images: { unoptimized: true } nhằm vô hiệu hóa hoàn toàn endpoint xử lý ảnh /_next/image (triệt tiêu nguy cơ tấn công từ chối dịch vụ DoS và thực thi mã từ xa RCE liên quan), đồng thời tắt poweredByHeader và kích hoạt đầy đủ 6 tiêu đề bảo mật OWASP Security Headers trong tệp next.config.mjs.",
-                    "Kết luận nghiệm thu: Sau khi hoàn tất toàn bộ các bản vá bảo mật và siết chặt chính sách phân quyền RBAC, hệ thống AgroForecast đã vượt qua kỳ kiểm thử hồi quy toàn diện với 121/121 kiểm thử Backend PASS (độ phủ mã nguồn đạt 98%), 3/3 kiểm thử đơn vị Frontend PASS, 17/17 tuyến trang đóng gói sạch không lỗi và 4/4 luồng kiểm thử E2E Playwright PASS trực tiếp trên trình duyệt thật. Hai dịch vụ Backend (http://127.0.0.1:8000) và Frontend (http://localhost:3000) vận hành hoàn toàn ổn định, đáp ứng trọn vẹn các tiêu chuẩn khắt khe về độ tin cậy phần mềm và an toàn thông tin mạng để trình bày bảo vệ trước Hội đồng chấm khóa luận tốt nghiệp.",
+                    "Kết luận nghiệm thu: Sau khi hoàn tất toàn bộ các bản vá bảo mật, tích hợp biến ngoại sinh nhân quả và đóng gói Docker Compose, hệ thống AgroForecast đã vượt qua kỳ kiểm thử hồi quy toàn diện với 125/125 kiểm thử Backend PASS (độ phủ mã nguồn đạt 98%), 3/3 kiểm thử đơn vị Frontend PASS, 17/17 tuyến trang đóng gói sạch không lỗi và 4/4 luồng kiểm thử E2E Playwright PASS trực tiếp trên trình duyệt thật (tổng 132/132 kịch bản). Hai dịch vụ Backend (http://127.0.0.1:8000) và Frontend (http://localhost:3000) vận hành hoàn toàn ổn định, đáp ứng trọn vẹn các tiêu chuẩn khắt khe về độ tin cậy phần mềm và an toàn thông tin mạng để trình bày bảo vệ trước Hội đồng chấm khóa luận tốt nghiệp.",
                 ],
             },
         ],

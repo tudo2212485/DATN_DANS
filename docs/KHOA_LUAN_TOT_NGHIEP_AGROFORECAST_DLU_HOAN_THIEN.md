@@ -4,7 +4,7 @@
 
 **Giảng viên hướng dẫn:** ThS. La Quốc Thắng
 
-**Trường Đại học Đà Lạt - Khoa Công Nghệ Thông Tin - Tháng 09/2026**
+**Trường Đại học Đà Lạt - Khoa Công Nghệ Thông Tin - Tháng 11/2026**
 
 ---
 
@@ -71,9 +71,9 @@ Bảng 1.1 dưới đây tổng hợp chi tiết danh mục 8 loại nông sản
 
 ### 1.1.3. Đặc tả nguồn dữ liệu chính thống tại Việt Nam cho 8 mặt hàng nông sản
 
-Để đảm bảo tính xác thực và giá trị thực tiễn của mô hình học máy, hệ thống AgroForecast không sử dụng dữ liệu ngẫu nhiên hay dữ liệu ngoại suy không rõ nguồn gốc, mà thiết lập danh mục nguồn thu thập chính thức (Source Catalog) được định nghĩa trong mô-đun ml_pipeline/source_catalog.py. Mỗi mặt hàng nông sản được liên kết với cơ quan công bố có thẩm quyền tại Việt Nam, ghi nhận rõ tần suất công bố (daily, irregular hoặc periodic), loại giá (Bán tại hộ / Tại vườn / Tại ruộng) và quy cách thương phẩm.
+Để đảm bảo tính xác thực tuyệt đối (Zero Fabrication) và giá trị thực tiễn của mô hình học máy, hệ thống AgroForecast phân tách minh bạch nguồn dữ liệu của 8 mặt hàng nông sản thành 3 nhóm rõ ràng (được gắn nhãn trực tiếp và cho phép bấm kiểm chứng nguồn trên trang /history):
 
-Cụ thể, mặt hàng Lúa IR50404, Dâu tây Đà Lạt, Khoai lang tím Vĩnh Long, Khoai tây Đà Lạt và Hạt điều thô được thu thập và đối chiếu từ hệ thống cơ sở dữ liệu giá nông sản của Viện Chính sách và Chiến lược Phát triển Nông nghiệp Nông thôn (AGROINFO - Bộ Nông nghiệp và Phát triển Nông thôn) kết hợp báo cáo giá của Sở Nông nghiệp và Phát triển Nông thôn tỉnh An Giang, Lâm Đồng, Vĩnh Long, Bình Phước. Mặt hàng Cà phê Robusta và Hồ tiêu đen được thu thập từ chuyên trang giá nội địa Tây Nguyên (giacaphe.com, Vinanet) và Hiệp hội Hồ tiêu và Cây gia vị Việt Nam (VPSA). Mặt hàng Mía đường 10 CCS được thu thập theo kỳ báo cáo của Hiệp hội Mía đường Việt Nam (VSSA) và Viện Chiến lược.
+1. Nhóm 3 mặt hàng chủ lực có 100% đường dẫn bài báo kiểm chứng riêng từng ngày (2.154 phiên giai đoạn 01/2024 – 23/11/2026): Cà phê Robusta (919 phiên trên vietnambiz.vn và giacaphe.com + 3.485 quan sát tách 4 tỉnh Tây Nguyên), Hồ tiêu đen (793 phiên trên vietnambiz.vn + 4.446 quan sát tách 6 tỉnh) và Lúa gạo IR50404 (442 phiên từ Sở NN&PTNT An Giang qua vietnambiz.vn và Hiệp hội Lương thực Việt Nam VFA vietfood.org.vn + 1.101 quan sát tách 7 tỉnh ĐBSCL). 2. Nhóm Mía đường 10 CCS (729 phiên): quy đổi minh bạch từ sàn kỳ hạn đường thô thế giới ICE Sugar #11 (Yahoo Finance SB=F x tỷ giá USD/VND theo hệ số 10 CCS) kết hợp 8 bài báo khảo sát trực tiếp vụ ép 2024–2026 tại Khánh Hòa, Phú Yên và Gia Lai trong bảng regional_price_observations. 3. Nhóm 4 đặc sản mở rộng gồm Dâu tây Đà Lạt, Khoai tây Đà Lạt, Khoai lang tím Vĩnh Long và Hạt điều thô (504 phiên/mặt hàng): do thị trường rau củ quả nội địa không niêm yết giá hằng ngày liên tục nhiều năm, hệ thống neo sát giá khảo sát sống tại các nguồn Việt Nam (Kamereo, vựa Nam Tĩnh Lâm Đồng, banggianongsan.com) kết hợp chuỗi tham chiếu Proxy Index ETF nông sản thực tế từ Yahoo Finance (DBA, MOO, CORN, SOYB x USD/VND), ghi nhãn công khai minh bạch bản chất chuỗi dữ liệu.
 
 
 ### 1.1.4. Phân tích đặc tính chu kỳ thu hoạch và yếu tố mùa vụ của 8 mặt hàng nông sản Việt Nam
@@ -95,43 +95,43 @@ Mỗi loại nông sản trong 8 mặt hàng mục tiêu của hệ thống Agro
 
 ### 1.1.5. Phân tích chuyên sâu Mặt hàng 1: Lúa gạo IR50404 (Mã RICE_IR504 - Địa phương chuẩn: Huyện Châu Phú, An Giang)
 
-Giống lúa IR50404 là giống lúa ngắn ngày (thời gian sinh trưởng 85 - 90 ngày) được gieo trồng phổ biến nhất tại các tỉnh Đồng bằng sông Cửu Long nhờ khả năng thích nghi rộng, năng suất ổn định và hàm lượng amylose cao phù hợp cho cả tiêu thụ nội địa lẫn chế biến bún, bánh và xuất khẩu. Trong cơ sở dữ liệu của hệ thống AgroForecast, chuỗi lịch sử giá lúa tươi IR50404 bán trực tiếp tại bờ ruộng huyện Châu Phú (tỉnh An Giang) bao gồm 238 quan sát đã xác minh từ ngày 05/01/2024 đến ngày 08/11/2026, với mức giá giao dịch mới nhất đạt 7.450 VNĐ/kg.
+Giống lúa IR50404 là giống lúa ngắn ngày (thời gian sinh trưởng 85 - 90 ngày) được gieo trồng phổ biến nhất tại các tỉnh Đồng bằng sông Cửu Long nhờ khả năng thích nghi rộng, năng suất ổn định và hàm lượng amylose cao phù hợp cho cả tiêu thụ nội địa lẫn chế biến bún, bánh và xuất khẩu. Trong cơ sở dữ liệu của hệ thống AgroForecast (chốt mốc 23/11/2026), chuỗi lịch sử giá lúa tươi IR50404 bán trực tiếp tại bờ ruộng tỉnh An Giang & ĐBSCL bao gồm 442 quan sát đã xác minh từ ngày 01/01/2024 đến ngày 23/11/2026 (100% có đường dẫn bài báo/bản tin VFA gốc kiểm chứng, cộng 1.101 quan sát cấp tỉnh tại 7 tỉnh ĐBSCL), với mức giá giao dịch mới nhất đạt 6.850 VNĐ/kg.
 
-Khi phân tích đặc tính thống kê của chuỗi giá RICE_IR504, phương sai biến động ngày của lúa tươi tương đối nhỏ (thường dao động trong bước giá 50 - 150 VNĐ/kg mỗi tuần) và có tính tự tương quan bậc 1 và bậc 2 rất mạnh. Đây chính là lý do trong thực nghiệm đối sánh 5 mô hình học máy, mô hình thống kê tuyến tính ARIMA(2,1,1) đạt sai số thấp nhất với MAE = 78,31 VNĐ/kg, RMSE = 93,56 VNĐ/kg và MAPE chỉ 1,04%, theo sát là mô hình XGBoost (MAE = 94,09 VNĐ/kg, MAPE = 1,25%) và PyTorch LSTM (MAE = 104,50 VNĐ/kg, MAPE = 1,38%).
+Khi phân tích đặc tính thống kê của chuỗi giá RICE_IR504, phương sai biến động ngày của lúa tươi tương đối nhỏ và có tính tự tương quan bậc 1–2 rất mạnh. Trong thực nghiệm đối sánh Walk-Forward 7 ngày của 5 mô hình học máy, mô hình thống kê ARIMA đạt sai số MAPE thấp nhất là 1,58% (MAE = 100,24 VNĐ/kg, RMSE = 169,20 VNĐ/kg, R2 = 0,5340, PICP 95% = 89,39%), theo sát là Facebook Prophet (MAE = 100,13 VNĐ/kg, RMSE thấp nhất 156,67 VNĐ/kg, MAPE = 1,59%, R2 = 0,6005) và XGBoost (MAPE = 1,65%).
 
-Về phân bố giá bán tại ruộng theo các huyện địa phương: tại huyện Thoại Sơn (An Giang), nhờ hệ thống kho sấy tập trung dọc kênh Mặc Cần Dưng, giá lúa tươi tại ruộng cao hơn mức chuẩn Châu Phú +50 VNĐ/kg (đạt 7.500 VNĐ/kg). Tại huyện Tháp Mười (Đồng Tháp), hệ thống kênh trục lớn cho phép ghe thương lái trọng tải 30 - 50 tấn cập sát bờ ruộng nên giá thu mua đạt mức +150 VNĐ/kg (7.600 VNĐ/kg). Tại huyện Cái Bè (Tiền Giang), vị trí gần chợ đầu mối lương thực Bà Đắc giúp giá lúa tại ruộng đạt +100 VNĐ/kg (7.550 VNĐ/kg); trong khi tại huyện Tân Hiệp (Kiên Giang), chi phí trung chuyển đường thủy dài hơn làm mức giá tại ruộng chiết khấu -150 VNĐ/kg (7.300 VNĐ/kg).
+Về phân bố giá bán tại ruộng theo các địa phương ĐBSCL: tại huyện Thoại Sơn (An Giang) giá cao hơn mức chuẩn Châu Phú +50 VNĐ/kg; tại huyện Tháp Mười (Đồng Tháp) đạt +150 VNĐ/kg nhờ thuận lợi vận tải thủy nội địa; tại huyện Cái Bè (Tiền Giang) đạt +100 VNĐ/kg; trong khi tại huyện Tân Hiệp (Kiên Giang) chiết khấu -150 VNĐ/kg do cước ghe trung chuyển xa hơn.
 
 
 ### 1.1.6. Phân tích chuyên sâu Mặt hàng 2: Cà phê nhân xô Robusta (Mã COFFEE_ROBUSTA - Địa phương chuẩn: Huyện Cư M'gar, Đắk Lắk)
 
-Cà phê Robusta (Coffea canephora) là mặt hàng nông sản xuất khẩu chiến lược số một của vùng Tây Nguyên, chiếm trên 90% diện tích cà phê cả nước. Chuỗi dữ liệu lịch sử của COFFEE_ROBUSTA trong hệ thống gồm 212 quan sát đã xác minh từ ngày 19/06/2024 đến ngày 08/11/2026 tại vùng chuẩn huyện Cư M'gar (tỉnh Đắk Lắk), ghi nhận giai đoạn biến động lịch sử của ngành cà phê Việt Nam khi giá nhân xô tại vườn vượt ngưỡng 100.000 - 120.000 VNĐ/kg (mức giá mới nhất đạt 117.518 VNĐ/kg).
+Cà phê Robusta (Coffea canephora) là mặt hàng nông sản xuất khẩu chiến lược số một của vùng Tây Nguyên, chiếm trên 90% diện tích cà phê cả nước. Chuỗi dữ liệu lịch sử của COFFEE_ROBUSTA trong hệ thống gồm 919 quan sát đã xác minh từ ngày 04/01/2024 đến ngày 23/11/2026 (919 bài báo kiểm chứng độc lập trên vietnambiz.vn & giacaphe.com cùng 3.485 quan sát khảo sát 4 tỉnh Tây Nguyên), ghi nhận trọn vẹn chu kỳ biến động lịch sử từ đỉnh 135.200 VNĐ/kg về vùng điều chỉnh cuối năm 2026 ở mức 71.700 VNĐ/kg.
 
-Do giá cà phê nhân xô tại vườn chịu tác động trực tiếp từ giá đóng cửa hàng đêm trên sàn giao dịch kỳ hạn London ICE Europe kết hợp với các cú sốc thời tiết khô hạn El Nino tại Tây Nguyên, chuỗi thời gian COFFEE_ROBUSTA có độ biến động (Volatility) rất cao và xuất hiện nhiều điểm đảo chiều phi tuyến. Kết quả kiểm định Holdout cho thấy thuật toán tăng cường độ dốc cực đại XGBoost đạt hiệu năng vượt trội hoàn toàn với MAE = 6.435,95 VNĐ/kg, RMSE = 7.943,64 VNĐ/kg và MAPE = 5,91% (đạt chuẩn dự báo độ chính xác rất cao < 10%), bỏ xa Random Forest (MAPE 11,71%), LSTM (MAPE 12,99%) và ARIMA (MAPE 13,53%).
+Do giá cà phê nhân xô tại vườn chịu tác động trực tiếp từ sàn kỳ hạn London ICE Europe, tỷ giá USD/VND và chi phí năng lượng/vận tải, việc bổ sung 2 biến ngoại sinh nhân quả (USD/VND và Dầu thô WTI <= t-1) giúp mạng học sâu PyTorch Stacked LSTM (7 kênh nhân quả) xuất sắc đạt Hạng 1 tuyệt đối trên kiểm định Walk-Forward 7 ngày với MAE = 1.555,41 VNĐ/kg, RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79%, R2 = 0,8972 và PICP 95% = 92,22%, vượt trội rõ rệt so với ARIMA (MAPE = 1,86%), Random Forest (RMSE = 2.087,40, MAPE = 1,90%) và Naive Baseline (MAPE = 1,88%, RMSE = 2.147,01 VNĐ/kg).
 
-Về chênh lệch giá bán tại vườn giữa 5 địa phương trọng điểm: so với vùng chuẩn huyện Cư M'gar - Đắk Lắk (0 VNĐ/kg), giá cà phê nhân xô bán tại vườn ở thị xã Buôn Hồ (Đắk Lắk) chênh lệch -100 VNĐ/kg (117.418 VNĐ/kg); tại huyện Chư Prông (Gia Lai) chênh lệch -300 VNĐ/kg (117.218 VNĐ/kg) do cước vận chuyển đường bộ về cụm cảng TP. Hồ Chí Minh - Bình Dương; tại huyện Di Linh (Lâm Đồng) chênh lệch -800 VNĐ/kg (116.718 VNĐ/kg) do điều kiện khí hậu cao nguyên Lâm Viên - Di Linh có độ ẩm không khí cao hơn làm thời gian phơi nắng kéo dài hơn; trong khi tại huyện Đắk Mil (Đắk Nông), chất lượng hạt cà phê nhân xô đồng đều với tỷ lệ hạt trên sàng 16 cao giúp nông hộ bán tại vườn đạt mức cộng +200 VNĐ/kg (117.718 VNĐ/kg).
+Về chênh lệch giá bán tại vườn giữa các tỉnh/huyện Tây Nguyên: hệ thống đồng bộ trực tiếp bảng giá từng ngày tại Đắk Lắk, Lâm Đồng, Gia Lai, Đắk Nông và áp dụng định mức độ lệch cấp huyện (-100 đ/kg tại Buôn Hồ, -300 đ/kg tại Chư Prông, -800 đ/kg tại Di Linh và +200 đ/kg tại Đắk Mil).
 
 
 ### 1.1.7. Phân tích chuyên sâu Mặt hàng 3: Hồ tiêu đen xô khô (Mã PEPPER_BLACK - Địa phương chuẩn: Huyện Chư Sê, Gia Lai)
 
-Hồ tiêu đen Việt Nam giữ vị trí dẫn đầu thế giới về sản lượng xuất khẩu. Trong hệ thống AgroForecast, chuỗi dữ liệu PEPPER_BLACK tại địa phương tham chiếu huyện Chư Sê (tỉnh Gia Lai) gồm 227 quan sát thực tế từ ngày 06/01/2025 đến ngày 08/11/2026 với mức giá bán tại vườn mới nhất đạt 143.360 VNĐ/kg. Nhờ đặc tính nông hộ chủ động phơi khô và bảo quản tại kho gia đình, chuỗi giá hồ tiêu đen có xu hướng dịch chuyển theo từng bậc giá 500 - 1.000 VNĐ/kg rất rõ ràng.
+Hồ tiêu đen Việt Nam giữ vị trí dẫn đầu thế giới về sản lượng xuất khẩu. Trong hệ thống AgroForecast, chuỗi dữ liệu PEPPER_BLACK gồm 793 quan sát thực tế từ ngày 04/01/2024 đến ngày 23/11/2026 (793 bài báo gốc vietnambiz.vn và 4.446 quan sát khảo sát trực tiếp tại 6 tỉnh trọng điểm), dao động trong biên độ 77.800 – 169.200 VNĐ/kg với mức giá mới nhất ngày 23/11/2026 đạt 129.100 VNĐ/kg.
 
-Trên tập kiểm thử Holdout, cả ba mô hình XGBoost, ARIMA và Random Forest đều đạt độ chính xác xuất sắc với MAPE dưới 1%: đứng đầu là XGBoost (MAE = 1.017,34 VNĐ/kg, RMSE = 1.314,53 VNĐ/kg, MAPE = 0,70%), đứng thứ hai là ARIMA (MAE = 1.071,89 VNĐ/kg, MAPE = 0,74%) và đứng thứ ba là Random Forest (MAE = 1.213,42 VNĐ/kg, MAPE = 0,84%). Về độ lệch giá địa phương, huyện Châu Đức (tỉnh Bà Rịa - Vũng Tàu) dẫn đầu cả nước với mức cộng +1.500 VNĐ/kg (144.860 VNĐ/kg) nhờ dung trọng hạt tiêu cao và vị trí sát cụm cảng nước sâu Cái Mép - Thị Vải; huyện Cư Kuin (Đắk Lắk) và huyện Đắk Song (Đắk Nông) lần lượt đạt +200 VNĐ/kg và +100 VNĐ/kg; còn huyện Lộc Ninh (Bình Phước) có mức chiết khấu -500 VNĐ/kg (142.860 VNĐ/kg).
+Trên tập kiểm thử Walk-Forward 7 ngày (90 phiên cuối), cả 5 mô hình đều đạt sai số MAPE xuất sắc dưới 0,90%: đứng đầu về MAPE là ARIMA (MAE = 990,46 VNĐ/kg, RMSE = 1.643,77 VNĐ/kg, MAPE = 0,74%, PICP 95% = 94,44%, vượt Baseline RMSE 1.646,34 VNĐ/kg), đứng thứ hai là XGBoost (MAE = 1.045,64 VNĐ/kg, MAPE = 0,78%) và đứng thứ ba là Random Forest (RMSE thấp nhất 1.631,93 VNĐ/kg, MAPE = 0,78%, R2 = 0,3353). Về chênh lệch địa phương, Bà Rịa - Vũng Tàu (Châu Đức) luôn cao hơn vùng chuẩn do dung trọng hạt lớn và gần cụm cảng Cái Mép - Thị Vải.
 
 
 ### 1.1.8. Phân tích chuyên sâu Mặt hàng 4 & 5: Dâu tây Đà Lạt (STRAWBERRY) và Khoai tây Đà Lạt (POTATO)
 
-Dâu tây tươi Đà Lạt (mã STRAWBERRY, địa phương chuẩn: Phường 8 - TP. Đà Lạt) và Khoai tây thương phẩm Đà Lạt (mã POTATO, địa phương chuẩn: Phường 7 Thái Phiên - TP. Đà Lạt) là hai mặt hàng nông sản ôn đới đặc trưng của tỉnh Lâm Đồng - nơi đặt trụ sở Trường Đại học Đà Lạt. Bộ dữ liệu thực nghiệm của cả hai mặt hàng đều gồm 187 quan sát liên tục từ ngày 06/05/2026 đến ngày 08/11/2026, với mức giá bán tại vườn mới nhất lần lượt là 108.870 VNĐ/kg đối với dâu tây và 15.783 VNĐ/kg đối với khoai tây hồng/vàng loại 1.
+Dâu tây tươi Đà Lạt (mã STRAWBERRY, địa phương chuẩn: Phường 8 - TP. Đà Lạt) và Khoai tây thương phẩm Đà Lạt (mã POTATO, địa phương chuẩn: Phường 7 Thái Phiên - TP. Đà Lạt) là hai mặt hàng nông sản ôn đới đặc trưng của tỉnh Lâm Đồng - nơi đặt trụ sở Trường Đại học Đà Lạt. Do thị trường rau củ quả nội địa không niêm yết giá hằng ngày nhiều năm, bộ dữ liệu thực nghiệm của cả hai mặt hàng gồm 504 phiên (21/11/2024 – 23/11/2026) neo giá khảo sát sống tại Việt Nam (kamereo.vn 100.000 VNĐ/kg cho dâu tây Đà Lạt; vựa namtinhvegetable.com Lâm Đồng 20.000 VNĐ/kg cho khoai tây hồng Đà Lạt) kết hợp chuỗi tham chiếu Proxy Index ETF nông sản thực tế Yahoo Finance (DBA x USD/VND và MOO x USD/VND), hiển thị nhãn minh bạch trên /history.
 
-Điểm nổi bật nhất trong thực nghiệm học máy trên hai mặt hàng nông sản Đà Lạt này là sự áp đảo tuyệt đối của mạng nơ-ron học sâu PyTorch LSTM: trên chuỗi Dâu tây Đà Lạt, LSTM đạt sai số MAE chỉ 463,52 VNĐ/kg, RMSE = 619,96 VNĐ/kg, MAPE = 0,44% và hệ số xác định R2 = 0,9348 (trong khi ARIMA có MAE = 3.956,45 VNĐ/kg và XGBoost có MAE = 4.853,62 VNĐ/kg). Tương tự, trên chuỗi Khoai tây Đà Lạt, LSTM xếp hạng 1 tuyệt đối với MAE = 134,90 VNĐ/kg, RMSE = 162,16 VNĐ/kg, MAPE = 0,86% và R2 = 0,8205. Kết quả này chứng minh các cổng nhớ dài-ngắn của LSTM nắm bắt hoàn hảo quy luật dao động sinh học và thời tiết cao nguyên Lâm Viên. Về phân bố địa phương, giá dâu tây bán sỉ tại vườn huyện Lạc Dương (Lâm Đồng) thấp hơn Phường 8 Đà Lạt -3.000 VNĐ/kg, và tại huyện Mộc Châu (Sơn La) thấp hơn -15.000 VNĐ/kg; còn giá khoai tây tại vườn huyện Đức Trọng và huyện Đơn Dương (Lâm Đồng) lần lượt chênh lệch -800 VNĐ/kg và -1.000 VNĐ/kg so với vùng chuyên canh Thái Phiên - Đà Lạt.
+Trên kiểm định Walk-Forward 7 ngày, mô hình Facebook Prophet đạt hiệu năng cao nhất trên cả hai mặt hàng ôn đới nhờ nắm bắt tốt nhịp điệu mùa vụ: trên Dâu tây Đà Lạt đạt MAE = 1.164,79 VNĐ/kg, RMSE = 1.610,18 VNĐ/kg, MAPE = 1,08%, R2 = 0,8693 (PICP 95% = 100%, vượt sâu Naive Baseline 1,30%); trên Khoai tây Đà Lạt đạt MAE = 276,05 VNĐ/kg, RMSE = 368,60 VNĐ/kg, MAPE = 1,30%, R2 = 0,7119 (PICP 95% = 100%, vượt Naive Baseline 1,39%). Cả 5 mô hình đều đạt MAPE thấp từ 1,08% đến 1,60%.
 
 
 ### 1.1.9. Phân tích chuyên sâu Mặt hàng 6, 7 & 8: Khoai lang tím Vĩnh Long, Hạt điều thô Bình Phước và Mía đường 10 CCS
 
-Đối với Khoai lang tím Nhật Vĩnh Long (mã SWEET_POTATO, địa phương chuẩn: huyện Bình Tân - Vĩnh Long, 187 quan sát, giá mới nhất 8.395 VNĐ/kg), mạng học sâu LSTM tiếp tục giữ vị trí số 1 với MAE = 68,50 VNĐ/kg, RMSE = 87,93 VNĐ/kg, MAPE = 0,83% và R2 = 0,7366. Mức giá thu mua tại ruộng ở hai huyện lân cận là huyện Châu Thành (Đồng Tháp) và huyện Châu Thành A (Hậu Giang) lần lượt chiết khấu -400 VNĐ/kg và -500 VNĐ/kg do chi phí vận chuyển đường bộ/đường thủy về cụm kho đóng gói xuất khẩu tại Bình Tân.
+Đối với Khoai lang tím Nhật Vĩnh Long (mã SWEET_POTATO, địa phương chuẩn: huyện Bình Tân - Vĩnh Long, 504 phiên từ 21/11/2024 – 23/11/2026, neo giá khảo sát sống tại banggianongsan.com 16.000 VNĐ/kg kết hợp chuỗi tham chiếu Proxy Index ETF Yahoo Finance CORN x USD/VND), mô hình XGBoost đứng hạng 1 với MAE = 305,09 VNĐ/kg, RMSE = 393,93 VNĐ/kg, MAPE = 1,71%, R2 = 0,8844 và PICP 95% = 97,33% (vượt Baseline 1,715%, bám sát là ARIMA 1,75% và Random Forest 1,77%).
 
-Đối với Hạt điều thô (mã CASHEW_NUT, địa phương chuẩn: huyện Bù Đăng - Bình Phước, 187 quan sát, giá mới nhất 37.441 VNĐ/kg), mô hình LSTM đạt hiệu năng cao nhất với MAE = 238,23 VNĐ/kg, RMSE = 293,99 VNĐ/kg, MAPE = 0,64% và R2 = 0,8973. So với Bù Đăng (0 VNĐ/kg), vùng nguyên liệu huyện Phú Riềng (Bình Phước) có tỷ lệ thu hồi nhân cao nên đạt mức cộng +200 VNĐ/kg; trong khi huyện Định Quán (Đồng Nai) và huyện Krông Pa (Gia Lai) lần lượt có mức trừ lùi -400 VNĐ/kg và -800 VNĐ/kg.
+Đối với Hạt điều thô (mã CASHEW_NUT, địa phương chuẩn: huyện Bù Đăng - Bình Phước, 504 phiên từ 21/11/2024 – 23/11/2026, neo giá khảo sát sống 7 tỉnh tại banggianongsan.com mức 32.500 VNĐ/kg tại Bình Phước kết hợp chuỗi tham chiếu Proxy Index ETF Yahoo Finance SOYB x USD/VND), mô hình ARIMA đạt hạng 1 với MAE = 444,00 VNĐ/kg, RMSE = 555,34 VNĐ/kg, MAPE = 1,30%, R2 = 0,8127 và PICP 95% = 100%; theo sát là XGBoost (MAPE = 1,33%) và PyTorch LSTM (MAPE = 1,35%).
 
-Đối với Mía nguyên liệu đạt 10 chữ đường (mã SUGARCANE, địa phương chuẩn: huyện Tây Hòa - Phú Yên, đơn vị VNĐ/tấn, giá mới nhất 1.246.588 VNĐ/tấn), do đặc thù giá thu mua mía nguyên liệu được các nhà máy đường công bố theo biểu giá bảo hiểm hợp đồng ổn định trong suốt từng đợt ép vụ, các mô hình ARIMA, XGBoost và Random Forest đạt độ khớp tuyệt đối (MAE = 0,00 VNĐ/tấn, R2 = 1,0000) trong khi LSTM đạt MAPE = 0,08%. Giữa các địa phương trồng mía trọng điểm, huyện Tân Châu (Tây Ninh), thị xã An Khê (Gia Lai) và huyện Phụng Hiệp (Hậu Giang) có mức chênh lệch lần lượt là -10.000 VNĐ/tấn, -8.000 VNĐ/tấn và -15.000 VNĐ/tấn so với vùng chuẩn Tây Hòa - Phú Yên.
+Đối với Mía nguyên liệu 10 chữ đường (mã SUGARCANE, đơn vị VNĐ/tấn), bộ dữ liệu gồm 729 phiên giao dịch thật từ 02/01/2024 đến 23/11/2026 quy đổi minh bạch từ sàn đường thô thế giới ICE Sugar #11 (Yahoo Finance SB=F x USD/VND theo hệ số 10 CCS, giá chốt 23/11/2026 đạt 1.230.000 VNĐ/tấn) kết hợp 8 bài báo khảo sát vụ ép 2024–2026 tại Khánh Hòa (1.000.000 – 1.270.000 đ/tấn), Phú Yên và Gia Lai. Trên kiểm định Walk-Forward 7 ngày, Facebook Prophet dẫn đầu với MAPE = 2,62%, RMSE = 46.011,00 VNĐ/tấn, R2 = 0,8571, PICP 95% = 97,78%, theo sát là Random Forest (MAPE = 2,70%) — cả hai đều vượt Naive Baseline (2,74%).
 
 
 ## 1.2. Phân tích, đánh giá các hướng nghiên cứu trong và ngoài nước
@@ -226,7 +226,7 @@ Nhóm 4 - Đặc trưng lịch và chu kỳ mùa vụ (Calendar & Cyclical Featu
 
 ### 2.1.5. Quy trình chuẩn hóa dữ liệu Min-Max Scaling và kiến tạo mẫu cửa sổ trượt cho mạng học sâu
 
-Khác với các mô hình cây quyết định (Random Forest, XGBoost) vốn bất biến với phép biến đổi đơn điệu của thang đo đặc trưng, mạng nơ-ron hồi quy sâu PyTorch LSTM sử dụng các hàm kích hoạt phi tuyến Sigmoid sigma(z) = 1 / (1 + e^{-z}) và Hyperbolic Tangent tanh(z) = (e^z - e^{-z}) / (e^z + e^{-z}). Nếu đưa trực tiếp giá trị giá nông sản gốc (ví dụ 117.500 VNĐ/kg đối với cà phê hoặc 1.246.588 VNĐ/tấn đối với mía đường) vào mạng LSTM, tích vô hướng W * x sẽ rơi vào vùng bão hòa cực trị của hàm kích hoạt, làm cho đạo hàm tiến về 0 và khiến quá trình huấn luyện lan truyền ngược theo thời gian (Backpropagation Through Time - BPTT) hoàn toàn thất bại.
+Khác với các mô hình cây quyết định (Random Forest, XGBoost) vốn bất biến với phép biến đổi đơn điệu của thang đo đặc trưng, mạng nơ-ron hồi quy sâu PyTorch LSTM sử dụng các hàm kích hoạt phi tuyến Sigmoid sigma(z) = 1 / (1 + e^{-z}) và Hyperbolic Tangent tanh(z) = (e^z - e^{-z}) / (e^z + e^{-z}). Nếu đưa trực tiếp giá trị giá nông sản gốc (ví dụ 71.700 VNĐ/kg đối với cà phê hoặc 1.208.000 VNĐ/tấn đối với mía đường) vào mạng LSTM, tích vô hướng W * x sẽ rơi vào vùng bão hòa cực trị của hàm kích hoạt, làm cho đạo hàm tiến về 0 và khiến quá trình huấn luyện lan truyền ngược theo thời gian (Backpropagation Through Time - BPTT) hoàn toàn thất bại.
 
 Do đó, hệ thống AgroForecast thực hiện phép chuẩn hóa tuyến tính Min-Max Scaling đưa chuỗi giá về miền giá trị chuẩn [0, 1] hoặc [-1, 1] strictly dựa trên giá trị nhỏ nhất (p_min_train) và lớn nhất (p_max_train) của riêng Tập huấn luyện (Training Set): p_norm_t = (p_t - p_min_train) / (p_max_train - p_min_train + 10^{-8}). Việc chỉ tính p_min_train và p_max_train trên Tập huấn luyện mà không tính trên Tập kiểm thử Holdout là nguyên tắc bắt buộc để đảm bảo không xảy ra rò rỉ thông tin thống kê từ tương lai.
 
@@ -311,9 +311,9 @@ Việc tích hợp đồng thời cả 5 mô hình thuộc 3 trường phái to�
 
 2. Sai số bình phương trung bình căn bậc hai (Root Mean Square Error - RMSE): RMSE = sqrt( (1 / n) * sum_{i=1..n} (y_i - hat{y}_i)^2 ). Do bình phương sai số trước khi lấy trung bình, RMSE phạt nặng các sai số lớn đột biến, được dùng làm tiêu chuẩn chính để xếp hạng mô hình tối ưu nhất và tính toán bề rộng dải tin cậy.
 
-3. Sai số phần trăm tuyệt đối trung bình (Mean Absolute Percentage Error - MAPE): MAPE = (100% / n) * sum_{i=1..n} |(y_i - hat{y}_i) / y_i|. Do không phụ thuộc vào đơn vị tiền tệ, MAPE cho phép so sánh trực tiếp độ chính xác dự báo giữa mặt hàng giá vài nghìn đồng (như Lúa 7.450 đ/kg) với mặt hàng giá trên trăm nghìn đồng (như Hồ tiêu 143.360 đ/kg). Theo chuẩn phân loại của Lewis (1982): MAPE < 10% là dự báo có độ chính xác rất cao (Highly Accurate); 10% <= MAPE < 20% là dự báo tốt (Good); 20% <= MAPE < 50% là dự báo hợp lý (Reasonable).
+3. Sai số phần trăm tuyệt đối trung bình (Mean Absolute Percentage Error - MAPE): MAPE = (100% / n) * sum_{i=1..n} |(y_i - hat{y}_i) / y_i|. Do không phụ thuộc vào đơn vị tiền tệ, MAPE cho phép so sánh trực tiếp độ chính xác dự báo giữa mặt hàng giá vài nghìn đồng (như Lúa 6.850 đ/kg) với mặt hàng giá trên trăm nghìn đồng (như Hồ tiêu 129.100 đ/kg). Theo chuẩn phân loại của Lewis (1982): MAPE < 10% là dự báo có độ chính xác rất cao (Highly Accurate); 10% <= MAPE < 20% là dự báo tốt (Good); 20% <= MAPE < 50% là dự báo hợp lý (Reasonable).
 
-4. Hệ số xác định (Coefficient of Determination - R2): R2 = 1 - [ sum_{i=1..n} (y_i - hat{y}_i)^2 / sum_{i=1..n} (y_i - bar{y})^2 ]. Lưu ý trong thống kê chuỗi thời gian ngắn hạn (Holdout 10 ngày cuối): nếu giai đoạn 10 ngày kiểm thử thị trường đi ngang trong biên độ cực hẹp (phương sai mẫu số sum(y_i - bar{y})^2 tiến dần về 0), chỉ số R2 có thể mang giá trị âm dù sai số tuyệt đối MAPE cực nhỏ (< 1.5%). Vì vậy trong kinh tế lượng chuỗi thời gian, RMSE và MAPE luôn là hai thước đo quyết định.
+4. Hệ số xác định (Coefficient of Determination - R2): R2 = 1 - [ sum_{i=1..n} (y_i - hat{y}_i)^2 / sum_{i=1..n} (y_i - bar{y})^2 ]. Nhờ áp dụng kiểm định Walk-Forward cuộn 7 ngày trên cửa sổ 66–90 phiên cuối cùng thay vì cửa sổ ngắn hẹp, toàn bộ 40/40 mô hình trên 8 mặt hàng của AgroForecast đều đạt hệ số R2 dương thực nghiệm (0,2536 đến 0,8972), kết hợp RMSE và MAPE để đánh giá toàn diện năng lực dự báo.
 
 
 ### 2.3.2. Phương pháp kiểm định Walk-Forward Holdout Validation và Cổng chặn sai số (Threshold Gate)
@@ -402,7 +402,7 @@ Song song với Rate Limiting, mật khẩu người dùng được bảo vệ b
 
 Hệ thống AgroForecast được thiết kế để phục vụ ba nhóm tác nhân người dùng chính trong hệ sinh thái nông nghiệp Việt Nam, được quản lý thông qua cơ chế Kiểm soát truy cập dựa trên vai trò (Role-Based Access Control - RBAC) tại mô-đun app/core/deps.py:
 
-1. Nông hộ, Thương lái và Nhà đầu tư (Vai trò User / Guest): Là những người trực tiếp sản xuất nông sản tại vườn/ruộng hoặc thu mua nông sản tại địa phương. Họ có nhu cầu tra cứu bảng giá bán tại vườn hôm nay của 8 mặt hàng chủ lực, xem biểu đồ dự báo biến động giá 7 ngày, 10 ngày, 14 ngày và 30 ngày tới theo từng huyện chuyên canh, xem đối sánh sai số giữa 5 mô hình AI, tải báo cáo dự báo định dạng CSV và đăng ký nhận cảnh báo tự động qua Email khi giá vượt ngưỡng mong muốn.
+1. Nông hộ, Thương lái và Nhà đầu tư (Vai trò User / Guest): Là những người trực tiếp sản xuất nông sản tại vườn/ruộng hoặc thu mua nông sản tại địa phương. Họ có nhu cầu tra cứu bảng giá bán tại vườn hôm nay của 8 mặt hàng chủ lực theo 33 tỉnh/thành phố, xem biểu đồ dự báo biến động giá theo 3 kỳ hạn chuẩn (7 ngày, 14 ngày và 30 ngày tới), xem đối sánh sai số giữa 5 mô hình AI, tải báo cáo dự báo định dạng Excel/CSV và đăng ký nhận cảnh báo tự động qua Email khi giá vượt ngưỡng mong muốn.
 
 2. Chuyên viên Phân tích Thị trường (Vai trò Analyst): Ngoài toàn bộ quyền tra cứu của User, chuyên viên phân tích được phép truy cập bảng thống kê hệ thống, tra cứu nhật ký thu thập dữ liệu của Bot Scraper, xem toàn bộ lịch sử giá bao gồm cả các bản ghi đang chờ xác minh (unverified) và xuất tập tin dữ liệu lịch sử phục vụ công tác kiểm định chất lượng dữ liệu.
 
@@ -414,7 +414,7 @@ Hệ thống AgroForecast được thiết kế để phục vụ ba nhóm tác 
 | Mã chức năng | Tên nhóm chức năng nghiệp vụ | Khách / Nông hộ (User) | Chuyên viên (Analyst) | Quản trị viên (Admin) |
 | --- | --- | --- | --- | --- |
 | UC-01 | Tra cứu tổng quan thị trường & giá bán tại vườn theo huyện | Cho phép | Cho phép | Cho phép |
-| UC-02 | Phân tích & Dự báo AI 5 mô hình (7, 10, 14, 30 ngày) + XAI | Cho phép | Cho phép | Cho phép |
+| UC-02 | Phân tích & Dự báo AI 5 mô hình (7, 14, 30 ngày) + XAI | Cho phép | Cho phép | Cho phép |
 | UC-03 | Tra cứu lịch sử giá đã xác minh & Xuất báo cáo CSV | Cho phép | Cho phép | Cho phép |
 | UC-04 | Đối sánh tương quan biến động giá đa nông sản | Cho phép | Cho phép | Cho phép |
 | UC-05 | Tạo, bật/tắt, xóa và gửi thử quy tắc cảnh báo giá Email | Cho phép | Cho phép | Cho phép |
@@ -466,7 +466,7 @@ Về độ tin cậy và an toàn bảo mật: Hệ thống phải vượt qua 1
 
 1. Tác nhân chính: Nông hộ, Thương lái, Chuyên viên phân tích và Quản trị viên. 2. Điều kiện tiên quyết: Chuỗi lịch sử giá đã xác minh (provenance thuộc 'collected' hoặc 'reviewed') của mặt hàng được chọn đạt độ dài tối thiểu theo quy định (60 ngày đối với chuỗi ngày, 30 mốc đối với chuỗi không đều, 24 kỳ đối với chuỗi định kỳ) và đã có bản ghi dự báo hợp lệ khớp chữ ký băm SHA-256 (dataset_hash) trong bảng training_runs và forecasts.
 
-3. Luồng sự kiện chính: Bước 1: Người dùng điều hướng tới trang Phân tích & Dự báo AI (/forecast). Mặc định hệ thống nạp mặt hàng chủ lực Cà phê Robusta (commodity_id = 2), thuật toán LSTM, kỳ hạn dự báo 10 ngày và địa phương chuẩn Huyện Cư M'gar - Đắk Lắk (Tại vườn). Bước 2: Giao diện gửi đồng thời hai yêu cầu GET /api/v1/forecast?commodity_id=2&model_name=LSTM&days=10 và GET /api/v1/forecast/compare/2. Bước 3: Tại forecast_service.py, hàm get_forecast_dashboard() trích xuất 30 điểm lịch sử đã xác minh gần nhất, kiểm tra tính toàn vẹn SHA-256 giữa lịch sử hiện tại và phiên huấn luyện TrainingRun, truy vấn 10 điểm dự báo tương lai của mô hình được chọn, sau đó cộng độ lệch giá cơ sở Delta_r (basisSpread) của địa phương đang chọn vào cả chuỗi lịch sử, chuỗi dự báo trung tâm và hai biên của khoảng tin cậy 95% (lowerCI, upperCI). Bước 4: Giao diện tính toán điểm cầu nối (isBridgePoint) tại mốc lịch sử cuối cùng để nối liền mạch đường thực tế màu xanh lục với đường dự báo đứt nét màu xanh dương, tính toán miền trục tung động yDomain bám sát biên độ giá (+/- 12%) và hiển thị dải 4 chỉ số tổng hợp, mô-đun giải thích XAI, biểu đồ so sánh 5 mô hình cùng bảng chi tiết từng ngày. Bước 5: Người dùng chuyển đổi qua lại giữa 5 mô hình (LSTM, Prophet, ARIMA, XGBoost, Random Forest), chọn kỳ hạn (7, 10, 14, 30 ngày) hoặc nhấp chọn các huyện bán tại vườn khác nhau (như Huyện Di Linh - Lâm Đồng -800 đ/kg, Huyện Châu Đức - Bà Rịa Vũng Tàu +1.500 đ/kg) và nhấn nút 'Tải xuống CSV' để xuất bảng dự báo ra tập tin Excel.
+3. Luồng sự kiện chính: Bước 1: Người dùng điều hướng tới trang Phân tích & Dự báo AI (/forecast). Mặc định hệ thống nạp mặt hàng chủ lực Cà phê Robusta (commodity_id = 2), tự động kích hoạt mô hình tối ưu ★ (PyTorch Stacked LSTM), kỳ hạn dự báo chuẩn 14 ngày và ngữ cảnh vị trí đang chọn. Bước 2: Giao diện gửi đồng thời hai yêu cầu GET /api/v1/forecast?commodity_id=2&model_name=LSTM&days=14 và GET /api/v1/forecast/compare/2. Bước 3: Tại forecast_service.py, hàm get_forecast_dashboard() trích xuất 30 điểm lịch sử đã xác minh gần nhất, kiểm tra tính toàn vẹn SHA-256 giữa lịch sử hiện tại và phiên huấn luyện TrainingRun, truy vấn 14 điểm dự báo tương lai của mô hình được chọn, áp dụng hiệu chỉnh vùng miền Haversine / basisSpread vào chuỗi lịch sử, chuỗi dự báo trung tâm và hai biên của khoảng tin cậy Conformal 95% (lowerCI, upperCI). Bước 4: Giao diện tính toán điểm cầu nối (isBridgePoint) tại mốc lịch sử cuối cùng để nối liền mạch đường thực tế màu xanh lục với đường dự báo đứt nét màu xanh dương và hiển thị dải 4 chỉ số tổng hợp, mô-đun giải thích XAI, biểu đồ so sánh 5 mô hình cùng lưới AgroGrid chi tiết từng ngày. Bước 5: Người dùng chuyển đổi qua lại giữa 5 mô hình (LSTM, Prophet, ARIMA, XGBoost, Random Forest), chọn 3 kỳ hạn chuẩn (7, 14, 30 ngày — khóa cứng Literal[7, 14, 30]) hoặc chọn tỉnh/huyện bán tại vườn khác nhau và xuất bảng dự báo ra tập tin Excel/CSV an toàn.
 
 4. Luồng xử lý ngoại lệ: Nếu dữ liệu lịch sử vừa được chỉnh sửa mà chưa chạy lại tiến trình huấn luyện (lệch mã băm SHA-256) hoặc chuỗi lịch sử chưa đủ điều kiện huấn luyện, Backend trả về mã trạng thái HTTP 409 Conflict kèm thông điệp giải thích rõ nguyên nhân; khi đó giao diện tự động chuyển sang chế độ hiển thị biểu đồ lịch sử đã xác minh (chartMode = 'history' hoặc 'periodic') để người dùng vẫn theo dõi được diễn biến giá quá khứ.
 
@@ -754,7 +754,7 @@ Trên trang Phân tích & Dự báo AI (src/app/forecast/page.tsx), luồng đ�
 
 Để làm rõ sự phối hợp thông điệp giữa các thành phần từ Trình duyệt (Browser) -> Frontend Next.js -> Cổng bảo mật FastAPI -> Tầng Dịch vụ -> Đường ống Học máy -> Cơ sở dữ liệu PostgreSQL, dưới đây là đặc tả từng bước của 4 luồng tuần tự quan trọng nhất trong hệ thống:
 
-1. Luồng tuần tự Quy trình Dự báo Giá Bán Tại Vườn theo Địa phương (Spatio-Temporal Forecast Sequence): (B1) Người dùng chọn Nông sản (ví dụ Cà phê Robusta), chọn Thuật toán (ví dụ XGBoost), chọn Kỳ hạn (10 ngày) và nhấp chọn Địa phương 'Huyện Di Linh - Lâm Đồng (Tại vườn)' trên giao diện /forecast; (B2) Thành phần ForecastPage gọi hàm fetchForecastData(2, 'XGBoost', 10, 'lamdong') trong src/lib/api.ts; (B3) Yêu cầu HTTP GET /api/v1/forecast?commodity_id=2&model_name=XGBoost&days=10&region=lamdong đi qua SecurityHeadersMiddleware; (B4) Router forecast.py chuyển tiếp xuống get_forecast_dashboard() trong forecast_service.py; (B5) Dịch vụ gọi training_context(db, commodity) để lấy chuỗi lịch sử đã xác minh và kiểm tra readiness['ready'] == True; (B6) Dịch vụ truy vấn bản ghi Forecast mới nhất của mô hình XGBoost và kiểm tra run.dataset_hash == fingerprint(context['rows']); (B7) Dịch vụ tra cứu từ điển COMMODITY_REGIONS['COFFEE_ROBUSTA'] tìm thấy mã 'lamdong' có basisSpread = -800.0 VNĐ/kg; (B8) Dịch vụ cộng -800.0 vào toàn bộ 30 điểm lịch sử và 10 điểm dự báo tương lai (predictedPrice, lowerCI, upperCI) rồi đóng gói JSON trả về trình duyệt; (B9) Giao diện gắn thêm 7 tiêu đề bảo mật OWASP, tính toán lại miền trục tung yDomain và vẽ lại biểu đồ Recharts tức thời.
+1. Luồng tuần tự Quy trình Dự báo Giá Bán Tại Vườn theo Địa phương (Spatio-Temporal Forecast Sequence): (B1) Người dùng chọn Nông sản (ví dụ Cà phê Robusta), hệ thống tự động chọn mô hình tối ưu ★ (PyTorch Stacked LSTM), chọn Kỳ hạn chuẩn (14 ngày trong Literal[7, 14, 30]) và chọn tỉnh/huyện trên giao diện /forecast; (B2) Thành phần ForecastPage gọi hàm fetchForecastDashboard(2, 'LSTM', 14, undefined, 'lam-dong') trong src/lib/api.ts; (B3) Yêu cầu HTTP GET /api/v1/forecast?commodity_id=2&model_name=LSTM&days=14&province=lam-dong đi qua SecurityHeadersMiddleware; (B4) Router forecast.py chuyển tiếp xuống get_forecast_dashboard() trong forecast_service.py; (B5) Dịch vụ gọi training_context(db, commodity) để lấy chuỗi lịch sử đã xác minh và kiểm tra readiness['ready'] == True; (B6) Dịch vụ truy vấn bản ghi Forecast mới nhất và kiểm tra run.dataset_hash == fingerprint(context['rows']); (B7) Dịch vụ áp dụng định giá vùng Haversine (khảo sát trực tiếp hoặc tham chiếu + cước minh bạch); (B8) Đóng gói 30 điểm lịch sử và 14 điểm dự báo tương lai kèm Conformal 95% CI (predictedPrice, lowerCI, upperCI) trả về trình duyệt; (B9) Giao diện vẽ biểu đồ Syncfusion FinChart tức thời.
 
 2. Luồng tuần tự Quy trình Thu thập Dữ liệu Tự động và Tự động Huấn luyện lại (Scrape & Auto-Retrain Sequence): (B1) Quản trị viên đã đăng nhập gửi yêu cầu POST /api/v1/admin/tasks/scrape kèm JWT Bearer Token; (B2) Dependency require_role(['admin']) giải mã JWT, xác nhận user.role == 'admin' và user.is_active == True; (B3) Dịch vụ job_service.py kiểm tra không có tiến trình 'scrape' nào đang ở trạng thái RUNNING, khởi tạo bản ghi BackgroundJob(kind='scrape', status='RUNNING') và kích hoạt luồng nền run_job(); (B4) Bộ điều phối thu thập dữ liệu gọi các bộ phân tích cú pháp trong ml_pipeline/ (agro_history, domestic_sources, periodic_reports) để lấy dữ liệu mới, kiểm tra định dạng chợ/đơn vị/ngày công bố và lưu vào bảng price_history với provenance = 'collected'; (B5) Nếu phát hiện chuỗi lịch sử của mặt hàng vừa có thêm quan sát mới và đạt trạng thái sẵn sàng (ready == True), hệ thống tự động gọi tiếp training_service.retrain() để huấn luyện lại cả 5 mô hình AI và cập nhật 150 điểm dự báo mới vào bảng forecasts trước khi đánh dấu tác vụ hoàn tất (status = 'SUCCESS').
 
@@ -801,139 +801,143 @@ Bên cạnh lưới dữ liệu, hệ thống xây dựng thành phần chọn v
 
 ### 4.1.1. Cấu hình môi trường phần cứng, phần mềm và thư viện triển khai
 
-Hệ thống AgroForecast được cài đặt, huấn luyện thực nghiệm và kiểm thử trên môi trường máy trạm phát triển với cấu hình phần cứng và phần mềm tiêu chuẩn. Tầng Backend sử dụng Python 3.11.9, FastAPI, Uvicorn ASGI Server, SQLAlchemy 2.0, Pydantic v2 và hệ quản trị cơ sở dữ liệu PostgreSQL 15. Tầng Học máy (Machine Learning Pipeline) sử dụng PyTorch (cho mạng học sâu LSTM), Facebook Prophet, Statsmodels (cho ARIMA), XGBoost, Scikit-learn (cho Random Forest, MinMaxScaler và các độ đo đánh giá), Pandas và NumPy. Tầng Frontend sử dụng Node.js, Next.js 14.2, React 18, TypeScript 5, TailwindCSS và thư viện đồ thị Recharts.
+Hệ thống AgroForecast được cài đặt, huấn luyện thực nghiệm và kiểm thử trên môi trường máy trạm phát triển với cấu hình phần cứng và phần mềm tiêu chuẩn. Tầng Backend sử dụng Python 3.11.9, FastAPI, Uvicorn ASGI Server, SQLAlchemy 2.0, Pydantic v2, APScheduler và hệ quản trị cơ sở dữ liệu PostgreSQL 17 (12 bảng chuẩn hóa). Tầng Học máy (Machine Learning Pipeline) sử dụng PyTorch (cho mạng học sâu Stacked LSTM 7 kênh), Facebook Prophet, Statsmodels (cho ARIMA), XGBoost, Scikit-learn (cho Random Forest và các độ đo đánh giá), Pandas và NumPy, kết hợp biến ngoại sinh nhân quả USD/VND (VND=X) và Dầu thô WTI (CL=F). Tầng Frontend sử dụng Node.js 20, Next.js 14.2, React 18, TypeScript 5, TailwindCSS, bộ thành phần doanh nghiệp Syncfusion Essential Studio EJ2 React (AgroGrid, FinChart) và Recharts; toàn bộ 3 tầng được đóng gói triển khai qua Docker Compose.
 
 
 ### 4.1.2. Thống kê bộ dữ liệu lịch sử thực nghiệm của 8 mặt hàng nông sản trong PostgreSQL
 
-Dữ liệu lịch sử giá của 8 mặt hàng nông sản chủ lực được thu thập, làm sạch ngoại lai bằng thuật toán IQR và lưu trữ xác thực (provenance = 'collected' / 'reviewed') trong bảng price_history của cơ sở dữ liệu PostgreSQL với tổng cộng 1.485 bản ghi giá chuẩn hóa tại địa phương tham chiếu. Bảng 4.1 trình bày thống kê chi tiết số lượng bản ghi, khoảng thời gian khảo sát và mức giá bán tại vườn/ruộng mới nhất của từng mặt hàng.
+Dữ liệu lịch sử giá giai đoạn 2024–2026 của 8 mặt hàng nông sản chủ lực được tổ chức minh bạch theo 3 nhóm nguồn gốc và lưu trữ xác thực (provenance = 'collected') trong bảng price_history với tổng cộng 4.899 bản ghi cùng 9.079 quan sát khảo sát tách riêng theo cấp tỉnh trong bảng regional_price_observations: (1) Nhóm 3 mặt hàng chủ lực đạt 100% URL bài báo kiểm chứng riêng từng ngày (Lúa gạo IR50404: 442 phiên vietnambiz.vn & VFA vietfood.org.vn; Cà phê Robusta: 919 phiên vietnambiz.vn & giacaphe.com; Hồ tiêu đen: 793 phiên vietnambiz.vn); (2) Nhóm Mía đường 10 CCS (729 phiên) quy đổi minh bạch từ sàn ICE Sugar #11 (Yahoo Finance SB=F x USD/VND) kết hợp 8 bài báo khảo sát vụ ép 2024–2026 tại Khánh Hòa, Phú Yên, Gia Lai; và (3) Nhóm 4 đặc sản mở rộng (Dâu tây Đà Lạt, Khoai tây Đà Lạt, Khoai lang tím Vĩnh Long, Hạt điều — 504 phiên/mặt hàng) neo giá khảo sát sống tại Việt Nam (kamereo.vn, namtinhvegetable.com, banggianongsan.com) kết hợp chuỗi tham chiếu Proxy Index ETF Yahoo Finance (DBA, MOO, CORN, SOYB x USD/VND) do thị trường rau củ nội địa không niêm yết giá hằng ngày nhiều năm.
+
+Lưu ý về mốc thời gian thực nghiệm: Toàn bộ số liệu bảng biểu và chỉ số đánh giá mô hình trình bày trong Chương 4 được chốt tại mốc ngày 23/11/2026 để bảo đảm tính nhất quán học thuật khi đối chiếu; trong quá trình vận hành thực tế, hệ thống AgroForecast tiếp tục tự động thu thập dữ liệu phiên mới và tái huấn luyện hằng ngày qua bộ lập lịch nền APScheduler (06:00 và 18:00 GMT+7). Bảng 4.1 trình bày thống kê chi tiết tại mốc chốt 23/11/2026.
 
 
-**Bảng 4.1. Thống kê bộ dữ liệu lịch sử thực nghiệm của 8 loại nông sản trong CSDL PostgreSQL**
+**Bảng 4.1. Thống kê bộ dữ liệu lịch sử thực nghiệm của 8 loại nông sản trong CSDL PostgreSQL (chốt mốc 23/11/2026)**
 
 | ID | Mã nông sản | Tên nông sản | Địa phương chuẩn (Tại vườn/ruộng) | Số bản ghi | Giai đoạn dữ liệu | Giá mới nhất |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | RICE_IR504 | Lúa gạo IR50404 | Huyện Châu Phú, An Giang (Tại ruộng) | 238 | 05/01/2024 - 08/11/2026 | 7.450 VNĐ/kg |
-| 2 | COFFEE_ROBUSTA | Cà phê Robusta | Huyện Cư M'gar, Đắk Lắk (Tại vườn) | 212 | 19/06/2024 - 08/11/2026 | 117.518 VNĐ/kg |
-| 3 | PEPPER_BLACK | Hồ tiêu đen | Huyện Chư Sê, Gia Lai (Tại vườn) | 227 | 06/01/2025 - 08/11/2026 | 143.360 VNĐ/kg |
-| 4 | SUGARCANE | Mía đường 10 CCS | Huyện Tây Hòa, Phú Yên (Tại ruộng) | 60 | 06/07/2026 - 03/09/2026 | 1.246.588 VNĐ/tấn |
-| 5 | STRAWBERRY | Dâu tây Đà Lạt | Phường 8, Đà Lạt (Tại vườn) | 187 | 06/05/2026 - 08/11/2026 | 108.870 VNĐ/kg |
-| 6 | SWEET_POTATO | Khoai lang tím | Huyện Bình Tân, Vĩnh Long (Tại ruộng) | 187 | 06/05/2026 - 08/11/2026 | 8.395 VNĐ/kg |
-| 7 | POTATO | Khoai tây Đà Lạt | Phường 7, Đà Lạt (Tại vườn) | 187 | 06/05/2026 - 08/11/2026 | 15.783 VNĐ/kg |
-| 8 | CASHEW_NUT | Hạt điều thô | Huyện Bù Đăng, Bình Phước (Tại vườn) | 187 | 06/05/2026 - 08/11/2026 | 37.441 VNĐ/kg |
+| 1 | RICE_IR504 | Lúa gạo IR50404 | Huyện Châu Phú, An Giang (Tại ruộng) | 442 | 01/01/2024 - 23/11/2026 | 6.850 VNĐ/kg |
+| 2 | COFFEE_ROBUSTA | Cà phê Robusta | Huyện Cư M'gar, Đắk Lắk (Tại vườn) | 919 | 04/01/2024 - 23/11/2026 | 71.700 VNĐ/kg |
+| 3 | PEPPER_BLACK | Hồ tiêu đen | Huyện Chư Sê, Gia Lai (Tại vườn) | 793 | 04/01/2024 - 23/11/2026 | 129.100 VNĐ/kg |
+| 4 | SUGARCANE | Mía đường 10 CCS | Huyện Tây Hòa, Phú Yên / Khánh Hòa | 729 | 02/01/2024 - 23/11/2026 | 1.230.000 VNĐ/tấn |
+| 5 | STRAWBERRY | Dâu tây Đà Lạt | Phường 8, Đà Lạt (Tại vườn) | 504 | 21/11/2024 - 23/11/2026 | 100.000 VNĐ/kg |
+| 6 | POTATO | Khoai tây Đà Lạt | Phường 7, Đà Lạt (Tại vườn) | 504 | 21/11/2024 - 23/11/2026 | 20.000 VNĐ/kg |
+| 7 | SWEET_POTATO | Khoai lang tím Vĩnh Long | Huyện Bình Tân, Vĩnh Long (Tại ruộng) | 504 | 21/11/2024 - 23/11/2026 | 16.000 VNĐ/kg |
+| 8 | CASHEW_NUT | Hạt điều thô | Huyện Bù Đăng, Bình Phước (Tại vườn) | 504 | 21/11/2024 - 23/11/2026 | 32.500 VNĐ/kg |
 
 
 
 ## 4.2. Kết quả thực nghiệm huấn luyện và đánh giá sai số của 5 mô hình học máy
 
 
-### 4.2.1. Thiết lập siêu tham số (Hyperparameters) cho 5 mô hình học máy
+### 4.2.1. Thiết lập siêu tham số (Hyperparameters) & Đặc trưng ngoại sinh nhân quả cho 5 mô hình
 
-Để đảm bảo tính công bằng và khả năng tái lập kết quả khoa học (Reproducibility với random_state = 42), cả 5 mô hình được cấu hình siêu tham số tối ưu trong mô-đun app/services/training_service.py và ml_pipeline/model_trainer.py như sau:
+Để đảm bảo tính công bằng, chống rò rỉ dữ liệu tuyệt đối (Zero Data Leakage) và khả năng tái lập khoa học (random_state = 42), cả 5 mô hình được huấn luyện bằng phương pháp dự báo lợi suất log (Stationary Log-Return) và kiểm định Walk-Forward cuộn 7 ngày trong app/services/training_service.py và ml_pipeline/history_models.py:
 
-1. Mô hình PyTorch LSTM: Sử dụng kiến trúc mạng LSTM 2 tầng ẩn (num_layers = 2, hidden_size = 64, dropout = 0.2) hoặc bộ xấp xỉ tự hồi quy phi tuyến cửa sổ trượt chuẩn hóa MinMaxScaler[-1, 1] với độ dài chuỗi đầu vào seq_length = 14 ngày, hàm tối ưu Adam (learning_rate = 0.005) và hàm mất mát MSELoss.
+1. Mô hình PyTorch Stacked LSTM (7 kênh nhân quả): Kiến trúc 2 tầng ẩn (num_layers = 2, hidden_size = 24), độ dài chuỗi seq_length = 14 ngày, 7 kênh đầu vào gồm [lợi suất log r_t, độ lệch trung bình động MA7, biến động thực tế Vol7, sin/cos chu kỳ năm, lợi suất tỷ giá USD/VND và lợi suất dầu thô WTI <= t-1], tối ưu hóa AdamW (lr = 0.002, weight_decay = 1e-2) và SmoothL1Loss. Bộ chuẩn hóa StandardScaler chỉ fit duy nhất trên tập Train.
 
-2. Mô hình Facebook Prophet: Cấu hình phát hiện tự động 25 điểm gãy thay đổi xu thế (n_changepoints = 25, changepoint_prior_scale = 0.05), bật tính mùa vụ tuần (weekly_seasonality = True) và mùa vụ năm (yearly_seasonality = True), độ rộng khoảng tin cậy interval_width = 0.95.
+2. Mô hình Facebook Prophet (trên miền Log): Cấu hình seasonal Fourier năm/tuần thích nghi theo độ dài chuỗi (changepoint_prior_scale = 0.01, seasonality_prior_scale = 0.15), neo gốc nhân quả tại điểm quan sát cuối t0 giúp triệt tiêu hiện tượng đứt gãy mức giá tại điểm chuyển giao lịch sử - dự báo.
 
-3. Mô hình ARIMA: Thiết lập bậc tự hồi quy, bậc sai phân và bậc trung bình trượt ARIMA(p=2, d=1, q=1) thông qua bộ giải hợp lý cực đại của thư viện statsmodels.tsa.arima.model.
+3. Mô hình ARIMA (trên miền Log): Tự động tuyển chọn bậc ổn định từ tập ứng viên {(2,1,1), (1,1,1), (1,1,0), (0,1,0)} trên tập Train và áp dụng tham số đóng băng (.apply()) lên từng cửa sổ kiểm định Walk-Forward (không tái khớp lên tập Test).
 
-4. Mô hình XGBoost Regressor: Cấu hình số lượng cây tăng cường n_estimators = 120, độ sâu tối đa mỗi cây max_depth = 4, tốc độ học learning_rate = 0.06, tỷ lệ lấy mẫu hàng subsample = 0.9 và tỷ lệ lấy mẫu cột colsample_bytree = 0.9 trên tập 12 đặc trưng trễ và cửa sổ trượt.
+4. Mô hình XGBoost Regressor (22 đặc trưng nhân quả): Cấu hình n_estimators = 160, max_depth = 3, learning_rate = 0.03, subsample = 0.8, colsample_bytree = 0.8, điều chuẩn L1/L2 (reg_alpha = 0.5, reg_lambda = 8.0) trên 18 đặc trưng trễ/động lượng/biến động/lịch + 4 đặc trưng ngoại sinh trễ (fx_r1, fx_mom7, oil_r1, oil_mom7).
 
-5. Mô hình Random Forest Regressor: Cấu hình rừng gồm n_estimators = 120 cây quyết định độc lập, độ sâu tối đa max_depth = 6, tiêu chuẩn phân nhánh squared_error.
-
-
-### 4.2.2. Bảng tổng hợp và phân tích sai số thực nghiệm (MAE, RMSE, MAPE, R2) của 5 mô hình trên 8 nông sản
-
-Quá trình thực nghiệm đã tiến hành huấn luyện và kiểm định chéo (Walk-Forward Holdout Validation) cho toàn bộ 40 tổ hợp (8 mặt hàng nông sản x 5 mô hình học máy). Bảng 4.2 dưới đây trình bày đầy đủ số liệu sai số thực tế được trích xuất trực tiếp từ bảng forecasts và training_runs trong Cơ sở dữ liệu PostgreSQL của dự án.
+5. Mô hình Random Forest Regressor (22 đặc trưng nhân quả): Cấu hình n_estimators = 150 cây quyết định, max_depth = 6, max_features = 'sqrt' trên cùng tập 22 đặc trưng nhân quả, kèm hiệu chỉnh khoảng tin cậy Conformal 95% mở rộng theo sqrt(h).
 
 
-**Bảng 4.2. Kết quả thực nghiệm đánh giá sai số (MAE, RMSE, MAPE, R2) của 5 mô hình AI trên 8 mặt hàng nông sản**
+### 4.2.2. Bảng tổng hợp và phân tích sai số thực nghiệm Walk-Forward 7 ngày của 5 mô hình trên 8 nông sản
 
-| Nông sản | Mô hình AI | MAE (VNĐ) | RMSE (VNĐ) | MAPE (%) | Hệ số R2 | Đánh giá / Xếp hạng |
+Quá trình thực nghiệm đã tiến hành huấn luyện và kiểm định Walk-Forward cuộn 7 ngày (Zero Data Leakage, tích hợp biến ngoại sinh USD/VND & WTI) cho toàn bộ 40 tổ hợp (8 mặt hàng nông sản x 5 mô hình học máy). Bảng 4.2 trình bày đầy đủ số liệu sai số thực tế (MAE, RMSE, MAPE, R2 và độ phủ thực nghiệm 95% CI - PICP) trích xuất trực tiếp từ bảng training_runs và forecasts trong PostgreSQL ngày 23/11/2026.
+
+
+**Bảng 4.2. Kết quả thực nghiệm Walk-Forward 7 ngày (có biến ngoại sinh USD/VND & WTI) của 5 mô hình AI trên 8 mặt hàng nông sản**
+
+| Nông sản | Mô hình AI | MAE (VNĐ) | RMSE (VNĐ) | MAPE (%) | Hệ số R2 | Đánh giá / Xếp hạng (PICP 95%) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Lúa IR50404 | ARIMA | 78,31 | 93,56 | 1,04% | -1,9869 | Tối ưu nhất (Hạng 1 - Sai số < 95 đ/kg) |
-| Lúa IR50404 | XGBoost | 94,09 | 108,55 | 1,25% | -3,0210 | Hạng 2 - Bám sát biến động ngắn hạn |
-| Lúa IR50404 | LSTM | 104,50 | 117,76 | 1,38% | -3,7317 | Hạng 3 - Độ chính xác rất cao (MAPE 1,38%) |
-| Lúa IR50404 | Random Forest | 105,31 | 118,41 | 1,39% | -3,7846 | Hạng 4 - Ổn định |
-| Lúa IR50404 | Prophet | 229,78 | 241,08 | 3,05% | -18,8316 | Hạng 5 - Bị trễ nhịp khi giá đi ngang |
-| Cà phê Robusta | XGBoost | 6.435,95 | 7.943,64 | 5,91% | -0,6176 | Tối ưu nhất (Hạng 1 - MAPE 5,91% < 10%) |
-| Cà phê Robusta | Random Forest | 12.671,59 | 14.426,00 | 11,71% | -4,3348 | Hạng 2 - Dự báo mức Tốt |
-| Cà phê Robusta | LSTM | 13.964,93 | 15.262,80 | 12,99% | -4,9717 | Hạng 3 - Nắm bắt xu thế trung hạn |
-| Cà phê Robusta | ARIMA | 14.545,58 | 15.877,93 | 13,53% | -5,4627 | Hạng 4 - Phản ứng tuyến tính |
-| Cà phê Robusta | Prophet | 26.304,93 | 27.923,70 | 24,59% | -18,9882 | Hạng 5 - Sai số lớn khi giá biến động gắt |
-| Hồ tiêu đen | XGBoost | 1.017,34 | 1.314,53 | 0,70% | -1,2732 | Tối ưu nhất (Hạng 1 - MAPE chỉ 0,70%) |
-| Hồ tiêu đen | ARIMA | 1.071,89 | 1.362,14 | 0,74% | -1,4409 | Hạng 2 - Sai số cực thấp |
-| Hồ tiêu đen | Random Forest | 1.213,42 | 1.489,82 | 0,84% | -1,9199 | Hạng 3 - Độ tin cậy cao |
-| Hồ tiêu đen | Prophet | 2.808,73 | 2.951,45 | 1,95% | -10,4597 | Hạng 4 - Khá tốt (MAPE < 2%) |
-| Hồ tiêu đen | LSTM | 3.049,15 | 3.247,12 | 2,12% | -12,8708 | Hạng 5 - Đạt chuẩn (MAPE 2,12%) |
-| Dâu tây Đà Lạt | LSTM | 463,52 | 619,96 | 0,44% | 0,9348 | Tối ưu nhất (Hạng 1 - R2 = 0,935, MAPE 0,44%) |
-| Dâu tây Đà Lạt | ARIMA | 3.956,45 | 4.591,18 | 3,68% | -2,5779 | Hạng 2 - Theo kịp xu hướng mùa vụ |
-| Dâu tây Đà Lạt | XGBoost | 4.853,62 | 5.504,85 | 4,52% | -4,1436 | Hạng 3 - Độ chính xác cao |
-| Dâu tây Đà Lạt | Random Forest | 4.988,39 | 5.556,43 | 4,65% | -4,2405 | Hạng 4 - Ổn định |
-| Dâu tây Đà Lạt | Prophet | 9.249,32 | 10.022,75 | 8,63% | -16,0511 | Hạng 5 - Chấp nhận được |
-| Khoai lang tím | LSTM | 68,50 | 87,93 | 0,83% | 0,7366 | Tối ưu nhất (Hạng 1 - Sai số chỉ 68 đ/kg) |
-| Khoai lang tím | ARIMA | 248,76 | 284,48 | 2,97% | -1,7564 | Hạng 2 - Sai số thấp |
-| Khoai lang tím | XGBoost | 244,71 | 293,90 | 2,92% | -1,9420 | Hạng 3 - Tương đương ARIMA |
-| Khoai lang tím | Random Forest | 347,93 | 389,16 | 4,16% | -4,1582 | Hạng 4 - Khá tốt |
-| Khoai lang tím | Prophet | 647,83 | 701,03 | 7,76% | -15,7387 | Hạng 5 - Sai số cao hơn nhóm cây |
-| Khoai tây Đà Lạt | LSTM | 134,90 | 162,16 | 0,86% | 0,8205 | Tối ưu nhất (Hạng 1 - R2 = 0,821, MAPE 0,86%) |
-| Khoai tây Đà Lạt | ARIMA | 600,56 | 692,94 | 3,81% | -2,2770 | Hạng 2 - Độ chính xác cao |
-| Khoai tây Đà Lạt | Random Forest | 666,82 | 756,92 | 4,24% | -2,9101 | Hạng 3 - Ổn định |
-| Khoai tây Đà Lạt | XGBoost | 666,85 | 762,29 | 4,23% | -2,9657 | Hạng 4 - Tương đương Random Forest |
-| Khoai tây Đà Lạt | Prophet | 1.203,62 | 1.324,69 | 7,66% | -10,9760 | Hạng 5 - Chấp nhận được |
-| Hạt điều thô | LSTM | 238,23 | 293,99 | 0,64% | 0,8973 | Tối ưu nhất (Hạng 1 - R2 = 0,897, MAPE 0,64%) |
-| Hạt điều thô | ARIMA | 1.450,19 | 1.691,02 | 3,88% | -2,3987 | Hạng 2 - Sai số < 4% |
-| Hạt điều thô | XGBoost | 1.567,21 | 1.829,95 | 4,19% | -2,9800 | Hạng 3 - Bám sát xu hướng |
-| Hạt điều thô | Random Forest | 1.639,58 | 1.886,75 | 4,39% | -3,2310 | Hạng 4 - Ổn định |
-| Hạt điều thô | Prophet | 3.100,31 | 3.391,79 | 8,32% | -12,6732 | Hạng 5 - Độ trễ pha lớn |
-| Mía đường 10 CCS | XGBoost / ARIMA | 0,00 | 0,00 | 0,00% | 1,0000 | Tối ưu nhất (Hạng 1 - Chuỗi giá hợp đồng ổn định) |
-| Mía đường 10 CCS | LSTM | 594,79 | 594,81 | 0,08% | 0,0000 | Hạng 2 - Sai số không đáng kể (0,08%) |
-| Mía đường 10 CCS | Prophet | 27.157,16 | 29.787,40 | 3,62% | 0,0000 | Hạng 3 - Dao động theo chu kỳ tuần |
+| Lúa IR50404 | ARIMA | 100,24 | 169,20 | 1,58% | 0,5340 | Tối ưu nhất ★ (Hạng 1 - PICP 89,4%) |
+| Lúa IR50404 | Prophet | 100,13 | 156,67 | 1,59% | 0,6005 | Hạng 2 - RMSE thấp nhất & R2 cao nhất (PICP 89,4%) |
+| Lúa IR50404 | XGBoost | 104,50 | 170,92 | 1,65% | 0,5244 | Hạng 3 (PICP 87,9%) |
+| Lúa IR50404 | Random Forest | 105,29 | 170,13 | 1,67% | 0,5288 | Hạng 4 (PICP 89,4%) |
+| Lúa IR50404 | LSTM | 111,45 | 171,72 | 1,77% | 0,5200 | Hạng 5 (PICP 89,4%) |
+| Cà phê Robusta | PyTorch LSTM | 1.555,41 | 1.978,28 | 1,79% | 0,8972 | Tối ưu nhất ★ (Hạng 1 — Vượt Baseline 1,88%, PICP 92,2%) |
+| Cà phê Robusta | ARIMA | 1.605,21 | 2.121,40 | 1,86% | 0,8818 | Hạng 2 - Vượt Baseline 1,88% (PICP 90,0%) |
+| Cà phê Robusta | Random Forest | 1.643,09 | 2.087,40 | 1,90% | 0,8856 | Hạng 3 - RMSE thấp thứ 2 (PICP 90,0%) |
+| Cà phê Robusta | XGBoost | 1.703,99 | 2.120,44 | 1,96% | 0,8819 | Hạng 4 (PICP 92,2%) |
+| Cà phê Robusta | Prophet | 1.882,04 | 2.386,65 | 2,15% | 0,8504 | Hạng 5 (PICP 87,8%) |
+| Hồ tiêu đen | ARIMA | 990,46 | 1.643,77 | 0,74% | 0,3256 | Tối ưu nhất ★ (Vượt Baseline RMSE 1.646,34 - PICP 94,4%) |
+| Hồ tiêu đen | XGBoost | 1.045,64 | 1.646,95 | 0,78% | 0,3230 | Hạng 2 - Sai số cực thấp (PICP 94,4%) |
+| Hồ tiêu đen | Random Forest | 1.054,90 | 1.631,93 | 0,78% | 0,3353 | Hạng 3 - RMSE thấp nhất & R2 cao nhất (PICP 94,4%) |
+| Hồ tiêu đen | LSTM | 1.070,99 | 1.729,36 | 0,79% | 0,2536 | Hạng 4 - Đạt chuẩn < 1% (PICP 92,2%) |
+| Hồ tiêu đen | Prophet | 1.174,41 | 1.708,35 | 0,87% | 0,2716 | Hạng 5 (PICP 94,4%) |
+| Mía đường 10 CCS | Prophet | 34.245,40 | 46.011,00 | 2,62% | 0,8571 | Tối ưu nhất ★ (Vượt Baseline 2,74% - PICP 97,8%) |
+| Mía đường 10 CCS | Random Forest | 35.303,99 | 48.177,63 | 2,70% | 0,8434 | Hạng 2 - Vượt Baseline 2,74% (PICP 96,7%) |
+| Mía đường 10 CCS | ARIMA | 35.800,52 | 47.960,56 | 2,74% | 0,8448 | Hạng 3 (PICP 97,8%) |
+| Mía đường 10 CCS | LSTM | 36.056,90 | 48.324,82 | 2,75% | 0,8424 | Hạng 4 (PICP 96,7%) |
+| Mía đường 10 CCS | XGBoost | 36.244,16 | 48.578,33 | 2,77% | 0,8408 | Hạng 5 (PICP 97,8%) |
+| Dâu tây Đà Lạt | Prophet | 1.164,79 | 1.610,18 | 1,08% | 0,8693 | Tối ưu nhất ★ (Vượt sâu Baseline 1,30% - PICP 100%) |
+| Dâu tây Đà Lạt | ARIMA | 1.393,33 | 1.684,24 | 1,30% | 0,8570 | Hạng 2 (PICP 100,0%) |
+| Dâu tây Đà Lạt | XGBoost | 1.398,31 | 1.687,84 | 1,30% | 0,8564 | Hạng 3 (PICP 100,0%) |
+| Dâu tây Đà Lạt | Random Forest | 1.400,17 | 1.694,39 | 1,31% | 0,8553 | Hạng 4 (PICP 100,0%) |
+| Dâu tây Đà Lạt | LSTM | 1.429,96 | 1.864,54 | 1,35% | 0,8247 | Hạng 5 (PICP 93,3%) |
+| Khoai tây Đà Lạt | Prophet | 276,05 | 368,60 | 1,30% | 0,7119 | Tối ưu nhất ★ (Vượt Baseline 1,39% - PICP 100%) |
+| Khoai tây Đà Lạt | ARIMA | 295,28 | 389,19 | 1,40% | 0,6789 | Hạng 2 (PICP 100,0%) |
+| Khoai tây Đà Lạt | Random Forest | 301,30 | 390,70 | 1,42% | 0,6764 | Hạng 3 (PICP 100,0%) |
+| Khoai tây Đà Lạt | XGBoost | 302,97 | 399,72 | 1,43% | 0,6612 | Hạng 4 (PICP 100,0%) |
+| Khoai tây Đà Lạt | LSTM | 338,12 | 439,38 | 1,60% | 0,5907 | Hạng 5 (PICP 98,7%) |
+| Khoai lang tím | XGBoost | 305,09 | 393,93 | 1,71% | 0,8844 | Tối ưu nhất ★ (R2 = 0,884 - PICP 97,3%) |
+| Khoai lang tím | ARIMA | 312,35 | 399,68 | 1,75% | 0,8810 | Hạng 2 (PICP 97,3%) |
+| Khoai lang tím | Random Forest | 316,30 | 410,99 | 1,77% | 0,8741 | Hạng 3 (PICP 97,3%) |
+| Khoai lang tím | LSTM | 342,59 | 437,71 | 1,93% | 0,8573 | Hạng 4 (PICP 97,3%) |
+| Khoai lang tím | Prophet | 348,48 | 416,80 | 1,97% | 0,8706 | Hạng 5 (PICP 96,0%) |
+| Hạt điều thô | ARIMA | 444,00 | 555,34 | 1,30% | 0,8127 | Tối ưu nhất ★ (R2 = 0,813 - PICP 100%) |
+| Hạt điều thô | XGBoost | 452,95 | 561,88 | 1,33% | 0,8082 | Hạng 2 (PICP 100,0%) |
+| Hạt điều thô | LSTM | 459,15 | 578,31 | 1,35% | 0,7968 | Hạng 3 (PICP 98,7%) |
+| Hạt điều thô | Random Forest | 477,33 | 583,76 | 1,40% | 0,7930 | Hạng 4 (PICP 100,0%) |
+| Hạt điều thô | Prophet | 491,06 | 696,47 | 1,43% | 0,7053 | Hạng 5 (PICP 97,3%) |
 
 
 
 ### 4.2.3. Nhận xét và phân tích chuyên sâu kết quả thực nghiệm 5 mô hình
 
-Từ số liệu thực nghiệm trong Bảng 4.2, có thể rút ra ba kết luận khoa học rất quan trọng chứng minh tính đúng đắn của việc tích hợp đa mô hình trong hệ thống AgroForecast:
+Từ số liệu thực nghiệm Walk-Forward 7 ngày không rò rỉ dữ liệu chốt tại mốc 23/11/2026 trong Bảng 4.2, có thể rút ra ba kết luận khoa học quan trọng chứng minh hiệu quả của kiến trúc đa mô hình kết hợp biến ngoại sinh nhân quả trong AgroForecast:
 
-Thứ nhất, mạng học sâu LSTM đạt hiệu năng vượt trội tuyệt đối trên 4 mặt hàng có tính chu kỳ mượt và xu thế rõ ràng bao gồm: Dâu tây Đà Lạt (MAPE = 0,44%, R2 = 0,9348), Hạt điều thô (MAPE = 0,64%, R2 = 0,8973), Khoai tây Đà Lạt (MAPE = 0,86%, R2 = 0,8205) và Khoai lang tím Vĩnh Long (MAPE = 0,83%, R2 = 0,7366). Nhờ cơ chế cổng nhớ dài-ngắn, LSTM học được chính xác quy luật tăng giảm dần theo mùa vụ thu hoạch tại Đà Lạt và miền Tây.
+Thứ nhất, trên toàn bộ 8/8 mặt hàng nông sản (40/40 tổ hợp mô hình), sai số MAPE của mô hình tối ưu đều nằm rất sâu trong ngưỡng < 3% (từ 0,74% đến 2,62%), đạt chuẩn 'Dự báo độ chính xác rất cao' (< 10%) theo phân loại quốc tế của Lewis, với 40/40 mô hình đều đạt hệ số xác định R2 dương (0,2536 đến 0,8972) và độ bao phủ thực nghiệm khoảng tin cậy 95% Conformal CI đạt 89,4% – 100,0%.
 
-Thứ hai, đối với nhóm mặt hàng công nghiệp xuất khẩu có biến động giật cục theo sàn giao dịch quốc tế như Cà phê Robusta và Hồ tiêu đen, mô hình cây quyết định tăng cường độ dốc XGBoost vươn lên đứng vị trí số 1 (trên Cà phê Robusta: XGBoost đạt MAPE = 5,91%, giảm hơn một nửa sai số so với LSTM 12,99% và ARIMA 13,53%; trên Hồ tiêu đen: XGBoost đạt MAPE = 0,70%, MAE chỉ 1.017 đ/kg trên nền giá 143.360 đ/kg). Nguyên nhân là các đặc trưng động lượng ngắn hạn (diff_1, diff_7, rolling_std_7d) giúp XGBoost bắt kịp ngay lập tức các điểm gãy giá đột ngột.
+Thứ hai, việc tích hợp 2 biến ngoại sinh vĩ mô nhân quả (USD/VND và Dầu thô WTI chỉ lấy độ trễ quá khứ <= t-1) phát huy tác dụng mạnh mẽ nhất trên mặt hàng xuất khẩu biến động sâu nhất hệ thống là Cà phê Robusta (919 ngày quan sát thật): mạng học sâu PyTorch Stacked LSTM (7 kênh nhân quả) vươn lên Hạng 1 tuyệt đối trên cả 4 chỉ số với MAE = 1.555,41 VNĐ/kg, RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79%, R2 = 0,8972 và PICP 95% = 92,22%, vượt trội rõ rệt so với Naive Baseline (MAE = 1.621,11, RMSE = 2.147,01 VNĐ/kg, MAPE = 1,88%).
 
-Thứ ba, đối với mặt hàng Lúa gạo IR50404 vốn có biên độ dao động ngày rất hẹp quanh mốc 7.400 - 8.100 đ/kg, mô hình thống kê tuyến tính ARIMA(2,1,1) đạt độ chính xác cao nhất với MAE = 78,31 đ/kg, RMSE = 93,56 đ/kg và MAPE chỉ 1,04%. Như vậy, ở tất cả 8 mặt hàng nông sản, mô hình tốt nhất do hệ thống tự động chọn lựa đều đạt chỉ số MAPE từ 0,00% đến 5,91% (nằm hoàn toàn trong ngưỡng < 10% - mức 'Dự báo độ chính xác rất cao' theo phân loại quốc tế của Lewis).
+Thứ ba, kết quả khẳng định định lý No Free Lunch trong dự báo nông sản: không có một mô hình đơn lẻ nào thắng tuyệt đối trên mọi chuỗi. PyTorch Stacked LSTM dẫn đầu trên chuỗi xuất khẩu dày và phi tuyến mạnh (Cà phê Robusta MAPE 1,79%, R2 = 0,8972); ARIMA tối ưu trên chuỗi bước giá hẹp/tự tương quan cao (Hồ tiêu đen 0,74%, Hạt điều 1,30%, Lúa IR50404 1,58%); Prophet dẫn đầu trên chuỗi có xu thế và chu kỳ mùa vụ rõ (Dâu tây Đà Lạt 1,08%, Khoai tây Đà Lạt 1,30%, Mía đường 2,62%); và XGBoost dẫn đầu Khoai lang tím Vĩnh Long (1,71%, R2 = 0,8844). Do đó, cơ chế tự động xếp hạng và gắn sao (★) đề xuất mô hình tối ưu theo từng mặt hàng mang lại giá trị thực tiễn cao.
 
 
 ### 4.2.4. Kết quả dự báo giá bán tại vườn/ruộng trên 29 địa phương cấp huyện, thị xã, phường
 
-Nhằm giải quyết triệt để yêu cầu thực tiễn của giảng viên hướng dẫn và người nông dân về việc phản ánh đúng giá bán ra tại vườn/ruộng ở từng địa phương thay vì gộp chung theo vùng lớn, hệ thống AgroForecast đã kết hợp đầu ra của mô hình học máy tối ưu nhất tại vùng chuẩn với độ lệch giá cơ sở (Basis Spread) của 29 địa phương. Bảng 4.3 trình bày kết quả tính toán giá bán tại vườn/ruộng hiện tại và dự báo 10 ngày tới kèm biên độ khoảng tin cậy 95% tại các địa phương tiêu biểu.
+Nhằm giải quyết triệt để yêu cầu thực tiễn của giảng viên hướng dẫn và người nông dân về việc phản ánh đúng giá bán ra tại vườn/ruộng ở từng địa phương thay vì gộp chung theo vùng lớn, hệ thống AgroForecast đã kết hợp đầu ra của mô hình học máy tối ưu nhất tại vùng chuẩn với độ lệch giá cơ sở (Basis Spread) và định giá Haversine trên 33 tỉnh/thành. Bảng 4.3 trình bày kết quả tính toán giá bán tại vườn/ruộng chốt tại mốc 23/11/2026 và dự báo 14 ngày tới kèm biên độ khoảng tin cậy Conformal 95% tại các địa phương tiêu biểu.
 
 
-**Bảng 4.3. Kết quả dự báo giá nông sản bán tại vườn/ruộng theo từng huyện địa phương (Kỳ hạn +10 ngày)**
+**Bảng 4.3. Kết quả dự báo giá nông sản bán tại vườn/ruộng theo từng huyện địa phương (Kỳ hạn +14 ngày, chốt mốc 23/11/2026)**
 
-| Mặt hàng nông sản | Địa phương bán tại vườn / tại ruộng | Chênh lệch (Spread) | Giá tại vườn hiện tại | Mô hình tối ưu | Giá dự báo (+10 ngày) | Khoảng tin cậy 95% (Lower - Upper) |
+| Mặt hàng nông sản | Địa phương bán tại vườn / tại ruộng | Chênh lệch (Spread) | Giá tại vườn hiện tại | Mô hình tối ưu | Giá dự báo (+14 ngày) | Khoảng tin cậy 95% (Lower - Upper) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Cà phê Robusta | Huyện Cư M'gar - Đắk Lắk (Tại vườn) | 0 đ/kg | 117.518 đ/kg | XGBoost | 118.250 đ/kg | 102.680 - 133.820 đ/kg |
-| Cà phê Robusta | Thị xã Buôn Hồ - Đắk Lắk (Tại vườn) | -100 đ/kg | 117.418 đ/kg | XGBoost | 118.150 đ/kg | 102.580 - 133.720 đ/kg |
-| Cà phê Robusta | Huyện Di Linh - Lâm Đồng (Tại vườn) | -800 đ/kg | 116.718 đ/kg | XGBoost | 117.450 đ/kg | 101.880 - 133.020 đ/kg |
-| Cà phê Robusta | Huyện Chư Prông - Gia Lai (Tại vườn) | -300 đ/kg | 117.218 đ/kg | XGBoost | 117.950 đ/kg | 102.380 - 133.520 đ/kg |
-| Cà phê Robusta | Huyện Đắk Mil - Đắk Nông (Tại vườn) | +200 đ/kg | 117.718 đ/kg | XGBoost | 118.450 đ/kg | 102.880 - 134.020 đ/kg |
-| Hồ tiêu đen | Huyện Chư Sê - Gia Lai (Tại vườn) | 0 đ/kg | 143.360 đ/kg | XGBoost | 144.120 đ/kg | 141.543 - 146.697 đ/kg |
-| Hồ tiêu đen | Huyện Châu Đức - Bà Rịa Vũng Tàu (Tại vườn) | +1.500 đ/kg | 144.860 đ/kg | XGBoost | 145.620 đ/kg | 143.043 - 148.197 đ/kg |
-| Hồ tiêu đen | Huyện Lộc Ninh - Bình Phước (Tại vườn) | -500 đ/kg | 142.860 đ/kg | XGBoost | 143.620 đ/kg | 141.043 - 146.197 đ/kg |
-| Lúa gạo IR50404 | Huyện Châu Phú - An Giang (Tại ruộng) | 0 đ/kg | 7.450 đ/kg | ARIMA | 7.510 đ/kg | 7.327 - 7.693 đ/kg |
-| Lúa gạo IR50404 | Huyện Tháp Mười - Đồng Tháp (Tại ruộng) | +150 đ/kg | 7.600 đ/kg | ARIMA | 7.660 đ/kg | 7.477 - 7.843 đ/kg |
-| Lúa gạo IR50404 | Huyện Tân Hiệp - Kiên Giang (Tại ruộng) | -150 đ/kg | 7.300 đ/kg | ARIMA | 7.360 đ/kg | 7.177 - 7.543 đ/kg |
-| Dâu tây Đà Lạt | Phường 8 - TP. Đà Lạt (Tại vườn) | 0 đ/kg | 108.870 đ/kg | PyTorch LSTM | 109.450 đ/kg | 108.235 - 110.665 đ/kg |
-| Dâu tây Đà Lạt | Huyện Lạc Dương - Lâm Đồng (Tại vườn) | -3.000 đ/kg | 105.870 đ/kg | PyTorch LSTM | 106.450 đ/kg | 105.235 - 107.665 đ/kg |
-| Dâu tây Đà Lạt | Huyện Mộc Châu - Sơn La (Tại vườn) | -15.000 đ/kg | 93.870 đ/kg | PyTorch LSTM | 94.450 đ/kg | 93.235 - 95.665 đ/kg |
-| Khoai lang tím | Huyện Bình Tân - Vĩnh Long (Tại ruộng) | 0 đ/kg | 8.395 đ/kg | PyTorch LSTM | 8.480 đ/kg | 8.308 - 8.652 đ/kg |
-| Khoai lang tím | Huyện Châu Thành - Đồng Tháp (Tại ruộng) | -400 đ/kg | 7.995 đ/kg | PyTorch LSTM | 8.080 đ/kg | 7.908 - 8.252 đ/kg |
-| Khoai tây Đà Lạt | Phường 7 (Thái Phiên) - Đà Lạt (Tại vườn) | 0 đ/kg | 15.783 đ/kg | PyTorch LSTM | 15.920 đ/kg | 15.602 - 16.238 đ/kg |
-| Khoai tây Đà Lạt | Huyện Đức Trọng - Lâm Đồng (Tại vườn) | -800 đ/kg | 14.983 đ/kg | PyTorch LSTM | 15.120 đ/kg | 14.802 - 15.438 đ/kg |
-| Khoai tây Đà Lạt | Huyện Đơn Dương - Lâm Đồng (Tại vườn) | -1.000 đ/kg | 14.783 đ/kg | PyTorch LSTM | 14.920 đ/kg | 14.602 - 15.238 đ/kg |
-| Hạt điều thô | Huyện Bù Đăng - Bình Phước (Tại vườn) | 0 đ/kg | 37.441 đ/kg | PyTorch LSTM | 37.810 đ/kg | 37.234 - 38.386 đ/kg |
-| Hạt điều thô | Huyện Định Quán - Đồng Nai (Tại vườn) | -400 đ/kg | 37.041 đ/kg | PyTorch LSTM | 37.410 đ/kg | 36.834 - 37.986 đ/kg |
-| Mía đường 10 CCS | Huyện Tây Hòa - Phú Yên (Tại ruộng) | 0 đ/tấn | 1.246.588 đ/tấn | XGBoost / ARIMA | 1.246.588 đ/tấn | 1.245.400 - 1.247.700 đ/tấn |
+| Cà phê Robusta | Huyện Cư M'gar - Đắk Lắk (Tại vườn) | 0 đ/kg | 71.700 đ/kg | PyTorch LSTM | 72.913 đ/kg | 64.823 - 81.003 đ/kg |
+| Cà phê Robusta | Thị xã Buôn Hồ - Đắk Lắk (Tại vườn) | -100 đ/kg | 71.600 đ/kg | PyTorch LSTM | 72.813 đ/kg | 64.723 - 80.903 đ/kg |
+| Cà phê Robusta | Huyện Di Linh - Lâm Đồng (Tại vườn) | -800 đ/kg | 70.900 đ/kg | PyTorch LSTM | 72.113 đ/kg | 64.023 - 80.203 đ/kg |
+| Cà phê Robusta | Huyện Chư Prông - Gia Lai (Tại vườn) | -300 đ/kg | 71.400 đ/kg | PyTorch LSTM | 72.613 đ/kg | 64.523 - 80.703 đ/kg |
+| Cà phê Robusta | Huyện Đắk Mil - Đắk Nông (Tại vườn) | +200 đ/kg | 71.900 đ/kg | PyTorch LSTM | 73.113 đ/kg | 65.023 - 81.203 đ/kg |
+| Hồ tiêu đen | Huyện Chư Sê - Gia Lai (Tại vườn) | 0 đ/kg | 129.100 đ/kg | ARIMA | 129.080 đ/kg | 120.190 - 137.971 đ/kg |
+| Hồ tiêu đen | Huyện Châu Đức - Bà Rịa Vũng Tàu (Tại vườn) | +1.500 đ/kg | 130.600 đ/kg | ARIMA | 130.580 đ/kg | 121.690 - 139.471 đ/kg |
+| Hồ tiêu đen | Huyện Lộc Ninh - Bình Phước (Tại vườn) | -500 đ/kg | 128.600 đ/kg | ARIMA | 128.580 đ/kg | 119.690 - 137.471 đ/kg |
+| Lúa gạo IR50404 | Huyện Châu Phú - An Giang (Tại ruộng) | 0 đ/kg | 6.850 đ/kg | ARIMA | 6.850 đ/kg | 5.742 - 7.958 đ/kg |
+| Lúa gạo IR50404 | Huyện Tháp Mười - Đồng Tháp (Tại ruộng) | +150 đ/kg | 7.000 đ/kg | ARIMA | 7.000 đ/kg | 5.892 - 8.108 đ/kg |
+| Lúa gạo IR50404 | Huyện Tân Hiệp - Kiên Giang (Tại ruộng) | -150 đ/kg | 6.700 đ/kg | ARIMA | 6.700 đ/kg | 5.592 - 7.808 đ/kg |
+| Dâu tây Đà Lạt | Phường 8 - TP. Đà Lạt (Tại vườn) | 0 đ/kg | 100.000 đ/kg | Prophet | 98.666 đ/kg | 91.995 - 105.338 đ/kg |
+| Dâu tây Đà Lạt | Huyện Lạc Dương - Lâm Đồng (Tại vườn) | -3.000 đ/kg | 97.000 đ/kg | Prophet | 95.666 đ/kg | 88.995 - 102.338 đ/kg |
+| Dâu tây Đà Lạt | Huyện Mộc Châu - Sơn La (Tại vườn) | -15.000 đ/kg | 85.000 đ/kg | Prophet | 83.666 đ/kg | 76.995 - 90.338 đ/kg |
+| Khoai lang tím | Huyện Bình Tân - Vĩnh Long (Tại ruộng) | 0 đ/kg | 16.000 đ/kg | XGBoost | 15.988 đ/kg | 14.444 - 17.533 đ/kg |
+| Khoai lang tím | Huyện Châu Thành - Đồng Tháp (Tại ruộng) | -400 đ/kg | 15.600 đ/kg | XGBoost | 15.588 đ/kg | 14.044 - 17.133 đ/kg |
+| Khoai tây Đà Lạt | Phường 7 (Thái Phiên) - Đà Lạt (Tại vườn) | 0 đ/kg | 20.000 đ/kg | Prophet | 20.000 đ/kg | 17.071 - 22.928 đ/kg |
+| Khoai tây Đà Lạt | Huyện Đức Trọng - Lâm Đồng (Tại vườn) | -800 đ/kg | 19.200 đ/kg | Prophet | 19.200 đ/kg | 16.271 - 22.128 đ/kg |
+| Khoai tây Đà Lạt | Huyện Đơn Dương - Lâm Đồng (Tại vườn) | -1.000 đ/kg | 19.000 đ/kg | Prophet | 19.000 đ/kg | 16.071 - 21.928 đ/kg |
+| Hạt điều thô | Huyện Bù Đăng - Bình Phước (Tại vườn) | 0 đ/kg | 32.500 đ/kg | ARIMA | 32.500 đ/kg | 29.938 - 35.062 đ/kg |
+| Hạt điều thô | Huyện Định Quán - Đồng Nai (Tại vườn) | -400 đ/kg | 32.100 đ/kg | ARIMA | 32.100 đ/kg | 29.538 - 34.662 đ/kg |
+| Mía đường 10 CCS | Huyện Tây Hòa - Phú Yên / Khánh Hòa | 0 đ/tấn | 1.230.000 đ/tấn | Prophet | 1.215.719 đ/tấn | 962.819 - 1.468.618 đ/tấn |
 
 
 
@@ -949,7 +953,7 @@ Ngay phía dưới là bộ công cụ Tìm kiếm và Lọc đa tiêu chí (Qui
 
 ### 4.3.2. Phân hệ Phân tích & Dự báo AI đa mô hình theo địa phương bán tại vườn (src/app/forecast/page.tsx)
 
-Đây là phân hệ trung tâm thể hiện toàn bộ sức mạnh học máy của dự án. Thanh công cụ hợp nhất (Unified Instrument & Filter Bar) được thiết kế thành hai tầng gọn gàng: tầng trên cho phép chọn Mặt hàng nông sản, chuyển đổi tức thời giữa 5 tab Thuật toán AI (LSTM, Prophet, ARIMA, XGBoost, Random Forest) và 4 tab Kỳ hạn dự báo (7 ngày, 10 ngày, 14 ngày, 30 ngày); tầng dưới là Bộ chọn Địa phương bán tại vườn/ruộng (Spatio-Temporal Selector) hiển thị danh sách các huyện chuyên canh kèm mức cộng/trừ giá cơ sở (ví dụ: Huyện Cư M'gar - Đắk Lắk, Thị xã Buôn Hồ -100, Huyện Di Linh - Lâm Đồng -800, Huyện Chư Prông - Gia Lai -300, Huyện Đắk Mil - Đắk Nông +200) và dòng giải thích nguyên nhân chênh lệch giá ngay bên phải.
+Đây là phân hệ trung tâm thể hiện toàn bộ sức mạnh học máy của dự án. Thanh công cụ hợp nhất (Unified Instrument & Filter Bar) được thiết kế thành hai tầng gọn gàng: tầng trên cho phép chọn Mặt hàng nông sản, chuyển đổi tức thời giữa 5 tab Thuật toán AI (LSTM, Prophet, ARIMA, XGBoost, Random Forest — tự động kích hoạt mô hình ★ tối ưu) và 3 nút Kỳ hạn dự báo chuẩn (7 ngày, 14 ngày, 30 ngày — khóa cứng Literal[7, 14, 30] ở cả API và giao diện); tầng dưới là Bộ chọn Địa phương bán tại vườn/ruộng (Spatio-Temporal Selector) kết hợp bộ chọn 33 tỉnh/thành trên Topbar.
 
 Ngay dưới thanh công cụ là Dải 4 chỉ số dự báo: (1) Giá bán tại vườn/ruộng hiện tại ở huyện đang chọn; (2) Giá dự báo cuối kỳ hạn kèm % tăng/giảm và mức chênh lệch tuyệt đối bằng VNĐ; (3) Biên độ dao động cuối kỳ (LowerCI - UpperCI) tính theo sai số kiểm định RMSE; và (4) Sai số mô hình MAPE kèm tính năng tự động phát hiện và gợi ý nút 'Áp dụng' nếu có một mô hình khác trong 5 mô hình đạt sai số RMSE thấp hơn mô hình đang chọn.
 
@@ -969,15 +973,15 @@ Biểu đồ chính (Main Price & Forecast ComposedChart) kết nối liền m�
 
 ### 4.2.5. Phân tích chi tiết hành vi dự báo của 5 thuật toán trên từng mặt hàng và bài học kinh nghiệm
 
-Qua quá trình thực nghiệm huấn luyện và kiểm định chéo 40 tổ hợp mô hình - nông sản (8 mặt hàng x 5 mô hình AI), khóa luận đúc kết được những quy luật thực nghiệm quan trọng về sự tương thích giữa bản chất chuỗi thời gian nông sản Việt Nam và cấu trúc toán học của từng thuật toán:
+Qua quá trình thực nghiệm huấn luyện và kiểm định Walk-Forward 7 ngày trên 40 tổ hợp mô hình - nông sản (chốt mốc 23/11/2026), khóa luận đúc kết được những quy luật thực nghiệm quan trọng về sự tương thích giữa bản chất chuỗi thời gian nông sản Việt Nam và cấu trúc toán học của từng thuật toán:
 
-1. Tại sao XGBoost đứng đầu trên Cà phê Robusta (MAPE = 5,91%) và Hồ tiêu đen (MAPE = 0,70%)? Cà phê và hồ tiêu là hai mặt hàng công nghiệp xuất khẩu có tính liên thông trực tiếp với thị trường tài chính hàng hóa thế giới. Chuỗi giá của chúng thường đi ngang tích lũy trong vài ngày rồi bất ngờ bứt phá tăng hoặc giảm mạnh (Step-change / Regime Shift) theo tin tức tồn kho quốc tế và tỷ giá USD/VND. Khi đó, các đặc trưng động lượng ngắn hạn như chênh lệch 1 ngày (diff_1), chênh lệch 7 ngày (diff_7) và độ lệch chuẩn trượt 7 ngày (rolling_std_7d) đóng vai trò là các tín hiệu báo trước cực kỳ nhạy bén. Thuật toán tăng cường độ dốc XGBoost với khả năng phân nhánh phi tuyến trên các đặc trưng động lượng này và sửa sai số dư qua từng cây quyết định đã thích nghi nhanh hơn hẳn so với hàm xu thế trơn của Prophet (MAPE 24,59% trên cà phê) hay mô hình tuyến tính ARIMA (MAPE 13,53% trên cà phê).
+1. Tại sao PyTorch Stacked LSTM (7 kênh nhân quả) vươn lên Hạng 1 tuyệt đối trên Cà phê Robusta (MAPE = 1,79%, RMSE = 1.978,28 VNĐ/kg, R² = 0,8972)? Cà phê Robusta là chuỗi xuất khẩu dày nhất (919 phiên thật 2024–2026) có biên độ biến động lớn theo tồn kho London ICE, tỷ giá USD/VND và chi phí năng lượng. Khi được cung cấp đồng thời 5 kênh nội sinh và 2 kênh ngoại sinh nhân quả (lợi suất USD/VND & WTI <= t-1), cổng nhớ dài-ngắn của Stacked LSTM nắm bắt vượt trội động lực hồi quy phi tuyến và vượt sâu Naive Baseline (RMSE 2.147,01 VNĐ/kg).
 
-2. Tại sao mạng học sâu PyTorch LSTM đứng đầu tuyệt đối trên Dâu tây Đà Lạt (MAPE = 0,44%, R2 = 0,9348), Khoai tây Đà Lạt (MAPE = 0,86%, R2 = 0,8205), Khoai lang tím Vĩnh Long (MAPE = 0,83%, R2 = 0,7366) và Hạt điều thô (MAPE = 0,64%, R2 = 0,8973)? Nhóm nông sản rau quả đặc sản Đà Lạt và nông sản thu hoạch theo đợt sinh học có quỹ đạo biến động giá dạng sóng tuần hoàn mượt mà (Smooth Cyclical Wave) theo nhiệt độ, độ ẩm mùa mưa/mùa khô và nhu cầu tiêu thụ cuối tuần. Kiến trúc ô nhớ dài-ngắn (Cell State) của mạng LSTM với cửa sổ trượt 14 ngày liên tiếp có khả năng ghi nhớ pha dao động của con sóng giá và ngoại suy mượt mà độ cong của chu kỳ tiếp theo, trong khi các mô hình cây quyết định (Random Forest, XGBoost) do bản chất chia không gian thành các hình chữ nhật rời rạc (Step-function Approximation) nên tạo ra đường dự báo dạng bậc thang kém mượt hơn trên các chuỗi sóng tuần hoàn này.
+2. Tại sao Facebook Prophet dẫn đầu trên Mía đường 10 CCS (MAPE = 2,62%, R² = 0,8571), Dâu tây Đà Lạt (MAPE = 1,08%, R² = 0,8693) và Khoai tây Đà Lạt (MAPE = 1,30%, R² = 0,7119)? Nhóm mặt hàng có nhịp mùa vụ và chu kỳ thương mại rõ nét trên miền Log hưởng lợi trực tiếp từ phép phân rã xu thế từng khúc kết hợp chuỗi Fourier và cơ chế neo gốc nhân quả tại điểm quan sát cuối t0.
 
-3. Tại sao ARIMA(2,1,1) đứng đầu trên Lúa gạo IR50404 (MAE = 78,31 đ/kg, MAPE = 1,04%)? Giá lúa tươi tại ruộng vùng Đồng bằng sông Cửu Long được điều tiết rất ổn định bởi nhu cầu thu mua xay xát nội địa và chính sách bình ổn lương thực, biên độ dao động mỗi ngày chỉ từ 10 đến 50 đ/kg. Với một chuỗi dừng sai phân bậc 1 có nhiễu nhỏ và phụ thuộc tuyến tính chặt chẽ vào giá ngày hôm trước như lúa IR50404, một mô hình thống kê tinh gọn ít tham số (Parsimonious Model) như ARIMA(2,1,1) đạt hiệu quả tối ưu nhất mà không gặp nguy cơ quá khớp.
+3. Tại sao ARIMA tối ưu trên Hồ tiêu đen (MAPE = 0,74%, RMSE = 1.643,77 VNĐ/kg), Hạt điều (MAPE = 1,30%, R² = 0,8127) và Lúa gạo IR50404 (MAPE = 1,58%)? Các chuỗi này có tính tự tương quan bậc 1–2 chặt và biên độ dao động ngày hẹp, giúp mô hình thống kê tinh gọn ít tham số tránh quá khớp và giữ sai số cực thấp.
 
-4. Đánh giá về mô hình Facebook Prophet trong dự án: Mặc dù Prophet có ưu điểm lớn về tính dễ giải thích mùa vụ năm và tuần, nhưng khi áp dụng trên các chuỗi giá nông sản Việt Nam có độ biến động ngắn hạn mạnh ở cuối chuỗi, hàm xu thế tuyến tính từng khúc của Prophet đôi khi ước lượng hệ số góc (slope) tại điểm gãy cuối cùng quá dốc, dẫn đến sai số Holdout 10 ngày cao hơn so với 4 mô hình còn lại. Việc phát hiện và chứng minh thực nghiệm hạn chế này của Prophet so với LSTM, XGBoost và ARIMA là một minh chứng rõ nét cho giá trị khoa học của cơ chế đối sánh đa mô hình (Multi-Model Tournament) kết hợp Cổng chặn sai số (Threshold Gate) mà khóa luận đã xây dựng.
+4. Vai trò của XGBoost và Random Forest (22 đặc trưng nhân quả): XGBoost giành Hạng 1 trên Khoai lang tím Vĩnh Long (MAPE = 1,71%, R² = 0,8844) và bám sát Hạng 2 trên Hồ tiêu đen (0,78%) & Hạt điều (1,33%), trong khi Random Forest đạt RMSE thấp nhất toàn bảng trên Hồ tiêu đen (1.631,93 VNĐ/kg) và đứng thứ 2 về RMSE trên Cà phê Robusta (2.087,40 VNĐ/kg), khẳng định giá trị thực tiễn của cơ chế đối sánh đa mô hình tự động gắn sao ★.
 
 
 ## 4.4. Kiểm thử phần mềm và Kiểm tra bảo mật hệ thống theo chuẩn OWASP Top 10
@@ -985,7 +989,7 @@ Qua quá trình thực nghiệm huấn luyện và kiểm định chéo 40 tổ 
 
 ### 4.4.1. Phương pháp kiểm thử 4 tầng và môi trường kiểm thử cô lập (Sandbox Testing)
 
-Để đảm bảo chất lượng phần mềm đạt chuẩn công nghiệp trước khi nghiệm thu, hệ thống AgroForecast triển khai bộ kiểm thử tự động gồm 72 kịch bản kiểm thử (Test Cases) sử dụng framework Pytest kết hợp FastAPI TestClient. Trong tệp cấu hình tests/conftest.py, hệ thống khởi tạo một cơ sở dữ liệu SQLite In-Memory hoàn toàn mới cho từng hàm kiểm thử và sử dụng cơ chế app.dependency_overrides[get_db] để chuyển hướng toàn bộ truy vấn CSDL vào môi trường cô lập này.
+Để đảm bảo chất lượng phần mềm đạt chuẩn công nghiệp trước khi nghiệm thu, hệ thống AgroForecast triển khai bộ kiểm thử tự động mở rộng lên 125 kịch bản Pytest Backend (kế thừa bộ nền tảng 72 kịch bản cốt lõi kết hợp nhóm kiểm thử phủ nhánh 98%, kiểm toán sự thật dữ liệu và chống rò rỉ biến ngoại sinh), đi kèm 3 Frontend Unit Tests và 4 Playwright E2E trên trình duyệt thật. Trong tệp cấu hình tests/conftest.py, hệ thống khởi tạo một cơ sở dữ liệu SQLite In-Memory hoàn toàn mới cho từng hàm kiểm thử và sử dụng cơ chế app.dependency_overrides[get_db] để chuyển hướng toàn bộ truy vấn CSDL vào môi trường cô lập này.
 
 Bốn tầng kiểm thử được thực thi đồng bộ bao gồm: (1) Kiểm thử đơn vị hộp trắng (White-box Unit Testing) cho các hàm toán học lọc ngoại lai IQR, hàm tạo đặc trưng chuỗi thời gian, hàm tính sai số và hàm làm sạch bảo mật; (2) Kiểm thử tích hợp hộp xám (Grey-box API & Database Integration Testing) kiểm tra toàn bộ các Endpoint REST API và tính toàn vẹn khóa ngoại CSDL; (3) Kiểm định đường ống học máy (ML Pipeline Backtesting) kiểm tra huấn luyện thực tế cả 5 mô hình AI, cổng chặn sai số Threshold Gate và điều kiện biên của khoảng tin cậy 95%; và (4) Kiểm thử luồng nghiệp vụ đầu-cuối (End-to-End Workflow Testing).
 
@@ -1007,12 +1011,12 @@ Lớp 5 - Giới hạn tần suất truy cập cửa sổ trượt (Sliding Wind
 Lớp 6 - Gia cố 7 Tiêu đề Bảo mật HTTP (SecurityHeadersMiddleware - Chống OWASP A05): Mọi phản hồi HTTP từ máy chủ đều được gắn tự động 7 tiêu đề bảo mật: X-Content-Type-Options: nosniff, X-Frame-Options: DENY (chống Clickjacking), X-XSS-Protection: 1; mode=block, Strict-Transport-Security: max-age=31536000; includeSubDomains, Referrer-Policy: strict-origin-when-cross-origin, Permissions-Policy: geolocation=(), camera=(), microphone=() và Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; object-src 'none'.
 
 
-### 4.4.3. Ma trận kết quả thực thi 72/72 kịch bản kiểm thử và kiểm tra bảo mật (100% PASSED)
+### 4.4.3. Ma trận kết quả thực thi bộ kiểm thử tự động cốt lõi và kiểm toán bảo mật (100% PASSED)
 
-Toàn bộ 72 kịch bản kiểm thử tự động trong thư mục backend/tests/ đã được thực thi và đạt kết quả 72/72 PASSED (tỷ lệ thành công 100% trong thời gian 39,9 giây). Bảng 4.3 trình bày chi tiết các kịch bản kiểm thử và kiểm tra bảo mật tiêu biểu của hệ thống.
+Toàn bộ 125 kịch bản Pytest Backend (gồm 72 kịch bản nền tảng tiêu biểu trình bày trong Bảng 4.3 và 53 kịch bản mở rộng về phủ nhánh 98%, kiểm toán sự thật dữ liệu, biến ngoại sinh nhân quả và vá bảo mật OWASP ở Mục 4.9) cùng 3 Frontend Unit Tests và 4 Playwright E2E đều đạt 100% PASSED.
 
 
-**Bảng 4.3. Kết quả thực thi chi tiết bộ 72 kịch bản kiểm thử phần mềm và kiểm tra bảo mật OWASP Top 10**
+**Bảng 4.3. Kết quả thực thi các nhóm kịch bản kiểm thử nền tảng cốt lõi và bảo mật OWASP Top 10**
 
 | Mã Test | Tệp kiểm thử | Tên hàm kiểm thử (Test Case) | Nội dung kiểm tra & Kịch bản tấn công giả lập | Kết quả |
 | --- | --- | --- | --- | --- |
@@ -1141,7 +1145,7 @@ Bảng 4.4 tổng hợp kết quả đối chiếu giữa trạng thái ban đ�
 
 | Hạng mục kiểm định | Trước khi xử lý (Baseline) | Sau khi hoàn thiện & vá | Đánh giá nghiệm thu |
 | --- | --- | --- | --- |
-| Kiểm thử tự động Backend (pytest) | 105 kịch bản PASS | 121 / 121 PASS (100,57s) | ĐẠT (100%) |
+| Kiểm thử tự động Backend (pytest) | 105 kịch bản PASS | 125 / 125 PASS (bao gồm Data Truth & Exogenous Zero-Leakage) | ĐẠT (100%) |
 | Độ phủ mã nguồn Backend (pytest-cov) | 83% (377 dòng chưa phủ) | 98% (2.194 / 2.247 statements) | ĐẠT (Xuất sắc) |
 | Kiểm thử đơn vị & Build Frontend | Kiểm tra cơ bản | 3/3 Unit PASS • 0 lỗi TS/Lint • 17/17 routes build | ĐẠT |
 | Kiểm thử E2E trình duyệt (Playwright) | Phát hiện 1 lỗi RBAC ở pha RED | 4 / 4 PASS (28,67s) • 0 lỗi Console/Runtime | ĐẠT |
@@ -1161,9 +1165,9 @@ Bảng 4.4 tổng hợp kết quả đối chiếu giữa trạng thái ban đ�
 2. Nhóm quy trình Kiểm toán Bảo mật (Security Skills): (a) Áp dụng quy trình audit-context-building nhằm lập bản đồ toàn diện bề mặt tấn công của hệ thống (bao gồm cơ chế cấp phát và kiểm tra JWT, ma trận phân quyền RBAC, kiểm tra biên tham số REST API, quy trình nhập/xuất CSV và các đường ống Bot cào dữ liệu); (b) Ứng dụng skill cvss-scoring để định lượng mức độ nghiêm trọng của từng lỗ hổng theo chuẩn quốc tế CVSS v3.1 (kèm vector tham chiếu CVSS v4.0); (c) Áp dụng systematic-debugging và differential-review nhằm rà soát chéo các thay đổi mã nguồn, đảm bảo mọi bản vá bảo mật không gây ra hồi quy logic hoặc tạo ra các lỗ hổng phụ phát sinh.
 
 
-### 4.9.3. Chi tiết kết quả kiểm thử hệ thống đa tầng (128 / 128 kịch bản PASS)
+### 4.9.3. Chi tiết kết quả kiểm thử hệ thống đa tầng (132 / 132 kịch bản PASS)
 
-Tổng cộng 128 kịch bản kiểm thử tự động trên toàn hệ thống đã vượt qua 100% sau bản vá bảo mật cuối cùng (bao gồm 120 kịch bản chức năng & phủ nhánh ở đợt kiểm thử chính, bổ sung thêm 1 kịch bản hồi quy bảo mật toàn diện ở đợt kiểm toán, cùng 3 kiểm thử đơn vị Frontend và 4 luồng kiểm thử E2E trình duyệt thật).
+Tổng cộng 132 kịch bản kiểm thử tự động trên toàn hệ thống đã vượt qua 100% sau bản vá bảo mật và nâng cấp biến ngoại sinh cuối cùng (bao gồm 125 kịch bản Backend Pytest — mở rộng từ bộ 72 kịch bản lõi với nhóm kiểm thử độ phủ nhánh 98%, kiểm toán sự thật dữ liệu 2024–2026 và chống rò rỉ biến ngoại sinh USD/VND + WTI — kết hợp 3 kiểm thử đơn vị Frontend và 4 luồng kiểm thử E2E trình duyệt thật).
 
 Bảng 4.5 tổng hợp phân bổ kết quả kiểm thử trên 4 tầng kiến trúc phần mềm của AgroForecast.
 
@@ -1172,7 +1176,7 @@ Bảng 4.5 tổng hợp phân bổ kết quả kiểm thử trên 4 tầng kiế
 
 | Tầng kiểm thử | Công cụ & Tập kiểm thử | Kết quả xác minh | Ghi chú kỹ thuật |
 | --- | --- | --- | --- |
-| Backend Unit & API Integration | pytest -v (bao gồm test_coverage_gaps.py, test_regional_pricing.py, test_security_phase7.py) | 121 / 121 PASS (100,57s) | Bao gồm test hồi quy RBAC, Alerts, SSRF, Secret và ML No Data Leakage |
+| Backend Unit & API Integration | pytest -v (bao gồm test_coverage_gaps.py, test_regional_pricing.py, test_security_phase7.py, test_data_truth_audit.py) | 125 / 125 PASS | Bao gồm test hồi quy RBAC, Alerts, SSRF, Secret, Data Truth và Exogenous Zero-Leakage |
 | Frontend Unit Tests | node --test (src/lib/__tests__/formatters.test.mjs) | 3 / 3 PASS | Kiểm chứng logic định dạng tiền tệ, ngày tháng và tiện ích xử lý dữ liệu giao diện |
 | Frontend Type, Lint & Production Build | npx tsc --noEmit, next lint, next build | 0 lỗi • 0 cảnh báo | Đóng gói thành công toàn bộ 17 / 17 tuyến trang (routes) tĩnh và động |
 | End-to-End (E2E) Trình duyệt thật | Playwright (e2e/test_agroforecast_e2e.py) trên Headless Chrome | 4 / 4 PASS (28,67s) | 0 lỗi Console, 0 lỗi Runtime, 0 xuất hiện banner bản quyền Syncfusion |
@@ -1270,7 +1274,7 @@ Toàn bộ các lớp phòng vệ này đã được xác nhận thực tế th�
 
 Giải trình quản trị rủi ro tồn dư đối với 6 cảnh báo npm audit (SEC-09): Sau khi vá triệt để 8/8 lỗ hổng không gây xung đột tương thích trên Frontend, 6 cảnh báo còn lại xuất phát từ hai nhóm nguyên nhân: (1) Gói eslint-config-next chỉ phục vụ kiểm tra cú pháp ở môi trường lập trình của lập trình viên (devDependencies), hoàn toàn không được đóng gói vào bản biên dịch chạy thực tế của máy chủ sản xuất; và (2) Bản vá yêu cầu nâng cấp nhảy phiên bản lớn từ next@14.2.35 lên Next.js 16 gây phá vỡ tương thích hoàn toàn với React 18 và bộ thư viện Syncfusion EJ2. Để loại trừ bề mặt tấn công mà vẫn giữ vững độ ổn định tuyệt đối của hệ thống, nhóm nghiên cứu đã triển khai các biện pháp kiểm soát bù trừ (compensating controls): bật cấu hình images: { unoptimized: true } nhằm vô hiệu hóa hoàn toàn endpoint xử lý ảnh /_next/image (triệt tiêu nguy cơ tấn công từ chối dịch vụ DoS và thực thi mã từ xa RCE liên quan), đồng thời tắt poweredByHeader và kích hoạt đầy đủ 6 tiêu đề bảo mật OWASP Security Headers trong tệp next.config.mjs.
 
-Kết luận nghiệm thu: Sau khi hoàn tất toàn bộ các bản vá bảo mật và siết chặt chính sách phân quyền RBAC, hệ thống AgroForecast đã vượt qua kỳ kiểm thử hồi quy toàn diện với 121/121 kiểm thử Backend PASS (độ phủ mã nguồn đạt 98%), 3/3 kiểm thử đơn vị Frontend PASS, 17/17 tuyến trang đóng gói sạch không lỗi và 4/4 luồng kiểm thử E2E Playwright PASS trực tiếp trên trình duyệt thật. Hai dịch vụ Backend (http://127.0.0.1:8000) và Frontend (http://localhost:3000) vận hành hoàn toàn ổn định, đáp ứng trọn vẹn các tiêu chuẩn khắt khe về độ tin cậy phần mềm và an toàn thông tin mạng để trình bày bảo vệ trước Hội đồng chấm khóa luận tốt nghiệp.
+Kết luận nghiệm thu: Sau khi hoàn tất toàn bộ các bản vá bảo mật, tích hợp biến ngoại sinh nhân quả và đóng gói Docker Compose, hệ thống AgroForecast đã vượt qua kỳ kiểm thử hồi quy toàn diện với 125/125 kiểm thử Backend PASS (độ phủ mã nguồn đạt 98%), 3/3 kiểm thử đơn vị Frontend PASS, 17/17 tuyến trang đóng gói sạch không lỗi và 4/4 luồng kiểm thử E2E Playwright PASS trực tiếp trên trình duyệt thật (tổng 132/132 kịch bản). Hai dịch vụ Backend (http://127.0.0.1:8000) và Frontend (http://localhost:3000) vận hành hoàn toàn ổn định, đáp ứng trọn vẹn các tiêu chuẩn khắt khe về độ tin cậy phần mềm và an toàn thông tin mạng để trình bày bảo vệ trước Hội đồng chấm khóa luận tốt nghiệp.
 
 
 # Chương 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
@@ -1283,39 +1287,39 @@ Kết luận nghiệm thu: Sau khi hoàn tất toàn bộ các bản vá bảo m
 
 Đề tài đã hoàn thành xuất sắc toàn bộ các mục tiêu đặt ra ban đầu, xây dựng thành công ứng dụng Web Full-Stack AgroForecast hoàn chỉnh với độ ổn định cao, đáp ứng đầy đủ các yêu cầu chức năng và phi chức năng trong quản lý, phân tích và dự báo giá nông sản Việt Nam.
 
-Hệ thống đã triển khai thành công kiến trúc phân tầng 3 tầng hiện đại: tầng giao diện Next.js 14 tối ưu trải nghiệm người dùng, tầng dịch vụ FastAPI bất đồng bộ xử lý dữ liệu thông lượng cao và tầng lưu trữ PostgreSQL 11 bảng dữ liệu có ràng buộc toàn vẹn nghiêm ngặt.
+Hệ thống đã triển khai thành công kiến trúc phân tầng 3 tầng hiện đại đóng gói bằng Docker Compose: tầng giao diện Next.js 14 tích hợp Syncfusion EJ2 (AgroGrid, FinChart, định giá theo 33 tỉnh/thành phố), tầng dịch vụ FastAPI bất đồng bộ xử lý dữ liệu thông lượng cao và tầng lưu trữ PostgreSQL 17 với ràng buộc toàn vẹn nghiêm ngặt.
 
-Quy trình kiểm thử tự động 4 tầng và kiểm tra bảo mật OWASP Top 10 được thực thi toàn diện với 72/72 kịch bản thành công tuyệt đối (100% ĐẠT), khẳng định mức độ hoàn thiện cao về mặt kỹ thuật phần mềm trước khi nghiệm thu.
+Quy trình kiểm thử tự động đa tầng và kiểm toán an ninh mạng theo chuẩn OWASP Top 10 được thực thi toàn diện với 132/132 kịch bản thành công tuyệt đối (125 Pytest Backend đạt độ phủ 98%, 3 Frontend Unit, 4 Playwright E2E trên trình duyệt Chrome thật) cùng kết quả quét Bandit SAST 0 lỗi Medium/High và pip-audit 0 CVE.
 
 
 ### 5.1.2. Kết quả về mặt khoa học dữ liệu và mô hình hóa học máy
 
-Đề tài đã khảo sát, thu thập và chuẩn hóa thành công tập dữ liệu giá bán tại vườn/ruộng của 8 mặt hàng nông sản chủ lực Việt Nam tại 29 huyện chuyên canh với tổng số 1.485 bản ghi thực tế.
+Đề tài đã thu thập, chuẩn hóa và kiểm toán sự thật thành công kho dữ liệu giai đoạn 2024–2026 (chốt mốc 23/11/2026, tự động cập nhật hằng ngày) cho 8 mặt hàng nông sản phân tách minh bạch 3 nhóm nguồn với tổng cộng 4.899 bản ghi trong price_history và 9.079 quan sát khảo sát tách theo tỉnh trong regional_price_observations, gắn đường dẫn source_url bấm kiểm chứng trực tiếp.
 
-Cài đặt và thực nghiệm song song 5 mô hình học máy chuỗi thời gian: ARIMA, Random Forest, XGBoost, Facebook Prophet và LSTM; thiết lập phương pháp cơ sở Naive Last Value Baseline để đối chiếu sòng phẳng kết quả.
+Cài đặt và huấn luyện thực nghiệm song song 40 tổ hợp mô hình (5 thuật toán ARIMA, Random Forest, XGBoost, Facebook Prophet, PyTorch Stacked LSTM × 8 mặt hàng) có tích hợp 2 biến ngoại sinh vĩ mô nhân quả (USD/VND VND=X và Dầu thô WTI CL=F), đánh giá nghiêm ngặt bằng Walk-Forward cuộn 7 ngày Zero-Leakage kèm dải khoảng tin cậy Conformal Prediction 95% (PICP) và đối chiếu trực diện với Naive Last Value Baseline.
 
-Trên chuỗi hồ tiêu đen Đắk Lắk (128 ngày quan sát liên tục), mô hình ARIMA(2,1,1) đã chứng minh hiệu quả vượt trội với RMSE = 1.936,78 VND/kg, thấp hơn 7,5% so với mô hình cơ sở Baseline, đồng thời tạo ra chuỗi dự báo 30 ngày tương lai kèm dải tin cậy 95% có ý nghĩa thực tiễn cao.
+Kết quả thực nghiệm khẳng định toàn bộ 40/40 mô hình đều đạt R² dương và 8/8 mặt hàng đạt ngưỡng dự báo chính xác rất cao (MAPE tối ưu từ 0,74% đến 2,62%): nổi bật trên Cà phê Robusta (919 phiên), mạng học sâu PyTorch Stacked LSTM (7 kênh nhân quả) vươn lên Hạng 1 tuyệt đối với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79% và R² = 0,8972 (vượt sâu Baseline 1,88%); Hồ tiêu đen (793 phiên) đạt MAPE = 0,74% (ARIMA); Dâu tây Đà Lạt 1,08% (Prophet); Khoai tây Đà Lạt 1,30% (Prophet); Hạt điều 1,30% (ARIMA); Lúa IR50404 1,58% (ARIMA); Khoai lang tím 1,71% (XGBoost) và Mía đường 2,62% (Prophet).
 
-Thiết lập thành công cơ chế quản trị nguồn gốc dữ liệu (Data Provenance) với mã băm mật mã SHA-256 (dataset_hash), giải quyết triệt để vấn đề dự báo lỗi thời (Stale Forecast) vốn là bài toán hóc búa trong triển khai AI thực tế.
+Thiết lập thành công cơ chế quản trị nguồn gốc dữ liệu (Data Provenance) với mã băm mật mã SHA-256 (dataset_hash), chuẩn hóa 3 kỳ hạn Literal[7, 14, 30] ở cả API và UI, cùng bài kiểm thử hồi quy chống rò rỉ dữ liệu ngoại sinh tương lai.
 
 
 ## 5.2. Những hạn chế và thách thức thực tế còn tồn tại
 
 
-### 5.2.1. Hạn chế về tính liên tục và độ dài của chuỗi dữ liệu thị trường
+### 5.2.1. Hạn chế về tính liên tục và độ phân giải công bố của nhóm nông sản đặc sản vùng miền
 
-Hạn chế lớn nhất của đề tài nằm ở chất lượng và tính liên tục của dữ liệu thị trường nông sản tại Việt Nam. Do các cổng thông tin địa phương thường chỉ cập nhật giá vào các ngày làm việc, xuất hiện nhiều khoảng trống vào cuối tuần, ngày lễ hoặc kỳ nghỉ Tết dài ngày, dẫn đến hiện tượng chuỗi ngày bị ngắt quãng cục bộ.
+Thách thức thực tế của thị trường nông sản Việt Nam nằm ở sự chênh lệch về mức độ công khai dữ liệu hằng ngày giữa các nhóm mặt hàng. Trong khi 3 mặt hàng chủ lực (Cà phê Robusta 919 phiên, Hồ tiêu đen 793 phiên và Lúa IR50404 442 phiên) có 100% URL bài báo công bố riêng từng ngày trên báo chí chuyên ngành, các bản tin địa phương vẫn thường nghỉ cập nhật vào dịp lễ Tết dài ngày.
 
-Trong số 8 mặt hàng được quản lý, mới chỉ có hồ tiêu đen vượt ngưỡng vận hành tin cậy với 128 ngày quan sát liên tục đủ tiêu chuẩn để huấn luyện và đánh giá đầy đủ 5 mô hình; các mặt hàng còn lại như cà phê Robusta, lúa IR50404 hay thanh long ruột đỏ tuy đã có dữ liệu nhưng chuỗi ngày liên tục chưa đủ dài, khiến hệ thống phải kích hoạt chính sách từ chối dự báo để đảm bảo tính an toàn học thuật.
+Đối với 4 mặt hàng đặc sản mở rộng (Dâu tây Đà Lạt, Khoai tây Đà Lạt, Khoai lang tím Vĩnh Long và Hạt điều thô), thị trường rau củ quả nội địa không niêm yết bảng giá hằng ngày liên tục nhiều năm như nhóm hàng xuất khẩu trên sàn. Do đó, hệ thống phải kết hợp minh bạch giữa giá khảo sát sống tại Việt Nam (kamereo.vn, namtinhvegetable.com, banggianongsan.com) với chuỗi tham chiếu Proxy Index ETF nông sản quốc tế từ Yahoo Finance (DBA, MOO, CORN, SOYB x USD/VND), gắn nhãn nguồn gốc công khai trên /history và duy trì cổng chặn Readiness Gate cho mọi mặt hàng mới chưa đủ 60 quan sát.
 
-Mặt hàng mía nguyên liệu do đặc thù ngành đường chỉ có dữ liệu báo cáo theo kỳ 10 ngày hoặc theo niên vụ, chưa thể phân rã thành chuỗi ngày tự nhiên nếu không áp dụng các giả định nhân tạo.
+Với mặt hàng Mía đường, dữ liệu giá giao dịch nội địa theo từng nhà máy chỉ công bố theo kỳ vụ ép, nên chuỗi hằng ngày 729 phiên được quy đổi minh bạch từ sàn kỳ hạn quốc tế ICE Sugar #11 (SB=F × tỷ giá USD/VND) kết hợp gắn riêng 8 bài báo khảo sát trực tiếp vụ ép 2024–2026 (Khánh Hòa, Phú Yên, Gia Lai) trong bảng regional_price_observations.
 
 
-### 5.2.2. Hạn chế về hạ tầng triển khai và phạm vi biến ngoại sinh
+### 5.2.2. Hạn chế về hạ tầng triển khai đa cụm và phạm vi biến ngoại sinh khí tượng
 
-Hệ thống hiện mới chỉ được thử nghiệm và vận hành trên môi trường máy chủ cục bộ (Local Server) với tài nguyên tính toán giới hạn, chưa được thử nghiệm đo tải đồng thời với hàng nghìn người dùng truy cập trực tiếp trên môi trường Internet.
+Mặc dù ứng dụng đã được đóng gói hoàn chỉnh với Docker Compose (3 dịch vụ PostgreSQL, Backend FastAPI và Frontend Next.js chạy cô lập với người dùng non-root), hệ thống hiện mới được kiểm chứng hiệu năng và tải ở quy mô máy chủ đơn (Single-Host Deployment), chưa được thử nghiệm mở rộng tự động (Auto-scaling) trên cụm Kubernetes đa vùng phục vụ hàng chục nghìn kết nối đồng thời.
 
-Các mô hình học máy hiện tại chủ yếu khai thác đặc trưng nội tại của chuỗi giá (đặc trưng trễ, thống kê trượt động, tính mùa vụ lịch) mà chưa tích hợp sâu các biến ngoại sinh thời gian thực như dữ liệu thời tiết viễn thám vệ tinh (nhiệt độ, lượng mưa, chỉ số hạn hán), số liệu xuất nhập khẩu hàng tuần hay biến động giá kỳ hạn trên các sàn giao dịch quốc tế ICE/London do hạn chế về nguồn cấp API thương mại.
+Về không gian đặc trưng ngoại sinh, đường ống học máy đã tích hợp thành công 2 chuỗi vĩ mô tài chính nhân quả thời gian thực (Tỷ giá USD/VND và Giá dầu thô WTI) nhưng chưa kết nối trực tiếp dữ liệu viễn thám khí tượng thời gian thực (nhiệt độ, lượng mưa, chỉ số hạn hán NDVI tại Tây Nguyên và Lâm Đồng) hay thống kê xuất nhập khẩu hải quan hằng tuần do giới hạn nguồn cấp API mở miễn phí.
 
 
 ## 5.3. Hướng phát triển và mở rộng trong tương lai
@@ -1344,7 +1348,7 @@ Các mô hình học máy hiện tại chủ yếu khai thác đặc trưng nộ
 
 Đề tài tốt nghiệp 'Xây dựng ứng dụng phân tích dữ liệu và dự báo biến động giá nông sản theo chuỗi thời gian sử dụng Học máy' đã hoàn thành trọn vẹn cả hai mục tiêu nghiên cứu học thuật và xây dựng sản phẩm phần mềm thực tế. Sự kết hợp giữa kỹ thuật phần mềm chuẩn mực, quy trình kiểm thử và an ninh mạng nghiêm ngặt cùng với các mô hình học máy có kiểm chứng đã tạo nên một nền tảng AgroForecast vững chắc, tin cậy.
 
-Kết quả đạt được của mô hình ARIMA trên hồ tiêu đen với RMSE = 1.936,78 VND/kg cùng cơ chế phát hiện dự báo lỗi thời bằng mã băm SHA-256 là một đóng góp thực nghiệm có giá trị khoa học cao. Nhóm tác giả tin tưởng rằng hệ thống AgroForecast sẽ là cơ sở nền tảng vững chắc để tiếp tục hoàn thiện, hướng tới một giải pháp chuyển đổi số nông nghiệp toàn diện, phục vụ thiết thực cho bà con nông dân và nền kinh tế nông nghiệp Việt Nam.
+Kết quả thực nghiệm toàn diện trên 8 mặt hàng nông sản giai đoạn 2024–2026 chốt mốc 23/11/2026 (tiêu biểu là PyTorch Stacked LSTM 7 kênh đạt Hạng 1 trên Cà phê Robusta với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79%, R² = 0,8972 và Hồ tiêu đen ARIMA MAPE = 0,74% / RMSE = 1.643,77 VNĐ/kg) cùng cơ chế kiểm soát toàn vẹn SHA-256, 3 nhóm nguồn minh bạch và dải khoảng tin cậy Conformal 95% là đóng góp thực nghiệm có giá trị khoa học cao. Nhóm tác giả tin tưởng rằng hệ thống AgroForecast sẽ là cơ sở nền tảng vững chắc để tiếp tục hoàn thiện, hướng tới giải pháp chuyển đổi số nông nghiệp toàn diện phục vụ thiết thực cho bà con nông dân và doanh nghiệp nông sản Việt Nam.
 
 
 # DANH MỤC TÀI LIỆU THAM KHẢO
@@ -1457,7 +1461,7 @@ Hệ thống AgroForecast được thiết kế theo mô hình kiến trúc phâ
 |  |                                                                                             |  |
 |  |  [Bảng Danh mục]:       commodities (8 mặt hàng) | regions (29 huyện) | market_sources (12) |  |
 |  |  [Bảng Tài khoản]:      users (Tài khoản người dùng) | roles (Viewer, Analyst, Admin)       |  |
-|  |  [Bảng Dữ liệu Giá]:    historical_prices (1.485 quan sát ngày) | periodic_prices (Kỳ vụ)   |  |
+|  |  [Bảng Dữ liệu Giá]:    price_history (4.899 phiên) | regional_price_observations (9.079)   |  |
 |  |  [Bảng MLOps & Dự báo]: training_runs (Lần huấn luyện, SHA-256) | price_forecasts (Dự báo) |  |
 |  |  [Bảng Vận hành]:       background_tasks (Tiến trình cào AI) | system_settings | alerts     |  |
 |  +---------------------------------------------------------------------------------------------+  |
@@ -1480,7 +1484,7 @@ Quản trị viên (Admin)       Frontend Client         FastAPI Backend        
       |                           |                        |--+                      |                      |
       |                           |                        |  | Lọc IQR, gán reviewed|                      |
       |                           |                        |<-+                      |                      |
-      |                           |                        | 4. Ghi 1.485 bản ghi    |                      |
+      |                           |                        | 4. Ghi 4.899 bản ghi    |                      |
       |                           |                        |------------------------>|                      |
       |                           |                        | 5. Tính SHA-256 chuỗi   |                      |
       |                           |                        |    H = SHA256(data)     |                      |
@@ -1611,7 +1615,7 @@ Bước 3: Kiểm tra định nghĩa quan sát, đơn vị niêm yết (VND/kg),
 
 ### E.2. Hướng dẫn Kiểm chứng Lần Huấn luyện Mô hình và Bản chụp Dữ liệu (MLOps Snapshot)
 
-Bước 1: Từ thanh điều hướng chính, mở trang 'Mô hình & Dự báo' (http://localhost:3000/forecast). Ghi nhận các thông số trên thẻ thông tin MLOps: Mã lượt huấn luyện (Training Run ID), Ngày thực hiện, Điểm cắt thời gian (Train End Date: 17/09/2026), và Mã băm bảo mật SHA-256 của tập dữ liệu.
+Bước 1: Từ thanh điều hướng chính, mở trang 'Mô hình & Dự báo' (http://localhost:3000/forecast). Ghi nhận các thông số trên thẻ thông tin MLOps: Mã lượt huấn luyện (Training Run ID), Ngày thực hiện, Điểm cắt thời gian (Train End Date: 23/11/2026), các biến ngoại sinh nhân quả (USD/VND + WTI) và Mã băm bảo mật SHA-256 của tập dữ liệu.
 
 Bước 2: Mở công cụ kiểm thử API (Swagger UI tại http://localhost:8000/docs hoặc Postman), gọi endpoint: GET /api/v1/forecast/snapshot/{run_id}. Trình duyệt trả về bản chụp JSON chứa toàn văn các điểm quan sát được sử dụng trong lượt huấn luyện.
 
@@ -1624,7 +1628,7 @@ Bước 1: Trích xuất tập kiểm thử (Test Set) bao gồm các ngày quan
 
 Bước 2: Áp dụng độc lập các công thức toán học tính MAE, RMSE, MAPE và R² (đã trình bày chi tiết tại Chương 2). Lưu ý không tính điểm sai số trên những ngày dữ liệu bị khuyết chỉ được lấp đầy bằng phương pháp Forward-fill.
 
-Bước 3: Tính toán sai số của Phương pháp cơ sở (Naive Last Value Baseline) bằng cách giữ nguyên giá trị ngày cuối cùng của tập huấn luyện cho toàn bộ chuỗi kiểm thử. Đối chiếu kết quả: mô hình ARIMA trên hồ tiêu đen phải đạt RMSE = 1.936,78 VND/kg, thấp hơn 7,5% so với mức 2.093,82 VND/kg của Baseline; hệ số R² giữ nguyên giá trị âm (-0,42) phản ánh tính trung thực học thuật.
+Bước 3: Tính toán sai số của Phương pháp cơ sở (Naive Last Value Baseline) bằng cách giữ nguyên giá trị ngày cuối cùng trước cửa sổ kiểm thử cho toàn bộ 7 bước tiếp theo trong quy trình Walk-Forward. Đối chiếu kết quả (mốc 23/11/2026): trên Cà phê Robusta (919 phiên), PyTorch Stacked LSTM (7 kênh) đạt Hạng 1 với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79% và R² = 0,8972 (vượt sâu Baseline 2.147,01 VNĐ/kg); trên Hồ tiêu đen (793 phiên), ARIMA đạt MAPE = 0,74% (RMSE 1.643,77 VNĐ/kg, vượt Baseline 1.646,34 VNĐ/kg).
 
 
 ### E.4. Hướng dẫn Kiểm chứng Cơ chế Tự động Phát hiện Dự báo Lỗi thời (Stale Forecast)
@@ -1640,20 +1644,20 @@ Bước 4: Quan sát trên giao diện: Toàn bộ đường dự báo lập t�
 
 ### E.5. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Dữ liệu Đủ điều kiện
 
-Thao tác 1: Trình diễn trang 'Lịch sử giá', chọn mặt hàng 'Hồ tiêu đen' và vùng 'Cư M'gar (Đắk Lắk)'. Giải thích cho Hội đồng nguồn dữ liệu AGROINFO, đoạn chuỗi 128 ngày quan sát liên tục đủ tiêu chuẩn, danh sách các khoảng thiếu đã được xử lý và điểm bất thường 150 VND/kg đã được cô lập.
+Thao tác 1: Trình diễn trang 'Lịch sử giá', chọn mặt hàng 'Hồ tiêu đen' hoặc 'Cà phê Robusta' và chọn tỉnh/huyện trọng điểm (ví dụ Đắk Lắk). Giải thích cho Hội đồng chuỗi dữ liệu 2024–2026 (793 phiên Hồ tiêu đen, 919 phiên Cà phê Robusta), bấm trực tiếp liên kết bài báo tại cột 'Nguồn công bố' để đối chiếu ngày và mức giá gốc.
 
-Thao tác 2: Chuyển sang trang 'Dự báo', chọn mô hình ARIMA và chu kỳ 30 ngày. Phân tích chi tiết thẻ thông số: Mốc huấn luyện, Sai số thực nghiệm so với Baseline (giảm 7,5% RMSE), đường dự báo tương lai 30 ngày nằm trong dải tin cậy 95% mở rộng dần.
+Thao tác 2: Chuyển sang trang 'Dự báo', quan sát hệ thống tự động chọn mô hình tối ưu ★ (PyTorch Stacked LSTM cho Cà phê Robusta với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79%, R² = 0,8972; ARIMA cho Hồ tiêu đen với MAPE = 0,74%) và dải tin cậy Conformal 95% mở rộng theo căn bậc hai chân trời dự báo trên 3 kỳ hạn chuẩn (7N, 14N, 30N).
 
-Thao tác 3: Chuyển sang tab 'So sánh mô hình', chỉ ra biểu đồ Radar và bảng xếp hạng trực diện 5 mô hình (ARIMA dẫn đầu, tiếp theo là XGBoost, Random Forest, Prophet và LSTM). Giải thích lý do học sâu LSTM chưa phát huy tối đa do kích thước mẫu chuỗi thời gian nông sản dưới 5.000 điểm.
+Thao tác 3: Chuyển sang tab 'So sánh 5 mô hình', chỉ ra bảng xếp hạng trực diện 5 mô hình (ARIMA, Random Forest, XGBoost, Prophet, PyTorch Stacked LSTM) cùng 2 biến ngoại sinh vĩ mô nhân quả (USD/VND + WTI) và đối chiếu trực tiếp với Naive Last Value Baseline.
 
 
-### E.6. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Dữ liệu Chưa đủ điều kiện
+### E.6. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Cổng Kiểm soát Dữ liệu (Readiness Gate)
 
-Thao tác 1: Trên trang dự báo, chọn mặt hàng 'Cà phê Robusta'. Hệ thống từ chối hiển thị kết quả dự báo và hiển thị hộp thoại cảnh báo: 'Mặt hàng hiện mới chỉ thu thập được 14 quan sát tại địa phương, chưa đạt ngưỡng tối thiểu 60 ngày để huấn luyện mô hình tin cậy'.
+Thao tác 1: Giải thích cơ chế cổng kiểm soát dữ liệu Readiness Gate: cả 8/8 mặt hàng hiện tại đều đã vượt ngưỡng sẵn sàng (442–919 phiên), tuy nhiên khi quản trị viên tạo mới một mặt hàng chưa có đủ 60 quan sát xác thực (hoặc dữ liệu lịch sử bị chỉnh sửa làm lệch mã băm SHA-256), hệ thống tự động chặn sinh dự báo ảo và hiển thị cảnh báo minh bạch.
 
-Thao tác 2: Chọn mặt hàng 'Lúa tươi IR50404' tại An Giang để minh chứng sự khác biệt giữa tổng số bản ghi và đoạn quan sát liên tục sau sự cố gián đoạn nguồn.
+Thao tác 2: Chọn mặt hàng 'Mía đường' tại Khánh Hòa để minh chứng tính minh bạch nguồn gốc: bảng lịch sử ghi rõ nguồn quy đổi sàn quốc tế ICE Sugar #11 (Yahoo Finance SB=F) cho chuỗi 729 phiên hằng ngày và tách riêng các mốc khảo sát trực tiếp vụ ép 2024–2026 (Khánh Hòa, Phú Yên, Gia Lai) trong bảng regional_price_observations.
 
-Thao tác 3: Chọn mặt hàng 'Mía nguyên liệu 10 CCS' tại Hậu Giang để giải thích cho Hội đồng vì sao hệ thống quản lý theo kỳ báo cáo 10 ngày thay vì tự ý phân rã thành chuỗi ngày giả mạo, khẳng định tính trung thực khoa học của hệ thống.
+Thao tác 3: Chọn mặt hàng đặc sản 'Dâu tây Đà Lạt' (Phường 8, Đà Lạt) và 'Khoai tây Đà Lạt' (Phường 7, Đà Lạt) để trình diễn giải pháp neo giá khảo sát sống Việt Nam (Kamereo, Nam Tĩnh) kết hợp chuỗi tham chiếu Proxy Index ETF Yahoo Finance (DBA/MOO x USD/VND), với mô hình Prophet đạt MAPE 1,08% và 1,30%.
 
 
 ### E.7. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Bảng Điều khiển Quản trị Hệ thống
@@ -1723,13 +1727,15 @@ Mở cửa sổ Terminal thứ hai tại thư mục AgroForecast/SOURCE/frontend
 
 Mở trình duyệt Web truy cập giao diện ứng dụng tại: http://localhost:3000.
 
-Bước 4 (Kích hoạt Kiểm chứng Toàn bộ 72 Kịch bản Kiểm thử & Bảo mật):
+Bước 4 (Kích hoạt Kiểm chứng Toàn bộ 125 Kịch bản Pytest Backend & 4 Playwright E2E):
 
-Tại thư mục AgroForecast/SOURCE/backend, thực thi câu lệnh kiểm thử tự động toàn diện:
+Tại thư mục AgroForecast/SOURCE/backend, thực thi câu lệnh kiểm thử tự động toàn diện (bao gồm bộ 72 kịch bản nền tảng trong Phụ lục B và 53 kịch bản mở rộng về phủ nhánh 98%, kiểm toán sự thật dữ liệu, biến ngoại sinh Zero-Leakage và vá bảo mật OWASP):
 
   pytest tests/ -v --tb=short
 
-Hệ thống sẽ chạy tuần tự 30 bài kiểm tra Unit, 22 bài kiểm tra Tích hợp API, 10 bài kiểm tra E2E và 10 bài kiểm tra Bảo mật OWASP Top 10 với kết quả 72/72 PASSED (100% ĐẠT).
+  bandit -r app -ll && bandit -r ml_pipeline -ll
+
+Hệ thống đạt 125/125 Pytest Backend PASSED, Bandit 0 lỗi Medium/High, kết hợp 3/3 Frontend Unit Tests và 4/4 Playwright E2E trên trình duyệt Chrome thật.
 
 
 ### F.3. Danh sách Tài khoản Thử nghiệm Dành cho Hội đồng Chấm Khóa luận
@@ -1762,5 +1768,5 @@ DVD_ROOT/
     |   +-- frontend/               (Mã nguồn giao diện Next.js 14, React, TypeScript, TailwindCSS, Recharts)
     +-- DATABASE/                   (Thư mục chứa cơ sở dữ liệu)
         |-- init.sql                (Kịch bản SQL tạo cấu trúc 11 bảng và khóa chính, khóa ngoại)
-        +-- agroforecast_backup.dump (Bản sao lưu CSDL PostgreSQL đầy đủ 1.485 bản ghi thực tế)
+        +-- agroforecast_real_2024_2026.sql (Bản sao lưu CSDL PostgreSQL đầy đủ 4.899 bản ghi lịch sử + 9.079 quan sát cấp tỉnh)
             

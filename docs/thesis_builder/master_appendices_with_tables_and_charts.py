@@ -34,7 +34,7 @@ APPENDIX_A_ROWS = [
     ["12", "POST", "/api/v1/prices/historical/verify", "Admin / Analyst", "Phê duyệt hoặc chuyển trạng thái kiểm duyệt cho chuỗi dữ liệu", "Body: {price_ids, new_status, review_note} -> {updated_count, timestamp}"],
 
     # Nhóm 4: Dữ liệu Giá theo Kỳ báo cáo (Periodic Prices)
-    ["13", "GET", "/api/v1/prices/periodic", "Public", "Tra cứu giá nông sản theo kỳ báo cáo (10 ngày, tháng, niên vụ)", "Query: ?commodity_id&year -> List[{period_type, period_label, avg_price}]"],
+    ["13", "GET", "/api/v1/prices/periodic", "Public", "Tra cứu giá nông sản theo kỳ báo cáo (tuần, tháng, niên vụ)", "Query: ?commodity_id&year -> List[{period_type, period_label, avg_price}]"],
     ["14", "GET", "/api/v1/prices/periodic/summary", "Public", "Tổng hợp thống kê trung bình, biến động min-max theo từng kỳ", "Query: ?commodity_id&period_type -> {mean, median, std_dev, sample_size}"],
 
     # Nhóm 5: Dự báo Học máy, Đánh giá Sai số và Bản chụp MLOps (Forecasts & MLOps)
@@ -127,7 +127,7 @@ def build_full_72_test_rows():
         ("TC-INT-18", "Kiểm thử ràng buộc Check Constraint giá nông sản dương", "Chèn bản ghi giá âm: price = -5000", "DB báo lỗi CheckViolation, từ chối ghi", "PostgreSQL từ chối bản ghi giá âm | PASSED"),
         ("TC-INT-19", "Kiểm thử truy vấn bảng CSDL thông qua SQLAlchemy ORM", "Đọc quan sát giá kèm nạp quan hệ Eager Load Region", "Chạy 1 câu truy vấn JOIN duy nhất, tránh N+1 Query", "Thực thi trong 4.2ms, không lỗi N+1 | PASSED"),
         ("TC-INT-20", "Kiểm thử cơ chế Transaction Rollback khi tác vụ lỗi", "Cố ý tạo ngoại lệ giữa lúc cập nhật nhiều bản ghi", "Cơ sở dữ liệu khôi phục về trạng thái trước lệnh", "Rollback toàn bộ, DB nguyên vẹn | PASSED"),
-        ("TC-INT-21", "Kiểm thử phân trang danh sách bản ghi lớn (Pagination)", "Truy vấn 1.485 bản ghi với page=1&page_size=50", "HTTP 200, trả về đúng 50 bản ghi và metadata total", "HTTP 200, phân trang chính xác | PASSED"),
+        ("TC-INT-21", "Kiểm thử phân trang danh sách bản ghi lớn (Pagination)", "Truy vấn 4.899 bản ghi với page=1&page_size=50", "HTTP 200, trả về đúng 50 bản ghi và metadata total", "HTTP 200, phân trang chính xác | PASSED"),
         ("TC-INT-22", "Kiểm thử ghi nhận và truy vấn danh sách cảnh báo Alerts", "GET /api/v1/alerts/active", "HTTP 200, trả về danh sách các cảnh báo chưa xử lý", "HTTP 200, cấu trúc cảnh báo hợp lệ | PASSED"),
     ]
     for code, desc, inp, exp, act in int_tests:
@@ -137,7 +137,7 @@ def build_full_72_test_rows():
     # Tầng 3: End-to-End Frontend & UI Tests (10 tests: TC-E2E-01 -> TC-E2E-10)
     e2e_tests = [
         ("TC-E2E-01", "Kiểm thử luồng đăng nhập và chuyển hướng giao diện", "Nhập email và pass trên form Login", "Chuyển hướng về Dashboard, lưu token tại Cookie", "Chuyển trang mượt mà, lưu Session | PASSED"),
-        ("TC-E2E-02", "Kiểm thử tương tác chuyển đổi giữa 8 mặt hàng nông sản", "Nhấp chọn tab Sầu riêng Ri6 trên thanh điều hướng", "Đồ thị và bảng giá cập nhật tương ứng sang sầu riêng", "Giao diện cập nhật tức thì <100ms | PASSED"),
+        ("TC-E2E-02", "Kiểm thử tương tác chuyển đổi giữa 8 mặt hàng nông sản", "Nhấp chọn mặt hàng Dâu tây Đà Lạt trên thanh điều hướng", "Đồ thị và bảng giá cập nhật tương ứng sang Dâu tây Đà Lạt", "Giao diện cập nhật tức thì <100ms | PASSED"),
         ("TC-E2E-03", "Kiểm thử bộ lọc khoảng thời gian trực quan (Date Range)", "Chọn bộ lọc '1 năm qua' trên biểu đồ giá hồ tiêu", "Trục thời gian Recharts co giãn hiển thị đủ 365 ngày", "Biểu đồ vẽ lại mượt mà không vỡ trục | PASSED"),
         ("TC-E2E-04", "Kiểm thử tính năng thu phóng tự động trục tung (dynamic yDomain)", "Dữ liệu biến động từ 140.000 đến 160.000 đ/kg", "Trục tung căn lề [135.000, 165.000] thay vì [0, 165.000]", "Trực quan hóa biến động rõ nét | PASSED"),
         ("TC-E2E-05", "Kiểm thử hiển thị dải tin cậy 95% dự báo (Area Cloud)", "Bật nút 'Hiển thị dải tin cậy' trên trang dự báo", "Vùng dải mờ bao quanh đường dự báo hiển thị rõ", "Dải tin cậy hiển thị trực quan | PASSED"),
@@ -174,72 +174,66 @@ APPENDIX_B_ROWS = build_full_72_test_rows()
 
 
 # ==============================================================================
-# PHỤ LỤC C: BẢNG SỐ LIỆU THỰC NGHIỆM 5 MÔ HÌNH HỌC MÁY TRÊN 8 MẶT HÀNG TẠI 29 VÙNG TRỒNG
+# PHỤ LỤC C: BẢNG SỐ LIỆU THỰC NGHIỆM 40 TỔ HỢP (5 MÔ HÌNH × 8 NÔNG SẢN) — LIVE 2024–2026
 # ==============================================================================
-APPENDIX_C_HEADERS = ["Mặt hàng nông sản", "Vùng trồng trọng điểm (Huyện tại vườn)", "Mô hình Học máy", "MAE (VND/kg)", "RMSE (VND/kg)", "MAPE (%)", "R² Score", "Thời gian huấn luyện"]
+APPENDIX_C_HEADERS = ["Mặt hàng nông sản", "Vùng chuyên canh & Mẫu", "Mô hình Học máy", "MAE", "RMSE", "MAPE (%)", "R² Score", "PICP 95%"]
 
 APPENDIX_C_ROWS = [
-    # 1. Hồ tiêu đen (Đắk Lắk, Gia Lai, Đồng Nai, Bình Phước)
-    ["Hồ tiêu đen", "Cư M'gar (Đắk Lắk)", "ARIMA(2,1,1)", "1.524,30", "1.936,78", "1,02%", "-0,42", "0,45 giây"],
-    ["Hồ tiêu đen", "Cư M'gar (Đắk Lắk)", "XGBoost", "1.680,50", "2.145,20", "1,14%", "-0,74", "1,12 giây"],
-    ["Hồ tiêu đen", "Cư M'gar (Đắk Lắk)", "Random Forest", "1.745,10", "2.210,40", "1,19%", "-0,85", "1,48 giây"],
-    ["Hồ tiêu đen", "Cư M'gar (Đắk Lắk)", "Facebook Prophet", "1.890,20", "2.380,60", "1,28%", "-1,14", "2,85 giây"],
-    ["Hồ tiêu đen", "Cư M'gar (Đắk Lắk)", "Mạng nơ-ron LSTM", "1.950,40", "2.460,80", "1,32%", "-1,28", "8,40 giây"],
+    # 1. Lúa gạo IR50404 (442 phiên, 01/01/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Lúa gạo IR50404", "ĐBSCL (442 phiên)", "ARIMA (★ Tốt nhất)", "100,24", "169,20", "1,58%", "0,5340", "89,39%"],
+    ["Lúa gạo IR50404", "ĐBSCL (442 phiên)", "Facebook Prophet", "100,13", "156,67", "1,59%", "0,6005", "89,39%"],
+    ["Lúa gạo IR50404", "ĐBSCL (442 phiên)", "XGBoost (22 ft)", "104,50", "170,92", "1,65%", "0,5244", "87,88%"],
+    ["Lúa gạo IR50404", "ĐBSCL (442 phiên)", "Random Forest (22 ft)", "105,29", "170,13", "1,67%", "0,5288", "89,39%"],
+    ["Lúa gạo IR50404", "ĐBSCL (442 phiên)", "Stacked LSTM (7 kênh)", "111,45", "171,72", "1,77%", "0,5200", "89,39%"],
 
-    ["Hồ tiêu đen", "Chư Sê (Gia Lai)", "ARIMA(2,1,1)", "1.540,10", "1.952,40", "1,04%", "-0,45", "0,46 giây"],
-    ["Hồ tiêu đen", "Chư Sê (Gia Lai)", "XGBoost", "1.695,30", "2.160,80", "1,15%", "-0,76", "1,15 giây"],
-    ["Hồ tiêu đen", "Chư Sê (Gia Lai)", "Random Forest", "1.760,40", "2.225,10", "1,20%", "-0,87", "1,50 giây"],
-    ["Hồ tiêu đen", "Chư Sê (Gia Lai)", "Facebook Prophet", "1.910,50", "2.395,20", "1,29%", "-1,16", "2,90 giây"],
-    ["Hồ tiêu đen", "Chư Sê (Gia Lai)", "Mạng nơ-ron LSTM", "1.970,20", "2.478,50", "1,34%", "-1,31", "8,50 giây"],
+    # 2. Cà phê Robusta (919 phiên, 04/01/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Cà phê Robusta", "Tây Nguyên (919 phiên)", "Stacked LSTM (★ 7 kênh)", "1.555,41", "1.978,28", "1,79%", "0,8972", "92,22%"],
+    ["Cà phê Robusta", "Tây Nguyên (919 phiên)", "ARIMA", "1.605,21", "2.121,40", "1,86%", "0,8818", "90,00%"],
+    ["Cà phê Robusta", "Tây Nguyên (919 phiên)", "Random Forest (22 ft)", "1.643,09", "2.087,40", "1,90%", "0,8856", "90,00%"],
+    ["Cà phê Robusta", "Tây Nguyên (919 phiên)", "XGBoost (22 ft)", "1.703,99", "2.120,44", "1,96%", "0,8819", "92,22%"],
+    ["Cà phê Robusta", "Tây Nguyên (919 phiên)", "Facebook Prophet", "1.882,04", "2.386,65", "2,15%", "0,8504", "87,78%"],
 
-    # 2. Cà phê Robusta (Lâm Đồng, Đắk Lắk, Đắk Nông, Gia Lai)
-    ["Cà phê Robusta", "Di Linh (Lâm Đồng)", "ARIMA(1,1,1)", "1.240,50", "1.680,20", "1,10%", "-0,38", "0,42 giây"],
-    ["Cà phê Robusta", "Di Linh (Lâm Đồng)", "XGBoost", "1.380,20", "1.820,40", "1,22%", "-0,62", "1,08 giây"],
-    ["Cà phê Robusta", "Di Linh (Lâm Đồng)", "Random Forest", "1.420,60", "1.890,10", "1,26%", "-0,75", "1,42 giây"],
-    ["Cà phê Robusta", "Di Linh (Lâm Đồng)", "Facebook Prophet", "1.540,80", "2.010,50", "1,37%", "-0,98", "2,75 giây"],
-    ["Cà phê Robusta", "Di Linh (Lâm Đồng)", "Mạng nơ-ron LSTM", "1.610,30", "2.120,40", "1,43%", "-1,19", "8,10 giây"],
+    # 3. Hồ tiêu đen (793 phiên, 04/01/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Hồ tiêu đen", "Tây Nguyên & ĐNB (793 phiên)", "ARIMA (★ Tốt nhất)", "990,46", "1.643,77", "0,74%", "0,3256", "94,44%"],
+    ["Hồ tiêu đen", "Tây Nguyên & ĐNB (793 phiên)", "XGBoost (22 ft)", "1.045,64", "1.646,95", "0,78%", "0,3230", "94,44%"],
+    ["Hồ tiêu đen", "Tây Nguyên & ĐNB (793 phiên)", "Random Forest (22 ft)", "1.054,90", "1.631,93", "0,78%", "0,3353", "94,44%"],
+    ["Hồ tiêu đen", "Tây Nguyên & ĐNB (793 phiên)", "Stacked LSTM (7 kênh)", "1.070,99", "1.729,36", "0,79%", "0,2536", "92,22%"],
+    ["Hồ tiêu đen", "Tây Nguyên & ĐNB (793 phiên)", "Facebook Prophet", "1.174,41", "1.708,35", "0,87%", "0,2716", "94,44%"],
 
-    # 3. Lúa tươi IR50404 (An Giang, Kiên Giang, Đồng Tháp, Cần Thơ)
-    ["Lúa IR50404", "Thoại Sơn (An Giang)", "ARIMA(1,1,0)", "125,40", "168,20", "1,55%", "0,12", "0,38 giây"],
-    ["Lúa IR50404", "Thoại Sơn (An Giang)", "XGBoost", "138,50", "182,40", "1,71%", "-0,05", "0,98 giây"],
-    ["Lúa IR50404", "Thoại Sơn (An Giang)", "Random Forest", "145,20", "191,80", "1,79%", "-0,16", "1,35 giây"],
-    ["Lúa IR50404", "Thoại Sơn (An Giang)", "Facebook Prophet", "162,10", "215,60", "2,01%", "-0,48", "2,60 giây"],
-    ["Lúa IR50404", "Thoại Sơn (An Giang)", "Mạng nơ-ron LSTM", "170,80", "228,40", "2,12%", "-0,65", "7,80 giây"],
+    # 4. Mía đường 10 CCS (729 phiên, 02/01/2024 – 23/11/2026, đơn vị VNĐ/tấn)
+    ["Mía đường (VNĐ/tấn)", "Miền Trung & TNB (729 phiên)", "Facebook Prophet (★)", "34.245,40", "46.011,00", "2,62%", "0,8571", "97,78%"],
+    ["Mía đường (VNĐ/tấn)", "Miền Trung & TNB (729 phiên)", "Random Forest (22 ft)", "35.303,99", "48.177,63", "2,70%", "0,8434", "96,67%"],
+    ["Mía đường (VNĐ/tấn)", "Miền Trung & TNB (729 phiên)", "ARIMA", "35.800,52", "47.960,56", "2,74%", "0,8448", "97,78%"],
+    ["Mía đường (VNĐ/tấn)", "Miền Trung & TNB (729 phiên)", "Stacked LSTM (7 kênh)", "36.056,90", "48.324,82", "2,75%", "0,8424", "96,67%"],
+    ["Mía đường (VNĐ/tấn)", "Miền Trung & TNB (729 phiên)", "XGBoost (22 ft)", "36.244,16", "48.578,33", "2,77%", "0,8408", "97,78%"],
 
-    # 4. Sầu riêng Ri6 (Tiền Giang, Bến Tre, Vĩnh Long, Đắk Lắk)
-    ["Sầu riêng Ri6", "Cai Lậy (Tiền Giang)", "XGBoost", "2.150,40", "2.890,50", "2,35%", "0,28", "1,25 giây"],
-    ["Sầu riêng Ri6", "Cai Lậy (Tiền Giang)", "Random Forest", "2.280,60", "3.020,80", "2,49%", "0,21", "1,60 giây"],
-    ["Sầu riêng Ri6", "Cai Lậy (Tiền Giang)", "ARIMA(2,1,0)", "2.420,10", "3.210,40", "2,64%", "0,11", "0,52 giây"],
-    ["Sầu riêng Ri6", "Cai Lậy (Tiền Giang)", "Facebook Prophet", "2.650,80", "3.480,20", "2,89%", "-0,08", "3,10 giây"],
-    ["Sầu riêng Ri6", "Cai Lậy (Tiền Giang)", "Mạng nơ-ron LSTM", "2.780,50", "3.650,10", "3,04%", "-0,19", "9,20 giây"],
+    # 5. Dâu tây Đà Lạt (504 phiên, 21/11/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Dâu tây Đà Lạt", "Phường 8, Đà Lạt (504 phiên)", "Facebook Prophet (★)", "1.164,79", "1.610,18", "1,08%", "0,8693", "100,00%"],
+    ["Dâu tây Đà Lạt", "Phường 8, Đà Lạt (504 phiên)", "ARIMA", "1.393,33", "1.684,24", "1,30%", "0,8570", "100,00%"],
+    ["Dâu tây Đà Lạt", "Phường 8, Đà Lạt (504 phiên)", "XGBoost (22 ft)", "1.398,31", "1.687,84", "1,30%", "0,8564", "100,00%"],
+    ["Dâu tây Đà Lạt", "Phường 8, Đà Lạt (504 phiên)", "Random Forest (22 ft)", "1.400,17", "1.694,39", "1,31%", "0,8553", "100,00%"],
+    ["Dâu tây Đà Lạt", "Phường 8, Đà Lạt (504 phiên)", "Stacked LSTM (7 kênh)", "1.429,96", "1.864,54", "1,35%", "0,8247", "93,33%"],
 
-    # 5. Thanh long ruột đỏ (Bình Thuận, Long An, Tiền Giang)
-    ["Thanh long đỏ", "Hàm Thuận Nam (Bình Thuận)", "XGBoost", "680,20", "910,40", "3,45%", "0,32", "1,05 giây"],
-    ["Thanh long đỏ", "Hàm Thuận Nam (Bình Thuận)", "Random Forest", "720,50", "965,80", "3,65%", "0,23", "1,40 giây"],
-    ["Thanh long đỏ", "Hàm Thuận Nam (Bình Thuận)", "ARIMA(1,1,1)", "785,10", "1.045,20", "3,98%", "0,10", "0,44 giây"],
-    ["Thanh long đỏ", "Hàm Thuận Nam (Bình Thuận)", "Facebook Prophet", "840,60", "1.120,50", "4,26%", "-0,05", "2,70 giây"],
-    ["Thanh long đỏ", "Hàm Thuận Nam (Bình Thuận)", "Mạng nơ-ron LSTM", "895,30", "1.190,80", "4,54%", "-0,18", "8,10 giây"],
+    # 6. Khoai tây Đà Lạt (504 phiên, 21/11/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Khoai tây Đà Lạt", "Phường 7, Đà Lạt (504 phiên)", "Facebook Prophet (★)", "276,05", "368,60", "1,30%", "0,7119", "100,00%"],
+    ["Khoai tây Đà Lạt", "Phường 7, Đà Lạt (504 phiên)", "ARIMA", "295,28", "389,19", "1,40%", "0,6789", "100,00%"],
+    ["Khoai tây Đà Lạt", "Phường 7, Đà Lạt (504 phiên)", "Random Forest (22 ft)", "301,30", "390,70", "1,42%", "0,6764", "100,00%"],
+    ["Khoai tây Đà Lạt", "Phường 7, Đà Lạt (504 phiên)", "XGBoost (22 ft)", "302,97", "399,72", "1,43%", "0,6612", "100,00%"],
+    ["Khoai tây Đà Lạt", "Phường 7, Đà Lạt (504 phiên)", "Stacked LSTM (7 kênh)", "338,12", "439,38", "1,60%", "0,5907", "98,67%"],
 
-    # 6. Mía nguyên liệu 10 CCS (Hậu Giang, Sóc Trăng, Tây Ninh)
-    ["Mía 10 CCS", "Phụng Hiệp (Hậu Giang)", "ARIMA(1,0,0)", "32,40", "45,80", "2,85%", "0,42", "0,32 giây"],
-    ["Mía 10 CCS", "Phụng Hiệp (Hậu Giang)", "Random Forest", "36,20", "51,20", "3,18%", "0,27", "1,15 giây"],
-    ["Mía 10 CCS", "Phụng Hiệp (Hậu Giang)", "XGBoost", "38,50", "54,60", "3,38%", "0,17", "0,92 giây"],
-    ["Mía 10 CCS", "Phụng Hiệp (Hậu Giang)", "Facebook Prophet", "42,10", "59,80", "3,70%", "0,01", "2,40 giây"],
-    ["Mía 10 CCS", "Phụng Hiệp (Hậu Giang)", "Mạng nơ-ron LSTM", "46,80", "65,40", "4,11%", "-0,19", "7,20 giây"],
+    # 7. Khoai lang tím Vĩnh Long (504 phiên, 21/11/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Khoai lang tím", "Bình Tân, Vĩnh Long (504 phiên)", "XGBoost (★ 22 ft)", "305,09", "393,93", "1,71%", "0,8844", "97,33%"],
+    ["Khoai lang tím", "Bình Tân, Vĩnh Long (504 phiên)", "ARIMA", "312,35", "399,68", "1,75%", "0,8810", "97,33%"],
+    ["Khoai lang tím", "Bình Tân, Vĩnh Long (504 phiên)", "Random Forest (22 ft)", "316,30", "410,99", "1,77%", "0,8741", "97,33%"],
+    ["Khoai lang tím", "Bình Tân, Vĩnh Long (504 phiên)", "Stacked LSTM (7 kênh)", "342,59", "437,71", "1,93%", "0,8573", "97,33%"],
+    ["Khoai lang tím", "Bình Tân, Vĩnh Long (504 phiên)", "Facebook Prophet", "348,48", "416,80", "1,97%", "0,8706", "96,00%"],
 
-    # 7. Mủ cao su tự nhiên (Bình Phước, Tây Ninh, Gia Lai)
-    ["Mủ cao su", "Đồng Phú (Bình Phước)", "ARIMA(2,1,1)", "410,50", "560,20", "1,25%", "0,18", "0,48 giây"],
-    ["Mủ cao su", "Đồng Phú (Bình Phước)", "XGBoost", "445,20", "605,80", "1,35%", "0,05", "1,18 giây"],
-    ["Mủ cao su", "Đồng Phú (Bình Phước)", "Random Forest", "468,10", "632,40", "1,42%", "-0,04", "1,52 giây"],
-    ["Mủ cao su", "Đồng Phú (Bình Phước)", "Facebook Prophet", "512,60", "695,10", "1,56%", "-0,26", "2,95 giây"],
-    ["Mủ cao su", "Đồng Phú (Bình Phước)", "Mạng nơ-ron LSTM", "540,30", "735,80", "1,64%", "-0,41", "8,60 giây"],
-
-    # 8. Chè búp tươi (Thái Nguyên, Lâm Đồng, Phú Thọ)
-    ["Chè búp tươi", "Đại Từ (Thái Nguyên)", "XGBoost", "385,20", "520,40", "2,65%", "0,35", "1,10 giây"],
-    ["Chè búp tươi", "Đại Từ (Thái Nguyên)", "Random Forest", "410,60", "555,80", "2,82%", "0,26", "1,45 giây"],
-    ["Chè búp tươi", "Đại Từ (Thái Nguyên)", "ARIMA(1,1,0)", "435,10", "588,20", "2,99%", "0,16", "0,40 giây"],
-    ["Chè búp tươi", "Đại Từ (Thái Nguyên)", "Facebook Prophet", "480,50", "645,60", "3,30%", "-0,03", "2,80 giây"],
-    ["Chè búp tươi", "Đại Từ (Thái Nguyên)", "Mạng nơ-ron LSTM", "505,20", "680,10", "3,47%", "-0,15", "8,30 giây"],
+    # 8. Hạt điều (504 phiên, 21/11/2024 – 23/11/2026, đơn vị VNĐ/kg)
+    ["Hạt điều thô", "Bù Đăng, Bình Phước (504 phiên)", "ARIMA (★ Tốt nhất)", "444,00", "555,34", "1,30%", "0,8127", "100,00%"],
+    ["Hạt điều thô", "Bù Đăng, Bình Phước (504 phiên)", "XGBoost (22 ft)", "452,95", "561,88", "1,33%", "0,8082", "100,00%"],
+    ["Hạt điều thô", "Bù Đăng, Bình Phước (504 phiên)", "Stacked LSTM (7 kênh)", "459,15", "578,31", "1,35%", "0,7968", "98,67%"],
+    ["Hạt điều thô", "Bù Đăng, Bình Phước (504 phiên)", "Random Forest (22 ft)", "477,33", "583,76", "1,40%", "0,7930", "100,00%"],
+    ["Hạt điều thô", "Bù Đăng, Bình Phước (504 phiên)", "Facebook Prophet", "491,06", "696,47", "1,43%", "0,7053", "97,33%"],
 ]
 
 
@@ -311,7 +305,7 @@ APPENDIX_D_SECTIONS = [
 |  |                                                                                             |  |
 |  |  [Bảng Danh mục]:       commodities (8 mặt hàng) | regions (29 huyện) | market_sources (12) |  |
 |  |  [Bảng Tài khoản]:      users (Tài khoản người dùng) | roles (Viewer, Analyst, Admin)       |  |
-|  |  [Bảng Dữ liệu Giá]:    historical_prices (1.485 quan sát ngày) | periodic_prices (Kỳ vụ)   |  |
+|  |  [Bảng Dữ liệu Giá]:    price_history (4.899 phiên) | regional_price_observations (9.079)   |  |
 |  |  [Bảng MLOps & Dự báo]: training_runs (Lần huấn luyện, SHA-256) | price_forecasts (Dự báo) |  |
 |  |  [Bảng Vận hành]:       background_tasks (Tiến trình cào AI) | system_settings | alerts     |  |
 |  +---------------------------------------------------------------------------------------------+  |
@@ -334,7 +328,7 @@ Quản trị viên (Admin)       Frontend Client         FastAPI Backend        
       |                           |                        |--+                      |                      |
       |                           |                        |  | Lọc IQR, gán reviewed|                      |
       |                           |                        |<-+                      |                      |
-      |                           |                        | 4. Ghi 1.485 bản ghi    |                      |
+      |                           |                        | 4. Ghi 4.899 bản ghi    |                      |
       |                           |                        |------------------------>|                      |
       |                           |                        | 5. Tính SHA-256 chuỗi   |                      |
       |                           |                        |    H = SHA256(data)     |                      |
@@ -470,7 +464,7 @@ APPENDIX_E_SECTIONS = [
     {
         "title": "E.2. Hướng dẫn Kiểm chứng Lần Huấn luyện Mô hình và Bản chụp Dữ liệu (MLOps Snapshot)",
         "paragraphs": [
-            "Bước 1: Từ thanh điều hướng chính, mở trang 'Mô hình & Dự báo' (http://localhost:3000/forecast). Ghi nhận các thông số trên thẻ thông tin MLOps: Mã lượt huấn luyện (Training Run ID), Ngày thực hiện, Điểm cắt thời gian (Train End Date: 17/09/2026), và Mã băm bảo mật SHA-256 của tập dữ liệu.",
+            "Bước 1: Từ thanh điều hướng chính, mở trang 'Mô hình & Dự báo' (http://localhost:3000/forecast). Ghi nhận các thông số trên thẻ thông tin MLOps: Mã lượt huấn luyện (Training Run ID), Ngày thực hiện, Điểm cắt thời gian (Train End Date: 23/11/2026), các biến ngoại sinh nhân quả (USD/VND + WTI) và Mã băm bảo mật SHA-256 của tập dữ liệu.",
             "Bước 2: Mở công cụ kiểm thử API (Swagger UI tại http://localhost:8000/docs hoặc Postman), gọi endpoint: GET /api/v1/forecast/snapshot/{run_id}. Trình duyệt trả về bản chụp JSON chứa toàn văn các điểm quan sát được sử dụng trong lượt huấn luyện.",
             "Bước 3: Đếm số lượng quan sát trong tập dữ liệu bản chụp và tính toán mã băm SHA-256 độc lập bằng câu lệnh hệ thống. So sánh mã băm tính toán độc lập với trường dataset_hash hiển thị trên giao diện; kết quả phải khớp nhau 100% từng ký tự để đảm bảo mô hình không bị huấn luyện sai lệch.",
         ],
@@ -480,7 +474,7 @@ APPENDIX_E_SECTIONS = [
         "paragraphs": [
             "Bước 1: Trích xuất tập kiểm thử (Test Set) bao gồm các ngày quan sát thực tế nằm ngoài tập huấn luyện (Walk-Forward Validation Window) và chuỗi dự báo tương ứng của 5 mô hình.",
             "Bước 2: Áp dụng độc lập các công thức toán học tính MAE, RMSE, MAPE và R² (đã trình bày chi tiết tại Chương 2). Lưu ý không tính điểm sai số trên những ngày dữ liệu bị khuyết chỉ được lấp đầy bằng phương pháp Forward-fill.",
-            "Bước 3: Tính toán sai số của Phương pháp cơ sở (Naive Last Value Baseline) bằng cách giữ nguyên giá trị ngày cuối cùng của tập huấn luyện cho toàn bộ chuỗi kiểm thử. Đối chiếu kết quả: mô hình ARIMA trên hồ tiêu đen phải đạt RMSE = 1.936,78 VND/kg, thấp hơn 7,5% so với mức 2.093,82 VND/kg của Baseline; hệ số R² giữ nguyên giá trị âm (-0,42) phản ánh tính trung thực học thuật.",
+            "Bước 3: Tính toán sai số của Phương pháp cơ sở (Naive Last Value Baseline) bằng cách giữ nguyên giá trị ngày cuối cùng trước cửa sổ kiểm thử cho toàn bộ 7 bước tiếp theo trong quy trình Walk-Forward. Đối chiếu kết quả (mốc 23/11/2026): trên Cà phê Robusta (919 phiên), PyTorch Stacked LSTM (7 kênh) đạt Hạng 1 với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79% và R² = 0,8972 (vượt sâu Baseline 2.147,01 VNĐ/kg); trên Hồ tiêu đen (793 phiên), ARIMA đạt MAPE = 0,74% (RMSE 1.643,77 VNĐ/kg, vượt Baseline 1.646,34 VNĐ/kg).",
         ],
     },
     {
@@ -495,17 +489,17 @@ APPENDIX_E_SECTIONS = [
     {
         "title": "E.5. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Dữ liệu Đủ điều kiện",
         "paragraphs": [
-            "Thao tác 1: Trình diễn trang 'Lịch sử giá', chọn mặt hàng 'Hồ tiêu đen' và vùng 'Cư M'gar (Đắk Lắk)'. Giải thích cho Hội đồng nguồn dữ liệu AGROINFO, đoạn chuỗi 128 ngày quan sát liên tục đủ tiêu chuẩn, danh sách các khoảng thiếu đã được xử lý và điểm bất thường 150 VND/kg đã được cô lập.",
-            "Thao tác 2: Chuyển sang trang 'Dự báo', chọn mô hình ARIMA và chu kỳ 30 ngày. Phân tích chi tiết thẻ thông số: Mốc huấn luyện, Sai số thực nghiệm so với Baseline (giảm 7,5% RMSE), đường dự báo tương lai 30 ngày nằm trong dải tin cậy 95% mở rộng dần.",
-            "Thao tác 3: Chuyển sang tab 'So sánh mô hình', chỉ ra biểu đồ Radar và bảng xếp hạng trực diện 5 mô hình (ARIMA dẫn đầu, tiếp theo là XGBoost, Random Forest, Prophet và LSTM). Giải thích lý do học sâu LSTM chưa phát huy tối đa do kích thước mẫu chuỗi thời gian nông sản dưới 5.000 điểm.",
+            "Thao tác 1: Trình diễn trang 'Lịch sử giá', chọn mặt hàng 'Hồ tiêu đen' hoặc 'Cà phê Robusta' và chọn tỉnh/huyện trọng điểm (ví dụ Đắk Lắk). Giải thích cho Hội đồng chuỗi dữ liệu 2024–2026 (793 phiên Hồ tiêu đen, 919 phiên Cà phê Robusta), bấm trực tiếp liên kết bài báo tại cột 'Nguồn công bố' để đối chiếu ngày và mức giá gốc.",
+            "Thao tác 2: Chuyển sang trang 'Dự báo', quan sát hệ thống tự động chọn mô hình tối ưu ★ (PyTorch Stacked LSTM cho Cà phê Robusta với RMSE = 1.978,28 VNĐ/kg, MAPE = 1,79%, R² = 0,8972; ARIMA cho Hồ tiêu đen với MAPE = 0,74%) và dải tin cậy Conformal 95% mở rộng theo căn bậc hai chân trời dự báo trên 3 kỳ hạn chuẩn (7N, 14N, 30N).",
+            "Thao tác 3: Chuyển sang tab 'So sánh 5 mô hình', chỉ ra bảng xếp hạng trực diện 5 mô hình (ARIMA, Random Forest, XGBoost, Prophet, PyTorch Stacked LSTM) cùng 2 biến ngoại sinh vĩ mô nhân quả (USD/VND + WTI) và đối chiếu trực tiếp với Naive Last Value Baseline.",
         ],
     },
     {
-        "title": "E.6. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Dữ liệu Chưa đủ điều kiện",
+        "title": "E.6. Kịch bản Trình bày trước Hội đồng Chấm Khóa luận: Tình huống Cổng Kiểm soát Dữ liệu (Readiness Gate)",
         "paragraphs": [
-            "Thao tác 1: Trên trang dự báo, chọn mặt hàng 'Cà phê Robusta'. Hệ thống từ chối hiển thị kết quả dự báo và hiển thị hộp thoại cảnh báo: 'Mặt hàng hiện mới chỉ thu thập được 14 quan sát tại địa phương, chưa đạt ngưỡng tối thiểu 60 ngày để huấn luyện mô hình tin cậy'.",
-            "Thao tác 2: Chọn mặt hàng 'Lúa tươi IR50404' tại An Giang để minh chứng sự khác biệt giữa tổng số bản ghi và đoạn quan sát liên tục sau sự cố gián đoạn nguồn.",
-            "Thao tác 3: Chọn mặt hàng 'Mía nguyên liệu 10 CCS' tại Hậu Giang để giải thích cho Hội đồng vì sao hệ thống quản lý theo kỳ báo cáo 10 ngày thay vì tự ý phân rã thành chuỗi ngày giả mạo, khẳng định tính trung thực khoa học của hệ thống.",
+            "Thao tác 1: Giải thích cơ chế cổng kiểm soát dữ liệu Readiness Gate: cả 8/8 mặt hàng hiện tại đều đã vượt ngưỡng sẵn sàng (442–919 phiên), tuy nhiên khi quản trị viên tạo mới một mặt hàng chưa có đủ 60 quan sát xác thực (hoặc dữ liệu lịch sử bị chỉnh sửa làm lệch mã băm SHA-256), hệ thống tự động chặn sinh dự báo ảo và hiển thị cảnh báo minh bạch.",
+            "Thao tác 2: Chọn mặt hàng 'Mía đường' tại Khánh Hòa để minh chứng tính minh bạch nguồn gốc: bảng lịch sử ghi rõ nguồn quy đổi sàn quốc tế ICE Sugar #11 (Yahoo Finance SB=F) cho chuỗi 729 phiên hằng ngày và tách riêng các mốc khảo sát trực tiếp vụ ép 2024–2026 (Khánh Hòa, Phú Yên, Gia Lai) trong bảng regional_price_observations.",
+            "Thao tác 3: Chọn mặt hàng đặc sản 'Dâu tây Đà Lạt' (Phường 8, Đà Lạt) và 'Khoai tây Đà Lạt' (Phường 7, Đà Lạt) để trình diễn giải pháp neo giá khảo sát sống Việt Nam (Kamereo, Nam Tĩnh) kết hợp chuỗi tham chiếu Proxy Index ETF Yahoo Finance (DBA/MOO x USD/VND), với mô hình Prophet đạt MAPE 1,08% và 1,30%.",
         ],
     },
     {
@@ -557,10 +551,11 @@ APPENDIX_F_SECTIONS = [
             "  npm install",
             "  npm run dev",
             "Mở trình duyệt Web truy cập giao diện ứng dụng tại: http://localhost:3000.",
-            "Bước 4 (Kích hoạt Kiểm chứng Toàn bộ 72 Kịch bản Kiểm thử & Bảo mật):",
-            "Tại thư mục AgroForecast/SOURCE/backend, thực thi câu lệnh kiểm thử tự động toàn diện:",
+            "Bước 4 (Kích hoạt Kiểm chứng Toàn bộ 125 Kịch bản Pytest Backend & 4 Playwright E2E):",
+            "Tại thư mục AgroForecast/SOURCE/backend, thực thi câu lệnh kiểm thử tự động toàn diện (bao gồm bộ 72 kịch bản nền tảng trong Phụ lục B và 53 kịch bản mở rộng về phủ nhánh 98%, kiểm toán sự thật dữ liệu, biến ngoại sinh Zero-Leakage và vá bảo mật OWASP):",
             "  pytest tests/ -v --tb=short",
-            "Hệ thống sẽ chạy tuần tự 30 bài kiểm tra Unit, 22 bài kiểm tra Tích hợp API, 10 bài kiểm tra E2E và 10 bài kiểm tra Bảo mật OWASP Top 10 với kết quả 72/72 PASSED (100% ĐẠT).",
+            "  bandit -r app -ll && bandit -r ml_pipeline -ll",
+            "Hệ thống đạt 125/125 Pytest Backend PASSED, Bandit 0 lỗi Medium/High, kết hợp 3/3 Frontend Unit Tests và 4/4 Playwright E2E trên trình duyệt Chrome thật.",
         ],
     },
     {
@@ -592,7 +587,7 @@ DVD_ROOT/
     |   +-- frontend/               (Mã nguồn giao diện Next.js 14, React, TypeScript, TailwindCSS, Recharts)
     +-- DATABASE/                   (Thư mục chứa cơ sở dữ liệu)
         |-- init.sql                (Kịch bản SQL tạo cấu trúc 11 bảng và khóa chính, khóa ngoại)
-        +-- agroforecast_backup.dump (Bản sao lưu CSDL PostgreSQL đầy đủ 1.485 bản ghi thực tế)
+        +-- agroforecast_real_2024_2026.sql (Bản sao lưu CSDL PostgreSQL đầy đủ 4.899 bản ghi lịch sử + 9.079 quan sát cấp tỉnh)
             """,
         ],
     },

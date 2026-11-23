@@ -3,35 +3,57 @@ TRƯỜNG ĐẠI HỌC ĐÀ LẠT - KHOA CÔNG NGHỆ THÔNG TIN
 HƯỚNG DẪN SỬ DỤNG ĐĨA DVD KHÓA LUẬN TỐT NGHIỆP KỸ SƯ CÔNG NGHỆ THÔNG TIN
 ================================================================================
 
-1. THÔNG TIN ĐỀ TÀI VÀ TÁC GIẢ
-- Tên đề tài: Nghiên cứu và xây dựng hệ thống dự đoán biến động giá nông sản Việt Nam bằng mô hình học máy (AgroForecast)
-- Sinh viên thực hiện: <HỌ VÀ TÊN SINH VIÊN> - MSSV: <MÃ SỐ SINH VIÊN>
-- Giáo viên hướng dẫn: <TÊN GV HƯỚNG DẪN>
-- Thông tin liên hệ tác giả:
-  + Email: <email_sinh_vien>@dlu.edu.vn
-  + Điện thoại: <Số điện thoại liên hệ>
+1. THÔNG TIN ĐỀ TÀI VÀ NHÓM TÁC GIẢ
+- Tên đề tài: Xây dựng ứng dụng phân tích dữ liệu và dự báo biến động giá
+  nông sản theo chuỗi thời gian sử dụng học máy (AgroForecast)
+- Nhóm sinh viên thực hiện (Khóa 46, 2022 - 2026):
+  + Đỗ Trung Tú             - MSSV: 2212485
+  + Nguyễn Thành Huy Thông  - MSSV: 2212469
+  + Lê Văn Minh             - MSSV: 2212416
+- Giảng viên hướng dẫn: ThS. La Quốc Thắng
+- Kho mã nguồn GitHub: https://github.com/tudo2212485/DATN_DANS
 
-2. CẤU TRÚC THƯ MỤC TRÊN ĐĨA DVD (Tuân thủ Mục 4.3 Quy định KLTN Khoa CNTT)
-Đĩa DVD bao gồm các thư mục chuẩn sau:
-├── HUONG_DAN_SU_DUNG_DIA_DVD.txt          (Tập tin hướng dẫn sử dụng đĩa DVD này)
-├── THESIS/                                (Chứa tài liệu văn bản của khóa luận & bài trình bày)
-│   ├── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.docx   (Báo cáo KLTN định dạng Word chuẩn Times New Roman 13pt, 1.5 lines)
-│   └── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.md     (Bản toàn văn định dạng Markdown)
-└── AgroForecast/                          (Thư mục phần mềm chính)
-    ├── SETUP/                             (Hướng dẫn cài đặt, requirements.txt, dữ liệu thử nghiệm CSV)
-    ├── SOURCE/                            (Mã nguồn chương trình backend/ FastAPI + ML và frontend/ Next.js)
-    └── DATABASE/                          (Tập tin khởi tạo CSDL PostgreSQL init.sql và sơ đồ ERD)
+2. CẤU TRÚC THƯ MỤC CHUẨN (Tuân thủ Mục 4.3 Quy định KLTN Khoa CNTT - ĐH Đà Lạt)
+├── HUONG_DAN_SU_DUNG_DIA_DVD.txt          (Tập tin hướng dẫn này)
+├── THESIS/                                (Báo cáo Khóa luận tốt nghiệp)
+│   ├── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.docx   (Bản Word chuẩn Times New Roman 13pt)
+│   └── KHOA_LUAN_TOT_NGHIEP_AGROFORECAST_DLU.pdf    (Bản PDF hoàn chỉnh kèm 15 hình vẽ 300 DPI)
+├── docs/                                  (Tài liệu thiết kế, báo cáo kiểm thử, hình vẽ 300 DPI)
+│   ├── figures/                           (15 biểu đồ & sơ đồ kiến trúc/thực nghiệm)
+│   ├── DATA_AND_ML_VERIFICATION_REPORT.md (Báo cáo kiểm chứng dữ liệu & 40 mô hình ML)
+│   ├── BAO_CAO_KIEM_THU_VA_BAO_MAT.md     (Báo cáo kiểm thử & kiểm toán OWASP Top 10)
+│   └── TEST_REPORT.md                     (Chi tiết 125 Pytest + 4 Playwright E2E)
+├── backend/                               (Mã nguồn REST API FastAPI + ML Pipeline + Dockerfile)
+├── frontend/                              (Mã nguồn Web App Next.js 14 + Syncfusion EJ2 + Dockerfile)
+├── database/                              (Schema init.sql 12 bảng PostgreSQL & script nạp dữ liệu)
+├── e2e/                                   (Bộ kiểm thử tự động đầu-cuối Playwright Chrome)
+├── docker-compose.yml                     (Cấu hình triển khai trọn gói 3 container)
+├── setup_env.bat & run_all.bat            (Script cài đặt & khởi chạy nhanh trên Windows)
+└── kich_ban_bao_cao.md                    (Kịch bản demo bảo vệ trước Hội đồng)
 
 3. HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY CHƯƠNG TRÌNH NHANH
-- Bước 1: Khởi tạo cơ sở dữ liệu PostgreSQL tên 'agroforecast_db' và chạy file database/init.sql.
-- Bước 2: Khởi động Backend API (cổng 8000):
-  cd backend
-  .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-- Bước 3: Khởi động Frontend UI (cổng 3000):
-  cd frontend
-  npm run dev
-  -> Mở trình duyệt tại: http://localhost:3000
-- Bước 4: Chạy kiểm chứng 72/72 kịch bản Kiểm thử & Bảo mật OWASP Top 10:
-  cd backend
-  .\venv\Scripts\pytest.exe -v
+[Cách 1 - Khởi chạy trực tiếp trên Windows]
+- Bước 1: Cài đặt PostgreSQL 15+, tạo CSDL tên 'agroforecast_db' và chạy database/init.sql
+          (hoặc khôi phục bản dump dữ liệu thật 2024-2026).
+- Bước 2: Sao chép backend/.env.example -> backend/.env và frontend/.env.example -> frontend/.env.local,
+          cập nhật DATABASE_URL, SECRET_KEY và NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY.
+- Bước 3: Chạy setup_env.bat (lần đầu) và chạy run_all.bat để khởi động đồng thời:
+          + Backend FastAPI:  http://127.0.0.1:8000  (Swagger: http://127.0.0.1:8000/docs)
+          + Frontend Next.js: http://localhost:3000
+
+[Cách 2 - Khởi chạy bằng Docker Compose]
+- Bước 1: Tạo file .env ở thư mục gốc với POSTGRES_PASSWORD và SECRET_KEY.
+- Bước 2: Chạy lệnh: docker compose up --build -d
+
+4. KIỂM CHỨNG TỰ ĐỘNG (125 Pytest + 4 Playwright E2E + Bandit SAST)
+- Kiểm thử Backend & OWASP Top 10 (125/125 PASSED):
+  cd backend && .\venv\Scripts\pytest.exe -v
+- Quét an toàn mã nguồn tĩnh SAST (0 Medium / 0 High):
+  cd backend && .\venv\Scripts\bandit.exe -r app -ll && .\venv\Scripts\bandit.exe -r ml_pipeline -ll
+- Kiểm thử E2E trên trình duyệt Chrome thật (4/4 PASSED):
+  .\backend\venv\Scripts\pytest.exe e2e\test_agroforecast_e2e.py -v
+
+5. TÀI KHOẢN DÙNG THỬ
+- Quản trị viên (Admin):    admin@agroforecast.vn     / admin123
+- Chuyên viên (Analyst):    anhnguyen@agroforecast.vn / 123456
 ================================================================================

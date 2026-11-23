@@ -90,10 +90,12 @@ def test_default_model_applies_to_forecast_api(client, db_session, headers):
     db_session.commit()
     assert client.post('/api/v1/admin/models/active', headers=headers, json={'active_model': 'XGBoost'}).status_code == 200
     assert db_session.get(SystemSetting, 'active_model').value == 'XGBOOST'
-    result = client.get(f'/api/v1/forecast?commodity_id={commodity.id}&days=1')
+    result = client.get(f'/api/v1/forecast?commodity_id={commodity.id}&days=7')
     assert result.status_code == 200
     assert result.json()['modelName'] == 'XGBoost'
     assert result.json()['metrics']['r2'] == -0.5
+    # Verify non-standard horizons (e.g. legacy 10-day) are rejected with 422
+    assert client.get(f'/api/v1/forecast?commodity_id={commodity.id}&days=10').status_code == 422
     assert client.post('/api/v1/admin/models/active', headers=headers, json={'active_model': 'invalid'}).status_code == 400
 
 

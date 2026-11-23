@@ -111,3 +111,33 @@ def test_history_never_inherits_other_date_direct_source_url(client, db_session)
     assert by_date["2026-08-24"]["source_url"] == yahoo_url
     assert "Yahoo Finance SB=F" in by_date["2026-08-24"]["source"]
 
+
+def test_exogenous_features_strictly_causal_zero_leakage():
+    """Mutating future USD/VND or WTI Crude Oil after train_end MUST NOT alter train-fitted predictions."""
+    import numpy as np
+    import pandas as pd
+    from ml_pipeline.history_models import fit_model
+
+    idx = pd.date_range("2025-01-01", periods=100, freq="D")
+    rng = np.random.default_rng(7)
+    prices = pd.Series(70000.0 + np.cumsum(rng.normal(0, 300, size=100)), index=idx)
+    exog_a = pd.DataFrame(
+        {
+            "usd_vnd": 25000.0 + np.cumsum(rng.normal(0, 20, size=100)),
+            "wti_oil": 72.0 + np.cumsum(rng.normal(0, 0.8, size=100)),
+        },
+        index=idx,
+    )
+    exog_b = exog_a.copy()
+    # Massively perturb future exogenous values after day 70
+    exog_b.iloc[70:, :] *= 3.5
+
+    train_s = prices.iloc[:70]
+    for model_name in ("Random Forest", "XGBoost", "LSTM"):
+        fa = fit_model(model_name, train_s, exog_df=exog_a)
+        fb = fit_model(model_name, train_s, exog_df=exog_b)
+        pa = fa.forecast_from(train_s, 7, exog_df=exog_a)
+        pb = fb.forecast_from(train_s, 7, exog_df=exog_b)
+        assert np.allclose(pa, pb, atol=1e-6), f"Exogenous future leakage detected in {model_name}"
+
+

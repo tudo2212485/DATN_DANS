@@ -3,10 +3,10 @@
 ## Hệ thống Dự báo Giá Nông sản & Cảnh báo Thị trường Ứng dụng Deep Learning
 
 **Tên hệ thống:** AgroForecast  
-**Phiên bản tài liệu:** 2.4  
-**Ngày tạo:** 10/09/2026  
-**Tác giả:** Software Architect & Data System Specialist  
-**Trạng thái:** ✅ Production-Ready
+**Phiên bản tài liệu:** 3.0 (Final Release — Hoàn thành toàn bộ P1–P10)  
+**Ngày cập nhật:** 23/11/2026  
+**Nhóm thực hiện:** Đỗ Trung Tú (2212485), Nguyễn Thành Huy Thông (2212469), Lê Văn Minh (2212416) — GVHD: ThS. La Quốc Thắng  
+**Trạng thái:** ✅ Hoàn thành 100% — Sẵn sàng Bảo vệ KLTN *(đã mở rộng từ 4 lên 8 nông sản: `RICE_IR504`, `COFFEE_ROBUSTA`, `PEPPER_BLACK`, `SUGARCANE`, `STRAWBERRY`, `POTATO`, `SWEET_POTATO`, `CASHEW_NUT`)*
 
 ---
 
@@ -93,13 +93,13 @@
 | **P1** | Khảo sát & Phân tích yêu cầu | 20/07 → 02/08 | 2 | Đề cương chi tiết, SRS, Use Case Diagram | ✅ Done |
 | **P2** | Thiết kế kiến trúc hệ thống | 03/08 → 16/08 | 2 | System Architecture, DB Schema, API Contract, Wireframe | ✅ Done |
 | **P3** | Thu thập & Xử lý dữ liệu | 17/08 → 30/08 | 2 | Data Pipeline (Scraper → Clean → PostgreSQL), EDA Report | ✅ Done |
-| **P4** | Xây dựng ML Pipeline (Baseline) | 31/08 → 13/09 | 2 | ARIMA + Prophet baseline, Training script, Model Registry | 🔄 In Progress |
-| **P5** | Deep Learning — Stacked LSTM | 14/09 → 27/09 | 2 | LSTM architecture, Hyperparameter tuning, Exogenous integration | ⬜ Pending |
-| **P6** | Ensemble Models (XGBoost, RF) | 28/09 → 11/10 | 2 | XGBoost & Random Forest trainers, Feature importance analysis | ⬜ Pending |
-| **P7** | Backend API & Cảnh báo | 12/10 → 25/10 | 2 | RESTful API endpoints, Alert Engine, Scheduler cron jobs | ⬜ Pending |
-| **P8** | Frontend Dashboard | 26/10 → 08/11 | 2 | Dashboard UI, Biểu đồ dự báo, Bảng so sánh mô hình, Admin panel | ⬜ Pending |
-| **P9** | Tích hợp, Testing & Tối ưu | 09/11 → 22/11 | 2 | Integration testing, Performance tuning, Security hardening | ⬜ Pending |
-| **P10** | Viết báo cáo & Bảo vệ | 23/11 → 29/11 | 1 | Báo cáo tốt nghiệp, Slide thuyết trình, Demo video | ⬜ Pending |
+| **P4** | Xây dựng ML Pipeline (Baseline) | 31/08 → 13/09 | 2 | ARIMA + Prophet baseline, Training script, Model Registry | ✅ Done |
+| **P5** | Deep Learning — Stacked LSTM | 14/09 → 27/09 | 2 | Stacked LSTM 7 kênh, Hyperparameter tuning, Exogenous USD/VND & WTI | ✅ Done |
+| **P6** | Ensemble Models (XGBoost, RF) | 28/09 → 11/10 | 2 | XGBoost & Random Forest 22 đặc trưng nhân quả, Feature importance XAI | ✅ Done |
+| **P7** | Backend API & Cảnh báo | 12/10 → 25/10 | 2 | RESTful API endpoints, Alert Engine SMTP, APScheduler + Auto Catch-up | ✅ Done |
+| **P8** | Frontend Dashboard | 26/10 → 08/11 | 2 | Next.js 14 + Syncfusion EJ2, 33-tỉnh Haversine, /commodities/[id], Admin RBAC | ✅ Done |
+| **P9** | Tích hợp, Testing & Tối ưu | 09/11 → 22/11 | 2 | 125 Pytest + 4 Playwright E2E + Bandit 0 + pip-audit 0 + Docker Compose | ✅ Done |
+| **P10** | Viết báo cáo & Bảo vệ | 23/11 → 29/11 | 1 | Khóa luận chính thức (`THESIS/`), 15 hình 300 DPI, Kịch bản bảo vệ | ✅ Done |
 
 ### 2.2. Gantt Chart (ASCII)
 
@@ -162,9 +162,9 @@ P10                                                                            �
 - [x] Xây dựng `ml_pipeline/baseline_arima.py` — ARIMA/SARIMAX baseline
 - [x] Xây dựng `ml_pipeline/train_prophet.py` — Facebook Prophet
 - [x] Thiết kế `ml_pipeline/feature_engineering.py` — Feature extraction
-- [ ] Xây dựng Model Registry (save/load `.pkl`, `.pt` files)
-- [ ] Benchmark ARIMA vs Prophet trên 4 nông sản
-- [ ] Tài liệu `docs/phase_4_spec.md`
+- [x] Xây dựng Model Registry (save/load `.pkl`, `.pt` files + `training_runs` SHA-256)
+- [x] Benchmark 5 mô hình (ARIMA, Prophet, RF, XGBoost, Stacked LSTM) trên 8 nông sản (40 mô hình)
+- [x] Tài liệu `docs/DATA_AND_ML_VERIFICATION_REPORT.md` & `docs/FINAL_READINESS_AUDIT.md`
 </details>
 
 <details>

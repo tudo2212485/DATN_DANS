@@ -15,7 +15,7 @@ CHUONG_3_DATA = {
                     "title": "Xác định các tác nhân (Actors) và ma trận phân quyền vai trò (RBAC)",
                     "paragraphs": [
                         "Hệ thống AgroForecast được thiết kế để phục vụ ba nhóm tác nhân người dùng chính trong hệ sinh thái nông nghiệp Việt Nam, được quản lý thông qua cơ chế Kiểm soát truy cập dựa trên vai trò (Role-Based Access Control - RBAC) tại mô-đun app/core/deps.py:",
-                        "1. Nông hộ, Thương lái và Nhà đầu tư (Vai trò User / Guest): Là những người trực tiếp sản xuất nông sản tại vườn/ruộng hoặc thu mua nông sản tại địa phương. Họ có nhu cầu tra cứu bảng giá bán tại vườn hôm nay của 8 mặt hàng chủ lực, xem biểu đồ dự báo biến động giá 7 ngày, 10 ngày, 14 ngày và 30 ngày tới theo từng huyện chuyên canh, xem đối sánh sai số giữa 5 mô hình AI, tải báo cáo dự báo định dạng CSV và đăng ký nhận cảnh báo tự động qua Email khi giá vượt ngưỡng mong muốn.",
+                        "1. Nông hộ, Thương lái và Nhà đầu tư (Vai trò User / Guest): Là những người trực tiếp sản xuất nông sản tại vườn/ruộng hoặc thu mua nông sản tại địa phương. Họ có nhu cầu tra cứu bảng giá bán tại vườn hôm nay của 8 mặt hàng chủ lực theo 33 tỉnh/thành phố, xem biểu đồ dự báo biến động giá theo 3 kỳ hạn chuẩn (7 ngày, 14 ngày và 30 ngày tới), xem đối sánh sai số giữa 5 mô hình AI, tải báo cáo dự báo định dạng Excel/CSV và đăng ký nhận cảnh báo tự động qua Email khi giá vượt ngưỡng mong muốn.",
                         "2. Chuyên viên Phân tích Thị trường (Vai trò Analyst): Ngoài toàn bộ quyền tra cứu của User, chuyên viên phân tích được phép truy cập bảng thống kê hệ thống, tra cứu nhật ký thu thập dữ liệu của Bot Scraper, xem toàn bộ lịch sử giá bao gồm cả các bản ghi đang chờ xác minh (unverified) và xuất tập tin dữ liệu lịch sử phục vụ công tác kiểm định chất lượng dữ liệu.",
                         "3. Quản trị viên Hệ thống (Vai trò Admin): Là người có thẩm quyền cao nhất trong hệ thống, chịu trách nhiệm quản lý danh mục nông sản (CRUD), nhập bổ sung hoặc hiệu chỉnh điểm giá thủ công kèm lưu vết lịch sử chỉnh sửa (Price Revisions), nhập dữ liệu hàng loạt từ file CSV, kích hoạt tác vụ ngầm thu thập dữ liệu (Scrape Task) và huấn luyện lại 5 mô hình học máy (Retrain Task), chuyển đổi mô hình AI mặc định của hệ thống và quản lý tài khoản người dùng (cấp quyền, khóa/mở khóa tài khoản).",
                     ],
@@ -25,7 +25,7 @@ CHUONG_3_DATA = {
                             "headers": ["Mã chức năng", "Tên nhóm chức năng nghiệp vụ", "Khách / Nông hộ (User)", "Chuyên viên (Analyst)", "Quản trị viên (Admin)"],
                             "rows": [
                                 ["UC-01", "Tra cứu tổng quan thị trường & giá bán tại vườn theo huyện", "Cho phép", "Cho phép", "Cho phép"],
-                                ["UC-02", "Phân tích & Dự báo AI 5 mô hình (7, 10, 14, 30 ngày) + XAI", "Cho phép", "Cho phép", "Cho phép"],
+                                ["UC-02", "Phân tích & Dự báo AI 5 mô hình (7, 14, 30 ngày) + XAI", "Cho phép", "Cho phép", "Cho phép"],
                                 ["UC-03", "Tra cứu lịch sử giá đã xác minh & Xuất báo cáo CSV", "Cho phép", "Cho phép", "Cho phép"],
                                 ["UC-04", "Đối sánh tương quan biến động giá đa nông sản", "Cho phép", "Cho phép", "Cho phép"],
                                 ["UC-05", "Tạo, bật/tắt, xóa và gửi thử quy tắc cảnh báo giá Email", "Cho phép", "Cho phép", "Cho phép"],

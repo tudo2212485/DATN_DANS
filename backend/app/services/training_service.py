@@ -1,4 +1,5 @@
 """Comparable chronological evaluation and auditable history-to-forecast runs."""
+import inspect
 import json
 import math
 from datetime import date
@@ -8,6 +9,7 @@ from app.core.database import SessionLocal
 from app.models.models import Commodity, Forecast, SystemSetting, TrainingRun
 from app.services.history_service import fingerprint, training_context
 from ml_pipeline.history_models import (
+    fetch_exogenous_macro_series,
     predict_series as _DEFAULT_PREDICT_SERIES,
     score,
     walk_forward_baseline,
@@ -90,13 +92,29 @@ def retrain(commodity_id, progress):
                 future_count = 30
                 future_dates = pd.date_range(model_series.index[-1] + pd.Timedelta(days=1), periods=future_count)
 
+            exog_df = (
+                fetch_exogenous_macro_series(rows[0].record_date, rows[-1].record_date)
+                if is_real_wf
+                else None
+            )
+            exog_labels = (
+                ["USD/VND (Yahoo Finance VND=X)", "Dầu thô WTI (Yahoo Finance CL=F)"]
+                if exog_df is not None and not exog_df.empty
+                else []
+            )
+
             if is_real_wf:
                 baseline = walk_forward_baseline(train, holdout, mask, horizon=7)
+                exog_suffix = " + biến ngoại sinh nhân quả (USD/VND, WTI)" if exog_labels else ""
                 eval_desc = (
-                    f"Đánh giá Walk-Forward cuộn 7 ngày (không rò rỉ dữ liệu) trên {int(mask.sum())} phiên "
+                    f"Đánh giá Walk-Forward cuộn 7 ngày (không rò rỉ dữ liệu{exog_suffix}) trên {int(mask.sum())} phiên "
                     "quan sát cuối; bộ chuẩn hóa và mô hình chỉ huấn luyện trên tập Train."
                 )
-                validation_method = "Walk-Forward 7 ngày (No Data Leakage, Conformal 95% CI)"
+                validation_method = (
+                    "Walk-Forward 7 ngày (Zero Leakage, Exogenous USD/VND + WTI, Conformal 95% CI)"
+                    if exog_labels
+                    else "Walk-Forward 7 ngày (No Data Leakage, Conformal 95% CI)"
+                )
             else:
                 baseline = score(actual, np.full(len(actual), float(train.iloc[-1])))
                 eval_desc = (
@@ -118,6 +136,7 @@ def retrain(commodity_id, progress):
                 baseline=baseline,
                 evaluation=eval_desc,
                 validation_method=validation_method,
+                exogenous_features=exog_labels,
                 model_metrics={},
                 sources=sorted({r.source for r in rows if r.source}),
                 snapshot=[
@@ -147,7 +166,7 @@ def retrain(commodity_id, progress):
                 )
                 try:
                     if is_real_wf:
-                        wf_res = walk_forward_evaluate(name, train, holdout, mask, horizon=7)
+                        wf_res = walk_forward_evaluate(name, train, holdout, mask, horizon=7, exog_df=exog_df)
                         metrics = wf_res["metrics"]
                         ci_scale_1d = wf_res["ci_scale_1d"]
                         per_model_metrics[name] = {
@@ -179,10 +198,18 @@ def retrain(commodity_id, progress):
                             "picp_95": None,
                         }
 
+                    _pred_params = inspect.signature(predict_series).parameters
+                    _accepts_exog = "exog_df" in _pred_params or any(
+                        p.kind == inspect.Parameter.VAR_KEYWORD for p in _pred_params.values()
+                    )
                     future = (
                         predict_series(name, model_series, future_count, future_dates)
                         if scheduled
-                        else predict_series(name, model_series, future_count)
+                        else (
+                            predict_series(name, model_series, future_count, exog_df=exog_df)
+                            if (is_real_wf and _accepts_exog)
+                            else predict_series(name, model_series, future_count)
+                        )
                     )
                     if not np.isfinite(future).all() or np.max(future) >= 1e12:
                         raise ValueError("Dự báo vượt giới hạn giá hợp lệ")

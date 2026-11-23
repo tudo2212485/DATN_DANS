@@ -14,8 +14,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-# Thiết lập thư mục lưu ảnh
-DOCS_DIR = r"d:\DATN_DDNS\DATN_DANS\docs"
+# Thiết lập thư mục lưu ảnh (đường dẫn tương đối theo vị trí repo hiện tại)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DOCS_DIR = os.path.join(REPO_ROOT, "docs")
 FIGURES_DIR = os.path.join(DOCS_DIR, "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
@@ -307,16 +308,23 @@ def copy_fig_3_4():
 # HÌNH 3.5: Thiết kế Giao diện Tra cứu Lịch sử Giá và Trực quan hóa Biến động Nông sản
 # -----------------------------------------------------------------------------
 def gen_fig_3_5():
-    # Sử dụng ảnh runtime nếu có hoặc vẽ mockup chất lượng cao
-    runtime_img = os.path.join(r"d:\DATN_DDNS\DATN_DANS\.runtime", "history-public.png")
+    # Sử dụng ảnh runtime thực tế nếu có, ưu tiên ảnh chụp Syncfusion /history mới nhất
+    candidates = [
+        os.path.join(REPO_ROOT, ".runtime", "history-public.png"),
+        r"C:\Users\dotu4\.gemini\antigravity\brain\42f459f5-99fc-442c-baba-9c57a4190884\scratch\verify_history_coffee.png",
+    ]
     dst = os.path.join(FIGURES_DIR, "Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
-    if os.path.exists(runtime_img):
-        shutil.copy(runtime_img, dst)
-        print(f"  [+] Đã lấy ảnh chụp thực tế từ hệ thống: Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
-    else:
-        fig, ax = plt.subplots(figsize=(10, 5), facecolor='#FFFFFF')
-        ax.text(0.5, 0.5, 'Giao diện Tra cứu Lịch sử Giá Nông sản AgroForecast\n(Mở http://localhost:3000/history để xem trực tiếp)', ha='center', va='center', fontsize=12)
-        save_fig(fig, "Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
+    for img_p in candidates:
+        if os.path.exists(img_p):
+            shutil.copy(img_p, dst)
+            print(f"  [+] Đã lấy ảnh chụp thực tế từ hệ thống: Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
+            return
+    if os.path.exists(dst):
+        print(f"  [+] Giữ nguyên ảnh thực tế sẵn có: Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
+        return
+    fig, ax = plt.subplots(figsize=(10, 5), facecolor='#FFFFFF')
+    ax.text(0.5, 0.5, 'Giao diện Tra cứu Lịch sử Giá Nông sản AgroForecast\n(Mở http://localhost:3000/history để xem trực tiếp)', ha='center', va='center', fontsize=12)
+    save_fig(fig, "Hinh_3_5_Giao_Dien_Lich_Su_Gia.png")
 
 # -----------------------------------------------------------------------------
 # HÌNH 3.6: Thiết kế Giao diện Dự báo 30 ngày kèm Dải tin cậy 95% và Trình diễn Mô hình
@@ -383,22 +391,22 @@ def gen_fig_4_1():
 # HÌNH 4.2: Biểu đồ So sánh Trực diện Sai số RMSE của 5 Mô hình Học máy trên Hồ tiêu Đắk Lắk
 # -----------------------------------------------------------------------------
 def gen_fig_4_2():
-    models = ['ARIMA(2,1,1)\n(Tốt nhất ★)', 'Naive Baseline\n(Mốc đối chiếu)', 'XGBoost\nRegressor', 'Random\nForest', 'Facebook\nProphet', 'Mạng nơ-ron\nLSTM']
-    rmse = [1936.78, 2093.82, 2145.20, 2210.40, 2380.60, 2460.80]
-    colors = ['#16A34A', '#64748B', '#0284C7', '#0EA5E9', '#F59E0B', '#EF4444']
+    models = ['Random Forest\n(+Exogenous)', 'ARIMA\n(★ MAPE 0,74%)', 'Naive Baseline\n(Mốc đối chiếu)', 'XGBoost\n(+Exogenous)', 'Facebook\nProphet', 'PyTorch LSTM\n(7 kênh)']
+    rmse = [1631.93, 1643.77, 1646.34, 1646.95, 1708.35, 1729.36]
+    colors = ['#0EA5E9', '#16A34A', '#64748B', '#0284C7', '#F59E0B', '#EF4444']
 
     fig, ax = plt.subplots(figsize=(9, 5), facecolor='#FFFFFF')
-    ax.set_title('Hình 4.2: Biểu đồ So sánh Trực diện Sai số RMSE (VNĐ/kg) của 5 Mô hình trên Hồ tiêu Đắk Lắk', fontsize=11, fontweight='bold', pad=15)
+    ax.set_title('Hình 4.2: So sánh Sai số RMSE Walk-Forward 7 ngày của 5 Mô hình trên Hồ tiêu đen (23/11/2026)', fontsize=11, fontweight='bold', pad=15)
 
     bars = ax.bar(models, rmse, color=colors, width=0.55, edgecolor='#1E293B', lw=1)
-    ax.axhline(2093.82, color='#DC2626', linestyle=':', lw=1.5, label='Mốc chuẩn Baseline (2.093,82 VNĐ/kg)')
+    ax.axhline(1646.34, color='#DC2626', linestyle=':', lw=1.5, label='Mốc chuẩn Naive Baseline (1.646,34 VNĐ/kg)')
 
     for bar in bars:
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2, h + 30, f'{h:,.2f}', ha='center', va='bottom', fontsize=8.5, fontweight='bold')
+        ax.text(bar.get_x() + bar.get_width()/2, h + 22, f'{h:,.2f}', ha='center', va='bottom', fontsize=8.5, fontweight='bold')
 
     ax.set_ylabel('Sai số RMSE (VNĐ/kg - Càng thấp càng tốt)', fontsize=9.5, fontweight='bold')
-    ax.set_ylim(0, 2800)
+    ax.set_ylim(0, 2050)
     ax.grid(axis='y', linestyle='--', alpha=0.5)
     ax.legend(loc='upper left', frameon=True)
     plt.tight_layout()
@@ -446,17 +454,16 @@ def gen_fig_4_3():
 # -----------------------------------------------------------------------------
 def gen_fig_4_4():
     labels = [
-        'Backend Unit & Integration\n(121 kịch bản PASS)',
-        'Playwright E2E Trình duyệt\n(4 luồng PASS)',
-        'Frontend Unit Tests\n(3 kiểm thử PASS)',
-        'Bản vá An toàn OWASP\n(9 lỗ hổng ĐÃ VÁ)'
+        'Backend Pytest (Unit/API/ML/Audit)\n(125 kịch bản PASS)',
+        'Frontend Unit & Playwright E2E\n(3 FE Unit + 4 Chrome E2E PASS)',
+        'Kiểm toán SAST & An toàn OWASP\n(Bandit 0, pip-audit 0, 9 bản vá)'
     ]
-    sizes = [121, 4, 3, 9]
-    colors = ['#0284C7', '#16A34A', '#F59E0B', '#8B5CF6']
-    explode = (0.05, 0.1, 0.1, 0.1)
+    sizes = [125, 7, 9]
+    colors = ['#0284C7', '#16A34A', '#8B5CF6']
+    explode = (0.04, 0.1, 0.08)
 
     fig, ax = plt.subplots(figsize=(8, 5.5), facecolor='#FFFFFF')
-    ax.set_title('Hình 4.4: Biểu đồ Thống kê Kết quả 100% Kịch bản Kiểm thử & An toàn Thông tin ĐẠT', fontsize=11, fontweight='bold', pad=15)
+    ax.set_title('Hình 4.4: Thống kê Kết quả 100% Kịch bản Kiểm thử (132/132 PASS) & Bảo mật OWASP', fontsize=11, fontweight='bold', pad=15)
 
     wedges, texts, autotexts = ax.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
                                       startangle=140, colors=colors, textprops=dict(fontsize=8.5, fontweight='bold'))

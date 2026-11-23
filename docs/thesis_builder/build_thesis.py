@@ -132,7 +132,7 @@ def add_formatted_table(doc, caption, headers, rows):
             w = 0.85
         elif h_low in ("đơn vị", "kết quả", "mã http", "phương thức"):
             w = 1.35
-        elif any(k in h_low for k in ("mae", "rmse", "mape", "hệ số r2", "số bản ghi", "chênh lệch", "độ lệch", "+7 ngày", "+10 ngày", "+14 ngày", "+30 ngày", "hiện tại")):
+        elif any(k in h_low for k in ("mae", "rmse", "mape", "hệ số r2", "số bản ghi", "chênh lệch", "độ lệch", "+7 ngày", "+14 ngày", "+30 ngày", "hiện tại")):
             w = 1.55
         elif "mã nông sản" in h_low or "tên bảng" in h_low or "lớp orm" in h_low or "tệp kiểm thử" in h_low:
             w = 2.45

@@ -1,88 +1,96 @@
-# AgroForecast — Hệ Thống Dự Báo Giá & Cảnh Báo Thị Trường Nông Sản
+# AgroForecast — Hệ Thống Phân Tích Dữ Liệu & Dự Báo Giá Nông Sản Việt Nam
 
-Hệ thống ứng dụng Trí tuệ Nhân tạo (AI & Machine Learning) phục vụ theo dõi biến động, phân tích xu hướng và dự báo giá các mặt hàng nông sản chủ lực của Việt Nam (Lúa gạo, Cà phê, Hồ tiêu, Mía đường) kèm dải tin cậy 95% (Confidence Interval).
+**Khóa luận Tốt nghiệp Kỹ sư Công nghệ Thông tin — Trường Đại học Đà Lạt (Khóa 46, 2022–2026)**
+- **Nhóm sinh viên thực hiện:** Đỗ Trung Tú (`2212485`), Nguyễn Thành Huy Thông (`2212469`), Lê Văn Minh (`2212416`)
+- **Giảng viên hướng dẫn:** ThS. La Quốc Thắng
 
----
-
-## 🚀 Công Nghệ Sử Dụng
-
-- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide Icons.
-- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Pydantic, Uvicorn.
-- **Database:** PostgreSQL (Lưu trữ dữ liệu lịch sử giá, kết quả dự báo và cấu hình cảnh báo).
-- **Machine Learning & Pipeline:** LSTM (Deep Learning), Facebook Prophet, ARIMA, Scikit-learn, Pandas.
+Hệ thống Web Full-Stack ứng dụng Học máy & Học sâu (PyTorch Stacked LSTM, XGBoost, Random Forest, Prophet, ARIMA) tích hợp **biến ngoại sinh vĩ mô nhân quả (USD/VND & Dầu thô WTI)**, kiểm định **Walk-Forward 7 ngày không rò rỉ dữ liệu**, khoảng tin cậy **Conformal 95% CI**, định giá theo **33 tỉnh/thành phố (Haversine Location-Aware)** và truy xuất nguồn bài báo kiểm chứng thực tế cho **8 mặt hàng nông sản trọng điểm của Việt Nam**.
 
 ---
 
-## 🌟 Tính Năng Nổi Bật
+## Công Nghệ Sử Dụng
 
-1. **Tổng quan thị trường (Market Dashboard):**
-   - Theo dõi giá giao dịch thời gian thực (Live Price), biên độ dao động và đồ thị sparkline cho 4 nông sản trọng điểm.
-   - Biểu đồ chuẩn hóa tăng/giảm so với đầu kỳ & bảng giá theo từng khu vực/vùng chuyên canh.
-2. **Mô hình & Dự báo AI (AI Forecasting):**
-   - Dự báo chuỗi thời gian đa thuật toán (LSTM, Prophet, ARIMA, XGBoost).
-   - Tích hợp dải tin cậy 95% (Upper / Lower Bound CI).
-   - Đánh giá sai số mô hình trực tiếp: MAE, RMSE, MAPE, $R^2$.
-   - Bảng chi tiết mốc dự báo có thanh cuộn dọc mượt mà, hiển thị tối ưu và gọn gàng.
-3. **Quản lý Cảnh báo (Alerts Engine):**
-   - Thiết lập quy tắc cảnh báo biến động giá thông minh (ngưỡng vượt đỉnh, sụt giảm nhanh).
-   - Tự động kích hoạt thông báo email khi phát hiện điều kiện thị trường bất thường.
-4. **Giao diện tối ưu & linh hoạt:**
-   - Hỗ trợ thu gọn/mở rộng thanh điều hướng (Sidebar Collapse/Expand) giúp mở rộng không gian làm việc.
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript 5, Tailwind CSS, **Syncfusion Essential Studio EJ2 React** (`AgroGrid`, `FinChart`), Recharts, Lucide Icons.
+- **Backend:** Python 3.11, FastAPI, SQLAlchemy 2.x ORM, Pydantic v2, Uvicorn, APScheduler.
+- **Database:** PostgreSQL 17 (12 bảng chuẩn hóa kèm `regional_markets`, `regional_price_observations`, `training_runs`, `price_revisions`, `background_jobs`, `system_settings`).
+- **ML / Deep Learning:** PyTorch (Stacked LSTM 7 kênh), XGBoost & Random Forest (22 đặc trưng nhân quả), Facebook Prophet, Statsmodels ARIMA, kiểm định Walk-Forward + Conformal 95% CI.
+- **Kiểm thử & Bảo mật:** Pytest (`125/125 PASS`), Playwright E2E trên Chrome thật (`4/4 PASS`), Bandit SAST (`0 Medium / 0 High`), OWASP Top 10 Hardening, Docker Compose.
 
 ---
 
-## 📁 Cấu Trúc Dự Án
+## Danh Mục 8 Nông Sản & Độ Chính Xác Thực Nghiệm (Chốt mốc 23/11/2026)
 
-```text
-DA_TN/
-├── backend/                  # REST API & Business Logic (FastAPI)
-│   ├── app/                  # Endpoints, Models, Schemas, Services
-│   ├── ml_pipeline/          # Huấn luyện mô hình (LSTM, Prophet) & Scraper
-│   └── requirements.txt      # Thư viện Python
-├── database/                 # Khởi tạo CSDL & Script nạp dữ liệu
-│   ├── init.sql              # Schema CSDL PostgreSQL
-│   └── load_database.py      # Seed dữ liệu lịch sử và dự báo
-└── frontend/                 # Giao diện Web App (Next.js 14)
-    ├── src/app/              # App Router (Dashboard, Forecast, Alerts, Login)
-    ├── src/components/       # Layout, Charts, Tables, Cards
-    └── package.json          # Dependencies Frontend
+| ID | Mã hàng | Tên nông sản | Số bản ghi (`price_history`) | Giai đoạn | Giá mới nhất | Mô hình tối ưu (`★`) | MAPE | R² | PICP 95% |
+| :-: | :--- | :--- | :-: | :--- | --: | :--- | :-: | :-: | :-: |
+| 1 | `RICE_IR504` | Lúa gạo IR50404 | 442 *(442 URL bài báo)* | 01/2024–11/2026 | 6.850 VNĐ/kg | ARIMA | 1,58% | 0,534 | 89,4% |
+| 2 | `COFFEE_ROBUSTA` | Cà phê Robusta | 919 *(919 URL bài báo)* | 01/2024–11/2026 | 71.700 VNĐ/kg | **PyTorch LSTM** | 1,79% | **0,897** | 92,2% |
+| 3 | `PEPPER_BLACK` | Hồ tiêu đen | 793 *(793 URL bài báo)* | 01/2024–11/2026 | 129.100 VNĐ/kg | ARIMA | 0,74% | 0,326 | 94,4% |
+| 4 | `SUGARCANE` | Mía đường 10 CCS | 729 *(ICE #11 + 8 báo 2024–26)* | 01/2024–11/2026 | 1.230.000 VNĐ/tấn | Prophet | 2,62% | 0,857 | 97,8% |
+| 5 | `STRAWBERRY` | Dâu tây Đà Lạt | 504 *(Kamereo + ETF DBA×FX)* | 11/2024–11/2026 | 100.000 VNĐ/kg | Prophet | 1,08% | 0,869 | 100,0% |
+| 6 | `POTATO` | Khoai tây Đà Lạt | 504 *(Nam Tĩnh + ETF MOO×FX)* | 11/2024–11/2026 | 20.000 VNĐ/kg | Prophet | 1,30% | 0,712 | 100,0% |
+| 7 | `SWEET_POTATO` | Khoai lang tím Vĩnh Long | 504 *(BGNS + ETF CORN×FX)* | 11/2024–11/2026 | 16.000 VNĐ/kg | XGBoost | 1,71% | 0,884 | 97,3% |
+| 8 | `CASHEW_NUT` | Hạt điều | 504 *(BGNS 7 tỉnh + ETF SOYB×FX)* | 11/2024–11/2026 | 32.500 VNĐ/kg | ARIMA | 1,30% | 0,813 | 100,0% |
+
+*(Tổng cộng **4.899 bản ghi** trong `price_history` và **9.079 quan sát khảo sát cấp tỉnh** trong `regional_price_observations` chốt tại mốc 23/11/2026; hệ thống vận hành thực tế tiếp tục tự động cập nhật hằng ngày qua APScheduler 06:00 & 18:00 GMT+7.)*
+
+---
+
+## Tính Năng Chính
+
+1. **Tổng quan thị trường & Định giá theo vị trí 33 tỉnh/thành (`/`):**
+   - Hiển thị 8 nông sản với sparkline, bộ lọc nhanh, chọn tỉnh/thành trên Topbar (hoặc GPS Haversine tự định vị): tự động tách nhãn **Khảo sát trực tiếp** vs **Tham chiếu vùng lân cận (+cước vận chuyển)**.
+2. **Phân tích & Dự báo AI 5 mô hình (`/forecast` và `/commodities/[id]`):**
+   - Tự động chọn mô hình tối ưu (`★`), hỗ trợ kỳ hạn **7N / 14N / 30N**, khoảng tin cậy Conformal 95% mở rộng theo $\sqrt{h}$, giải thích AI (XAI), bảng chi tiết `AgroGrid` xuất Excel/CSV và tab so sánh trực quan 5 mô hình.
+3. **Dữ liệu lịch sử & Kiểm chứng nguồn gốc (`/history`):**
+   - Biểu đồ Syncfusion `FinChart` trục `DateTime` chống chồng chéo nhiều năm, cột **Nguồn công bố** cho phép bấm trực tiếp mở bài báo gốc (`vietnambiz.vn`, `giacaphe.com`, `vietfood.org.vn`, `finance.yahoo.com`, báo địa phương 2024–2026).
+4. **So sánh nông sản (`/compare`) & Cảnh báo Email tự động (`/alerts`):**
+   - Chuẩn hóa đường tăng trưởng + ma trận tương quan Pearson; cảnh báo 4 điều kiện (`PRICE_ABOVE`, `PRICE_BELOW`, `PCT_INC_7D`, `PCT_DEC_7D`) gửi email SMTP thực qua APScheduler (06:30 & 18:30 GMT+7).
+5. **Phân hệ Quản trị Admin (`/dashboard/*`):**
+   - Khóa chặt RBAC (`admin` only), CRUD giá & nông sản kèm `PriceRevision` Audit Log, Import/Export CSV chống Formula Injection, kích hoạt Scrape & Retrain chạy nền lưu vết trong `background_jobs`, chuyển đổi mô hình mặc định lưu bền vững trong `system_settings`, quản lý tài khoản & khóa phiên tức thời.
+
+---
+
+## Hướng Dẫn Cài Đặt & Khởi Chạy
+
+### Cách 1: Chạy trực tiếp trên Windows (Khuyến nghị khi demo)
+```bat
+setup_env.bat
+run_all.bat
 ```
-
----
-
-## 🛠 Hướng Dẫn Cài Đặt & Khởi Chạy
-
-### 1. Cơ sở dữ liệu (PostgreSQL)
-Tạo cơ sở dữ liệu PostgreSQL và import schema:
-```bash
-# Tạo database tên: agroforecast_db
-# Thực thi script init.sql trong thư mục database/
-```
-
-### 2. Khởi chạy Backend (FastAPI)
-```bash
+Hoặc chạy thủ công từng dịch vụ:
+```powershell
+# Backend (http://127.0.0.1:8000 | Swagger: http://127.0.0.1:8000/docs)
 cd backend
-python -m venv venv
-# Kích hoạt virtual environment (Windows: venv\Scripts\activate | Linux/macOS: source venv/bin/activate)
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-- **API URL:** `http://localhost:8000`
-- **Swagger Docs:** `http://localhost:8000/docs`
+.\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-### 3. Khởi chạy Frontend (Next.js)
-```bash
+# Frontend (http://localhost:3000)
 cd frontend
-npm install
-npm run dev
+npm run build && npm run start
 ```
-- **Web App:** `http://localhost:3000`
+
+### Cách 2: Chạy bằng Docker Compose
+```bash
+# Tạo file .env ở thư mục gốc chứa POSTGRES_PASSWORD, SECRET_KEY, NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY
+docker compose up --build -d
+```
+
+### Chạy bộ Kiểm thử & Kiểm toán Bảo mật
+```powershell
+# Backend Unit, Integration, ML & OWASP Tests (125/125 PASS)
+cd backend && .\venv\Scripts\pytest.exe -v
+
+# Backend SAST (Bandit: 0 Medium / 0 High)
+cd backend && .\venv\Scripts\bandit.exe -r app -ll && .\venv\Scripts\bandit.exe -r ml_pipeline -ll
+
+# End-to-End Browser Tests (Playwright Chrome: 4/4 PASS)
+.\backend\venv\Scripts\pytest.exe e2e\test_agroforecast_e2e.py -v
+```
 
 ---
 
-## 🔑 Tài Khoản Dùng Thử (Demo Accounts)
+## Tài Khoản Dùng Thử (Demo Accounts)
 
-| Vai trò | Email | Mật khẩu |
-| :--- | :--- | :--- |
-| **Nhà phân tích (Analyst)** | `anhnguyen@agroforecast.vn` | `123456` |
-| **Quản trị viên (Admin)** | `admin@agroforecast.vn` | `admin123` |
+| Vai trò | Email | Mật khẩu | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Quản trị viên (Admin)** | `admin@agroforecast.vn` | `admin123` | Toàn quyền quản trị `/dashboard/*`, cào dữ liệu, retrain AI |
+| **Chuyên viên (Analyst)** | `anhnguyen@agroforecast.vn` | `123456` | Tra cứu, dự báo, cảnh báo cá nhân (bị chặn khỏi `/dashboard/*`) |

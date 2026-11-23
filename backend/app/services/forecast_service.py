@@ -122,7 +122,7 @@ def get_forecast_dashboard(
     db: Session,
     commodity_id: int = 2,
     model_name: str = "LSTM",
-    days: int = 10,
+    days: int = 14,
     region: Optional[str] = None,
     province: Optional[str] = None,
 ) -> ForecastDashboardResponse:

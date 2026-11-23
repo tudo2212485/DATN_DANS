@@ -204,7 +204,8 @@ def _collect_coffee_single(db, http, commodity, start, end, progress=None):
     giacaphe_days = min(days, 25) if is_real_http else days
     for index in range(giacaphe_days):
         day = end - timedelta(days=index)
-        source = f"https://giacaphe.com/gia-ca-phe-noi-dia-ngay-{day.isoformat()}/"
+        source_url = f"https://giacaphe.com/gia-ca-phe-noi-dia-ngay-{day.isoformat()}/"
+        source_label = "giacaphe.com (Giá cà phê nội địa)"
         existing = (
             db.query(PriceHistory)
             .filter(PriceHistory.commodity_id == commodity.id, PriceHistory.record_date == day)
@@ -214,7 +215,7 @@ def _collect_coffee_single(db, http, commodity, start, end, progress=None):
             skipped += 1
         else:
             try:
-                response = http.get(source, headers=HEADERS, timeout=(5, 15))
+                response = http.get(source_url, headers=HEADERS, timeout=(5, 15))
                 if response.status_code == 404:
                     unavailable += 1
                 else:
@@ -228,7 +229,7 @@ def _collect_coffee_single(db, http, commodity, start, end, progress=None):
                         details = json.dumps(
                             {
                                 "provider": "giacaphe.com",
-                                "source_url": source,
+                                "source_url": source_url,
                                 "product": "Cà phê nhân xô Robusta",
                                 "market": "Tây Nguyên (Đắk Lắk, Lâm Đồng, Gia Lai, Đắk Nông)",
                                 "unit": "VNĐ/kg",
@@ -245,7 +246,7 @@ def _collect_coffee_single(db, http, commodity, start, end, progress=None):
                             )
                             existing.price = price
                             existing.price_min = existing.price_max = existing.volume = None
-                            existing.source = source[:100]
+                            existing.source = source_label
                             existing.provenance = "collected"
                             existing.source_details = details
                         else:
@@ -257,7 +258,7 @@ def _collect_coffee_single(db, http, commodity, start, end, progress=None):
                                     price_min=None,
                                     price_max=None,
                                     volume=None,
-                                    source=source[:100],
+                                    source=source_label,
                                     provenance="collected",
                                     source_details=details,
                                 )
