@@ -37,7 +37,7 @@ def normalize_database_url(url: str, *, is_async: bool = False) -> str:
 
     parsed = urlsplit(cleaned)
     scheme = parsed.scheme.lower()
-    is_pg = scheme in ("postgres", "postgresql", "postgresql+psycopg2", "postgresql+asyncpg")
+    is_pg = scheme in ("postgres", "postgresql", "postgresql+psycopg", "postgresql+psycopg2", "postgresql+asyncpg")
     if not is_pg:
         return cleaned
 
